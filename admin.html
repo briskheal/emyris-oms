@@ -112,6 +112,7 @@
             <div class="nav-item active" onclick="switchTab('dashboard', this)"><span>📊</span> Dashboard</div>
             <div class="nav-item" onclick="switchTab('products', this)"><span>💊</span> Product Master</div>
             <div class="nav-item" onclick="switchTab('stockists', this)"><span>🤝</span> Stockist Management</div>
+            <div class="nav-item" onclick="switchTab('masters', this)"><span>📦</span> Global Masters</div>
             <div class="nav-item" onclick="switchTab('orders', this)"><span>📦</span> Order History</div>
             <div class="nav-item" onclick="switchTab('settings', this)"><span>⚙️</span> Company Settings</div>
         </aside>
@@ -215,11 +216,46 @@
                 </div>
             </div>
 
+            <!-- GLOBAL MASTERS TAB -->
+            <div id="tab-masters" class="hidden">
+                <h2 class="section-title">📦 Global Master Data</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
+                    <!-- Category Master -->
+                    <div class="glass-card">
+                        <h3 class="section-title" style="font-size: 1rem;">💊 Product Categories</h3>
+                        <div class="form-group" style="display: flex; gap: 5px;">
+                            <input type="text" id="new-cat-name" placeholder="Category Name">
+                            <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('categories')">ADD</button>
+                        </div>
+                        <div id="master-cat-list" style="max-height: 200px; overflow-y: auto;"></div>
+                    </div>
+                    <!-- HSN Master -->
+                    <div class="glass-card">
+                        <h3 class="section-title" style="font-size: 1rem;">🔢 HSN Codes</h3>
+                        <div class="form-group" style="display: flex; gap: 5px;">
+                            <input type="text" id="new-hsn-code" placeholder="HSN Code">
+                            <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('hsns')">ADD</button>
+                        </div>
+                        <div id="master-hsn-list" style="max-height: 200px; overflow-y: auto;"></div>
+                    </div>
+                    <!-- GST Master -->
+                    <div class="glass-card">
+                        <h3 class="section-title" style="font-size: 1rem;">💰 GST Rates (%)</h3>
+                        <div class="form-group" style="display: flex; gap: 5px;">
+                            <input type="number" id="new-gst-rate" placeholder="12">
+                            <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('gst')">ADD</button>
+                        </div>
+                        <div id="master-gst-list" style="max-height: 200px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- SETTINGS TAB -->
             <div id="tab-settings" class="hidden">
-                <h2 class="section-title">⚙️ Company Global Settings</h2>
+                <h2 class="section-title">⚙️ Company & Portal Configuration</h2>
                 <div class="glass-card">
                     <form id="companyForm" onsubmit="saveSettings(event)">
+                        <h3 class="section-title" style="font-size: 1rem;">🏢 Company Details</h3>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                             <div class="form-group">
                                 <label>Company Full Name</label>
@@ -230,8 +266,8 @@
                                 <input type="text" id="set-web" placeholder="https://emyrisbio.com">
                             </div>
                             <div class="form-group">
-                                <label>GST Rate (%)</label>
-                                <input type="number" id="set-gst" value="12">
+                                <label>Contact Number</label>
+                                <input type="text" id="set-phone" placeholder="+91-XXXXXXXXXX">
                             </div>
                             <div class="form-group">
                                 <label>Admin Notification Email</label>
@@ -239,10 +275,29 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Full Address (Shown on Stockist Portal)</label>
-                            <textarea id="set-address" style="width: 100%; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; color: #fff; min-height: 100px;"></textarea>
+                            <label>Full Address (Header/Footer Details)</label>
+                            <textarea id="set-address" style="width: 100%; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; color: #fff; min-height: 80px;"></textarea>
                         </div>
-                        <button type="submit" class="btn btn-primary">SAVE CONFIGURATION</button>
+
+                        <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 2rem 0;">
+                        
+                        <h3 class="section-title" style="font-size: 1rem;">📢 Scrolling Announcement</h3>
+                        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1.5rem;">
+                            <div class="form-group">
+                                <label>Message Text</label>
+                                <input type="text" id="set-msg-text" placeholder="Welcome to EMYRIS OMS...">
+                            </div>
+                            <div class="form-group">
+                                <label>Message Color</label>
+                                <input type="color" id="set-msg-color" value="#6366f1" style="height: 45px; padding: 5px;">
+                            </div>
+                            <div class="form-group">
+                                <label>Scroll Speed (sec)</label>
+                                <input type="number" id="set-msg-speed" value="30">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">UPDATE GLOBAL CONFIGURATION</button>
                     </form>
                 </div>
             </div>
@@ -318,6 +373,20 @@
             </form>
         </div>
     </div>
+
+    <!-- GLOBAL FOOTER -->
+    <footer style="background: rgba(15, 23, 42, 0.9); border-top: 1px solid var(--glass-border); padding: 2rem 4%; margin-top: 2rem; color: #94a3b8; font-size: 0.85rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong id="footer-co-name" style="color: #fff; font-size: 1rem; display: block; margin-bottom: 5px;">EMYRIS OMS</strong>
+                <p id="footer-co-address">Loading company details...</p>
+            </div>
+            <div style="text-align: right;">
+                <p>OMS Portal v2.0 | &copy; 2026</p>
+                <p id="footer-co-web">www.emyrisbio.com</p>
+            </div>
+        </div>
+    </footer>
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="admin-script.js"></script>

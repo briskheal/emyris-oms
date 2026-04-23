@@ -14,6 +14,8 @@ window.onload = async () => {
     await refreshDashboard();
     await loadProducts();
     await loadStockists();
+    await loadMasters();
+    await loadSettings();
 };
 
 async function handleAdminLogin(e) {
@@ -77,14 +79,25 @@ async function loadProducts() {
 function updateDatalists() {
     const cats = new Set(["TABLETS", "SYRUPS", "INJECTIONS", "CAPSULES", "SACHETS"]);
     const hsns = new Set();
+    const gsts = new Set([12, 18, 5, 28]);
 
+    // Add from existing products
     allProducts.forEach(p => {
         if (p.category) cats.add(p.category.toUpperCase());
         if (p.hsn) hsns.add(p.hsn);
+        if (p.gstPercent) gsts.add(p.gstPercent);
     });
+
+    // Add from masters (if loaded)
+    if (window.masters) {
+        if (window.masters.categories) window.masters.categories.forEach(c => cats.add(c.name.toUpperCase()));
+        if (window.masters.hsns) window.masters.hsns.forEach(h => hsns.add(h.code));
+        if (window.masters.gst) window.masters.gst.forEach(g => gsts.add(g.rate));
+    }
 
     const catList = document.getElementById('category-list');
     const hsnList = document.getElementById('hsn-list');
+    const gstInput = document.getElementById('prod-gst');
 
     if (catList) {
         catList.innerHTML = Array.from(cats).map(c => `<option value="${c}"></option>`).join('');
@@ -106,8 +119,9 @@ function renderProducts() {
             <td>${p.gstPercent}%</td>
             <td>${p.qtyAvailable}</td>
             <td><span class="badge ${p.active ? 'badge-approved' : 'badge-pending'}">${p.active ? 'Active' : 'Inactive'}</span></td>
-            <td>
-                <button class="btn btn-ghost" style="padding: 5px 10px;" onclick="editProduct('${p._id}')">✏️</button>
+            <td style="white-space: nowrap;">
+                <button class="btn btn-ghost" style="padding: 5px 10px;" onclick="editProduct('${p._id}')" title="Edit">✏️</button>
+                <button class="btn btn-ghost" style="padding: 5px 10px; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteProduct('${p._id}')" title="Delete">🗑️</button>
             </td>
         </tr>
     `).join('');
@@ -153,8 +167,27 @@ async function saveProduct(e) {
             alert("Product saved successfully!");
             closeProductModal();
             loadProducts();
+        } else {
+            alert("Failed to save: " + (result.error || result.message || "Unknown error"));
         }
-    } catch (e) { alert("Failed to save product."); }
+    } catch (e) { 
+        console.error("Save error:", e);
+        alert("Failed to save product. Check console for details."); 
+    }
+}
+
+async function deleteProduct(id) {
+    if (!confirm("Are you sure you want to delete this product?")) return;
+    try {
+        const res = await fetch(`${API_BASE}/admin/products/${id}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (result.success) {
+            alert("Product deleted successfully!");
+            loadProducts();
+        } else {
+            alert("Delete failed: " + (result.message || "Unknown error"));
+        }
+    } catch (e) { alert("Failed to delete product."); }
 }
 
 function editProduct(id) {
@@ -223,6 +256,122 @@ async function handleProductBulkUpload(input) {
         }
     } catch (e) { alert("Bulk upload failed: " + e.message); }
     input.value = '';
+}
+
+// --- MASTERS & SETTINGS ---
+window.masters = { categories: [], hsns: [], gst: [] };
+
+async function loadMasters() {
+    try {
+        const [cats, hsns, gst] = await Promise.all([
+            fetch(`${API_BASE}/admin/categories`).then(r => r.json()),
+            fetch(`${API_BASE}/admin/hsns`).then(r => r.json()),
+            fetch(`${API_BASE}/admin/gst`).then(r => r.json())
+        ]);
+        window.masters = { categories: cats, hsns: hsns, gst: gst };
+        renderMasterLists();
+        updateDatalists();
+    } catch (e) { console.error("Load masters fail"); }
+}
+
+function renderMasterLists() {
+    const render = (id, list, key, type) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = list.map(item => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:5px; font-size:0.85rem;">
+                <span>${item[key]}</span>
+                <button style="background:none; border:none; color:#ef4444; cursor:pointer;" onclick="deleteMaster('${type}', '${item._id}')">✕</button>
+            </div>
+        `).join('');
+    };
+    render('master-cat-list', window.masters.categories, 'name', 'categories');
+    render('master-hsn-list', window.masters.hsns, 'code', 'hsns');
+    render('master-gst-list', window.masters.gst, 'rate', 'gst');
+}
+
+async function addMaster(type) {
+    let val = "";
+    let body = {};
+    if (type === 'categories') {
+        val = document.getElementById('new-cat-name').value;
+        body = { name: val };
+    } else if (type === 'hsns') {
+        val = document.getElementById('new-hsn-code').value;
+        body = { code: val };
+    } else if (type === 'gst') {
+        val = document.getElementById('new-gst-rate').value;
+        body = { rate: Number(val) };
+    }
+
+    if (!val) return alert("Please enter a value");
+    try {
+        const res = await fetch(`${API_BASE}/admin/${type}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (res.ok) {
+            document.getElementById(`new-${type.slice(0,-1).replace('categorie','cat')}-${type==='gst'?'rate':(type==='hsns'?'code':'name')}`).value = '';
+            loadMasters();
+        }
+    } catch (e) { alert("Add master failed"); }
+}
+
+async function deleteMaster(type, id) {
+    if (!confirm("Delete this master entry?")) return;
+    try {
+        await fetch(`${API_BASE}/admin/${type}/${id}`, { method: 'DELETE' });
+        loadMasters();
+    } catch (e) { alert("Delete failed"); }
+}
+
+async function loadSettings() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/settings`);
+        const s = await res.json();
+        document.getElementById('set-name').value = s.name || '';
+        document.getElementById('set-web').value = s.website || '';
+        document.getElementById('set-phone').value = s.phones ? s.phones[0] : '';
+        document.getElementById('set-address').value = s.address || '';
+        document.getElementById('set-admin-email').value = s.adminEmail || '';
+
+        // Footer population
+        if (document.getElementById('footer-co-name')) document.getElementById('footer-co-name').innerText = s.name || 'EMYRIS OMS';
+        if (document.getElementById('footer-co-address')) document.getElementById('footer-co-address').innerText = s.address || '';
+        if (document.getElementById('footer-co-web')) document.getElementById('footer-co-web').innerText = s.website || '';
+        
+        if (s.scrollingMessage) {
+            document.getElementById('set-msg-text').value = s.scrollingMessage.text || '';
+            document.getElementById('set-msg-color').value = s.scrollingMessage.color || '#6366f1';
+            document.getElementById('set-msg-speed').value = s.scrollingMessage.speed || 30;
+        }
+    } catch (e) { console.error("Load settings fail"); }
+}
+
+async function saveSettings(e) {
+    e.preventDefault();
+    const data = {
+        name: document.getElementById('set-name').value,
+        website: document.getElementById('set-web').value,
+        phones: [document.getElementById('set-phone').value],
+        address: document.getElementById('set-address').value,
+        adminEmail: document.getElementById('set-admin-email').value,
+        scrollingMessage: {
+            text: document.getElementById('set-msg-text').value,
+            color: document.getElementById('set-msg-color').value,
+            speed: Number(document.getElementById('set-msg-speed').value)
+        }
+    };
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/settings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) alert("Settings updated successfully!");
+    } catch (e) { alert("Save settings failed"); }
 }
 
 // --- STOCKIST MANAGEMENT ---

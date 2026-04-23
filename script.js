@@ -3,7 +3,7 @@ const API_BASE = '/api';
 let currentUser = null;
 let allProducts = [];
 let cart = {}; // { productId: qty }
-let gstRate = 12;
+let companySettings = null;
 
 // --- INITIALIZATION ---
 window.onload = async () => {
@@ -20,9 +20,12 @@ function switchView(viewId) {
     document.getElementById(`view-${viewId}`).classList.remove('hidden');
     if(viewId === 'order') {
         document.getElementById('userMenu').classList.remove('hidden');
+        document.getElementById('orderFooter').classList.remove('hidden');
         document.getElementById('stockistName').innerText = currentUser.name;
     } else {
         document.getElementById('userMenu').classList.add('hidden');
+        document.getElementById('orderFooter').classList.add('hidden');
+        document.getElementById('marquee').classList.add('hidden');
     }
 }
 
@@ -84,124 +87,174 @@ function logout() {
 
 // --- ORDERING SYSTEM ---
 async function initOrderSystem() {
-    await fetchProducts();
-    renderProducts();
-    renderCategories();
+    await Promise.all([
+        loadSettings(),
+        fetchProducts(),
+        loadMasters()
+    ]);
+    renderExcelProducts();
+}
+
+async function loadSettings() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/settings`);
+        companySettings = await res.json();
+        
+        // Update UI
+        document.getElementById('co-name').innerText = companySettings.name || "EMYRIS BIOLIFESCIENCES";
+        document.getElementById('co-address').innerText = companySettings.address || "Loading address...";
+        document.getElementById('co-web').innerText = `🌐 ${companySettings.website || 'www.emyrisbio.com'}`;
+        document.getElementById('co-phone').innerText = `📞 ${companySettings.phones ? companySettings.phones[0] : 'N/A'}`;
+        document.getElementById('co-email').innerText = `✉️ ${companySettings.adminEmail || 'contact@emyrisbio.com'}`;
+
+        // Footer population
+        if (document.getElementById('f-co-name')) document.getElementById('f-co-name').innerText = companySettings.name || "EMYRIS BIOLIFESCIENCES";
+        if (document.getElementById('f-co-address')) document.getElementById('f-co-address').innerText = companySettings.address || "";
+        if (document.getElementById('f-co-phone')) document.getElementById('f-co-phone').innerText = `📞 ${companySettings.phones ? companySettings.phones[0] : ''}`;
+        if (document.getElementById('f-co-email')) document.getElementById('f-co-email').innerText = `✉️ ${companySettings.adminEmail || ''}`;
+
+        // Marquee
+        if (companySettings.scrollingMessage && companySettings.scrollingMessage.text) {
+            const m = document.getElementById('marquee');
+            const mc = document.getElementById('marquee-content');
+            m.classList.remove('hidden');
+            m.style.background = companySettings.scrollingMessage.color || 'var(--primary)';
+            mc.innerText = companySettings.scrollingMessage.text;
+            mc.style.animationDuration = `${companySettings.scrollingMessage.speed || 30}s`;
+        }
+    } catch (e) { console.error("Load settings failed"); }
+}
+
+async function loadMasters() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/categories`);
+        const cats = await res.json();
+        const container = document.getElementById('categoryChips');
+        const uniqueCats = ['ALL', ...new Set(cats.map(c => c.name.toUpperCase()))];
+        container.innerHTML = uniqueCats.map(c => `<div class="cat-chip ${c==='ALL'?'active':''}" onclick="filterCat('${c}', this)">${c}</div>`).join('');
+    } catch (e) { console.error("Load masters failed"); }
 }
 
 async function fetchProducts() {
     try {
         const res = await fetch(`${API_BASE}/products`);
         allProducts = await res.json();
-        // Mocking some data if DB is empty
-        if(allProducts.length === 0) {
-            allProducts = [
-                { _id: 'p1', name: 'EMYCOLD TABLETS', category: 'TABLETS', mrp: 45, companyPrice: 22, listPrice: 20, bonusScheme: { buy: 10, get: 1 } },
-                { _id: 'p2', name: 'EMY-GUM SYRUP', category: 'SYRUPS', mrp: 120, companyPrice: 65, listPrice: 60, bonusScheme: { buy: 5, get: 1 } },
-                { _id: 'p3', name: 'EMYVIT INJECTION', category: 'INJECTIONS', mrp: 180, companyPrice: 90, listPrice: 85, bonusScheme: { buy: 10, get: 2 } }
-            ];
-        }
     } catch (e) { console.error("Fetch products failed"); }
-}
-
-function renderCategories() {
-    const cats = ['ALL', ...new Set(allProducts.map(p => p.category))];
-    const container = document.getElementById('categoryChips');
-    container.innerHTML = cats.map(c => `<div class="cat-chip ${c==='ALL'?'active':''}" onclick="filterCat('${c}', this)">${c}</div>`).join('');
 }
 
 function filterCat(cat, el) {
     document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
     el.classList.add('active');
-    renderProducts(cat === 'ALL' ? null : cat);
+    renderExcelProducts(cat === 'ALL' ? null : cat);
 }
 
-function renderProducts(filter = null) {
-    const list = document.getElementById('productList');
-    const filtered = filter ? allProducts.filter(p => p.category === filter) : allProducts;
+function searchProducts(query) {
+    renderExcelProducts(null, query.toLowerCase());
+}
+
+function renderExcelProducts(catFilter = null, searchFilter = null) {
+    const tbody = document.getElementById('excelProductBody');
+    let filtered = allProducts;
     
-    list.innerHTML = filtered.map(p => {
-        const qty = cart[p._id] || 0;
+    if (catFilter) filtered = filtered.filter(p => p.category.toUpperCase() === catFilter);
+    if (searchFilter) filtered = filtered.filter(p => p.name.toLowerCase().includes(searchFilter));
+
+    tbody.innerHTML = filtered.map(p => {
+        const qty = cart[p._id] || '';
+        const price = p.pts || p.ptr || 0;
+        const total = qty ? (qty * price).toFixed(2) : '0.00';
         return `
-            <div class="product-card">
-                <div style="flex: 1;">
-                    <div style="font-weight: 800; font-size: 1.1rem; color: var(--primary);">${p.name}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
-                        Category: ${p.category} | MRP: ₹${p.mrp} | Co. Price: ₹${p.companyPrice}
-                        ${p.bonusScheme ? `<span class="bonus-tag">Scheme: ${p.bonusScheme.buy}+${p.bonusScheme.get}</span>` : ''}
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <div style="text-align: right;">
-                        <div style="font-size: 0.7rem; color: var(--text-muted);">Enter Qty</div>
-                        <input type="number" class="qty-input" value="${qty}" min="0" onchange="updateCart('${p._id}', this.value)">
-                    </div>
-                </div>
-            </div>
+            <tr>
+                <td>
+                    <div style="font-weight: 800; color: var(--primary);">${p.name}</div>
+                    ${p.bonusScheme && p.bonusScheme.buy > 0 ? `<div class="bonus-tag" style="display:inline-block; margin-top:4px;">Scheme: ${p.bonusScheme.buy}+${p.bonusScheme.get}</div>` : ''}
+                </td>
+                <td style="font-family: monospace; color: var(--text-muted);">${p.hsn || '-'}</td>
+                <td style="text-align: right; font-weight: 600;">₹${p.mrp}</td>
+                <td style="text-align: right; font-weight: 700; color: var(--accent);">₹${price}</td>
+                <td style="text-align: center;">
+                    <input type="number" class="qty-input" value="${qty}" min="0" 
+                        oninput="updateCart('${p._id}', this.value, this)" 
+                        style="width: 100px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-weight: 700;">
+                </td>
+                <td style="text-align: right; font-weight: 800; font-size: 1rem;" id="total-${p._id}">₹${total}</td>
+            </tr>
         `;
     }).join('');
 }
 
-function updateCart(pid, qty) {
+function updateCart(pid, qty, inputEl) {
     qty = parseInt(qty) || 0;
+    const p = allProducts.find(x => x._id === pid);
     if (qty > 0) cart[pid] = qty;
     else delete cart[pid];
-    renderOrderSummary();
+
+    // Update row total immediately
+    const price = p.pts || p.ptr || 0;
+    const rowTotal = (qty * price).toFixed(2);
+    document.getElementById(`total-${pid}`).innerText = `₹${rowTotal}`;
+    
+    // Highlight input if qty > 0
+    if (inputEl) {
+        inputEl.style.borderColor = qty > 0 ? 'var(--primary)' : 'var(--border)';
+        inputEl.style.background = qty > 0 ? '#f5f3ff' : '#fff';
+    }
+
+    updateFooter();
 }
 
-function renderOrderSummary() {
-    const container = document.getElementById('orderItems');
+function updateFooter() {
     let subTotal = 0;
-    
-    const itemsHtml = Object.keys(cart).map(pid => {
+    let gstTotal = 0;
+    let itemCount = 0;
+
+    Object.keys(cart).forEach(pid => {
         const p = allProducts.find(x => x._id === pid);
         const qty = cart[pid];
-        const itemVal = qty * p.companyPrice;
+        const price = p.pts || p.ptr || 0;
+        const itemVal = qty * price;
+        const itemGst = (itemVal * (p.gstPercent || companySettings.gstRate || 12)) / 100;
+        
         subTotal += itemVal;
+        gstTotal += itemGst;
+        itemCount++;
+    });
 
-        let bonusMsg = "";
-        if(p.bonusScheme) {
-            const free = Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get;
-            if(free > 0) bonusMsg = `<span style="color:var(--accent); font-size:0.75rem;">(+${free} Bonus)</span>`;
-        }
+    const grandTotal = subTotal + gstTotal;
 
-        return `
-            <div class="summary-row" style="margin-bottom: 0.5rem; font-size: 0.85rem;">
-                <span style="font-weight: 600;">${p.name} x ${qty} ${bonusMsg}</span>
-                <span>₹${itemVal.toFixed(2)}</span>
-            </div>
-        `;
-    }).join('');
-
-    container.innerHTML = itemsHtml || '<p style="color:var(--text-muted); font-size:0.9rem; text-align:center;">No items selected</p>';
-    
-    const gstAmt = (subTotal * gstRate) / 100;
-    const grandTotal = subTotal + gstAmt;
-
-    document.getElementById('sum-subtotal').innerText = `₹${subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    document.getElementById('sum-gst-amt').innerText = `₹${gstAmt.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    document.getElementById('sum-grand').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('footer-item-count').innerText = itemCount;
+    document.getElementById('footer-subtotal').innerText = `₹${subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('footer-gst').innerText = `₹${gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('footer-total').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 }
 
 async function placeOrder() {
-    if(Object.keys(cart).length === 0) return alert("Select at least one product.");
+    const pids = Object.keys(cart);
+    if(pids.length === 0) return alert("Please enter quantity for at least one product.");
     
-    const orderItems = Object.keys(cart).map(pid => {
+    const orderItems = pids.map(pid => {
         const p = allProducts.find(x => x._id === pid);
         const qty = cart[pid];
         const free = p.bonusScheme ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0;
+        const price = p.pts || p.ptr || 0;
         return {
             productId: pid,
             name: p.name,
             qty,
             bonusQty: free,
-            priceUsed: p.companyPrice,
-            totalValue: qty * p.companyPrice
+            priceUsed: price,
+            mrp: p.mrp,
+            totalValue: qty * price
         };
     });
 
     const subTotal = orderItems.reduce((a, b) => a + b.totalValue, 0);
-    const gstAmt = (subTotal * gstRate) / 100;
+    // Recalculate GST exactly as done in footer
+    let gstAmt = 0;
+    orderItems.forEach(item => {
+        const p = allProducts.find(x => x._id === item.productId);
+        gstAmt += (item.totalValue * (p.gstPercent || companySettings.gstRate || 12)) / 100;
+    });
     
     const orderData = {
         stockistId: currentUser._id,
@@ -219,10 +272,10 @@ async function placeOrder() {
         });
         const result = await res.json();
         if (result.success) {
-            alert(`Order Placed Successfully! Order No: ${result.orderNo}\nEmails triggered to Admin & Super Distributor.`);
+            alert(`Order Placed Successfully! Order No: ${result.orderNo}\nNotification sent to Admin.`);
             cart = {};
-            renderProducts();
-            renderOrderSummary();
+            renderExcelProducts();
+            updateFooter();
         }
     } catch (e) { alert("Order submission failed."); }
 }

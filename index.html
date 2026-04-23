@@ -59,11 +59,27 @@
         input { width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: 0.75rem 1rem; font-size: 1rem; }
         input:focus { outline: none; border-color: var(--primary); }
 
-        .hidden { display: none; }
+        .hidden { display: none !important; }
         .bonus-tag { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; }
+
+        /* --- EXCEL TABLE STYLE --- */
+        .excel-container { background: #fff; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .excel-table { width: 100%; border-collapse: collapse; }
+        .excel-table th { background: #f8fafc; padding: 1rem; text-align: left; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; border-bottom: 2px solid var(--border); }
+        .excel-table td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        .excel-table tr:hover { background: #f1f5f9; }
+        
+        .marquee-container { background: var(--primary); color: #fff; padding: 10px 0; font-weight: 600; font-size: 0.9rem; overflow: hidden; white-space: nowrap; position: relative; }
+        .marquee-text { display: inline-block; padding-left: 100%; animation: marquee linear infinite; }
+        @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+
+        .sticky-footer { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 2px solid var(--primary); padding: 1rem 4%; display: flex; justify-content: space-between; align-items: center; z-index: 1000; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
+    <div id="marquee" class="marquee-container hidden">
+        <div id="marquee-content" class="marquee-text">Welcome to EMYRIS OMS Portal</div>
+    </div>
 
     <nav class="navbar">
         <div class="logo">EMYRIS OMS</div>
@@ -138,48 +154,92 @@
     </div>
 
     <!-- ORDERING VIEW -->
-    <div id="view-order" class="container hidden">
-        <div class="company-header">
-            <h1 style="font-size: 2.2rem; margin-bottom: 0.5rem;">Welcome to EMYRIS OMS</h1>
-            <p id="co-address" style="opacity: 0.9; font-size: 0.9rem; max-width: 600px;">Loading address...</p>
-            <div style="display: flex; gap: 2rem; margin-top: 1.5rem; font-weight: 600; font-size: 0.9rem;">
-                <span id="co-web">🌐 www.emyrisbio.com</span>
-                <span id="co-phone">📞 +91-XXXXXXXXXX</span>
+    <!-- ORDERING VIEW -->
+    <div id="view-order" class="container hidden" style="max-width: 1400px; margin-bottom: 120px;">
+        <div class="company-header" style="padding: 2rem; border-radius: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h1 id="co-name" style="font-size: 2rem; margin-bottom: 0.5rem;">EMYRIS BIOLIFESCIENCES</h1>
+                    <p id="co-address" style="opacity: 0.9; font-size: 0.85rem; max-width: 500px;">Loading address...</p>
+                </div>
+                <div style="text-align: right; font-size: 0.85rem; opacity: 0.9;">
+                    <p id="co-web">🌐 www.emyrisbio.com</p>
+                    <p id="co-phone">📞 +91-XXXXXXXXXX</p>
+                    <p id="co-email">✉️ contact@emyrisbio.com</p>
+                </div>
             </div>
         </div>
 
-        <div class="category-scroll" id="categoryChips">
-            <div class="cat-chip active" onclick="filterCat('ALL', this)">ALL PRODUCTS</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div class="category-scroll" id="categoryChips" style="margin: 0;">
+                <div class="cat-chip active" onclick="filterCat('ALL', this)">ALL PRODUCTS</div>
+            </div>
+            <div style="position: relative; width: 300px;">
+                <input type="text" id="productSearch" placeholder="Search product..." onkeyup="searchProducts(this.value)" style="padding: 0.75rem 1rem 0.75rem 2.5rem;">
+                <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); opacity: 0.5;">🔍</span>
+            </div>
         </div>
 
-        <div class="order-grid">
-            <div id="productList">
-                <!-- Products will render here -->
-            </div>
-
-            <div class="summary-card">
-                <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px;">🛒 Order Summary</h3>
-                <div id="orderItems">
-                    <!-- Cart items -->
-                </div>
-                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
-                    <div class="summary-row">
-                        <span>Items Total</span>
-                        <span id="sum-subtotal">₹0.00</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>GST (<span id="sum-gst-rate">12</span>%)</span>
-                        <span id="sum-gst-amt">₹0.00</span>
-                    </div>
-                    <div class="total-row">
-                        <span>Total</span>
-                        <span id="sum-grand">₹0.00</span>
-                    </div>
-                    <button class="btn btn-primary" style="margin-top: 2rem;" onclick="placeOrder()">PLACE ORDER NOW</button>
-                </div>
-            </div>
+        <div class="excel-container">
+            <table class="excel-table">
+                <thead>
+                    <tr>
+                        <th>Product Description</th>
+                        <th style="width: 100px;">HSN</th>
+                        <th style="width: 100px; text-align: right;">MRP (₹)</th>
+                        <th style="width: 100px; text-align: right;">PTR (₹)</th>
+                        <th style="width: 150px; text-align: center;">Order Qty</th>
+                        <th style="width: 120px; text-align: right;">Total (₹)</th>
+                    </tr>
+                </thead>
+                <tbody id="excelProductBody">
+                    <!-- Products rendered as rows -->
+                </tbody>
+            </table>
         </div>
     </div>
+
+    <div id="orderFooter" class="sticky-footer hidden">
+        <div style="display: flex; gap: 3rem;">
+            <div>
+                <span style="color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">Taxable Value</span>
+                <div id="footer-subtotal" style="font-size: 1.25rem; font-weight: 800;">₹0.00</div>
+            </div>
+            <div>
+                <span style="color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">GST Total</span>
+                <div id="footer-gst" style="font-size: 1.25rem; font-weight: 800;">₹0.00</div>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 2rem;">
+            <div style="text-align: right;">
+                <span style="color: var(--primary); font-size: 0.7rem; font-weight: 800; text-transform: uppercase;">Grand Total</span>
+                <div id="footer-total" style="font-size: 2rem; font-weight: 900; color: var(--primary);">₹0.00</div>
+            </div>
+            <button class="btn btn-primary" style="width: 250px; height: 60px; font-size: 1.1rem;" onclick="placeOrder()">PLACE ORDER NOW</button>
+        </div>
+    </div>
+
+    <!-- GLOBAL FOOTER -->
+    <footer style="background: #1e293b; color: #94a3b8; padding: 4rem 4%; margin-top: 4rem; border-top: 4px solid var(--primary);">
+        <div class="container" style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 4rem; margin: 0 auto;">
+            <div>
+                <h3 id="f-co-name" style="color: #fff; margin-bottom: 1rem;">EMYRIS BIOLIFESCIENCES</h3>
+                <p id="f-co-address" style="font-size: 0.9rem; line-height: 1.6;">Loading company address...</p>
+            </div>
+            <div>
+                <h4 style="color: #fff; margin-bottom: 1rem;">Quick Links</h4>
+                <ul style="list-style: none; font-size: 0.9rem;">
+                    <li style="margin-bottom: 0.5rem;"><a href="#" style="color: inherit; text-decoration: none;">Products Master</a></li>
+                    <li style="margin-bottom: 0.5rem;"><a href="#" style="color: inherit; text-decoration: none;">Order History</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: #fff; margin-bottom: 1rem;">Contact Details</h4>
+                <p id="f-co-phone" style="font-size: 0.9rem; margin-bottom: 0.5rem;">📞 +91-XXXXXXXXXX</p>
+                <p id="f-co-email" style="font-size: 0.9rem;">✉️ contact@emyrisbio.com</p>
+            </div>
+        </div>
+    </footer>
 
     <script src="script.js"></script>
 </body>

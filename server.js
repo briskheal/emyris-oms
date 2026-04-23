@@ -98,8 +98,18 @@ const companySchema = new mongoose.Schema({
     email: String,
     superDistributorEmail: String,
     adminEmail: String,
-    gstRate: { type: Number, default: 12 }
+    gstRate: { type: Number, default: 12 },
+    scrollingMessage: {
+        text: { type: String, default: "Welcome to EMYRIS OMS Portal - Your partner in healthcare." },
+        color: { type: String, default: "#6366f1" },
+        speed: { type: Number, default: 30 }
+    }
 });
+
+// 2. Global Masters
+const categorySchema = new mongoose.Schema({ name: { type: String, required: true, unique: true } });
+const hsnSchema = new mongoose.Schema({ code: { type: String, required: true, unique: true }, description: String });
+const gstSchema = new mongoose.Schema({ rate: { type: Number, required: true, unique: true } });
 
 // 2. Product Master
 const productSchema = new mongoose.Schema({
@@ -154,6 +164,9 @@ const Company = mongoose.model('Company', companySchema);
 const Product = mongoose.model('Product', productSchema);
 const Stockist = mongoose.model('Stockist', stockistSchema);
 const Order = mongoose.model('Order', orderSchema);
+const Category = mongoose.model('Category', categorySchema);
+const HSN = mongoose.model('HSN', hsnSchema);
+const GST = mongoose.model('GST', gstSchema);
 
 // --- API ENDPOINTS ---
 
@@ -231,9 +244,31 @@ app.post('/api/admin/products/bulk', async (req, res) => {
 // Admin: Single Add Product
 app.post('/api/admin/products', async (req, res) => {
     try {
+        console.log("[DEBUG] Adding Product:", req.body);
         const newProd = new Product(req.body);
         await newProd.save();
         res.json({ success: true, product: newProd });
+    } catch (err) { 
+        console.error('❌ Product Save Error:', err.message);
+        res.status(500).json({ success: false, error: err.message }); 
+    }
+});
+
+// Admin: Update Product
+app.put('/api/admin/products/:id', async (req, res) => {
+    try {
+        const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+        res.json({ success: true, product });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Admin: Delete Product
+app.delete('/api/admin/products/:id', async (req, res) => {
+    try {
+        const product = await Product.findByIdAndDelete(req.params.id);
+        if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+        res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -251,6 +286,66 @@ app.put('/api/admin/stockists/:id/approve', async (req, res) => {
         const stockist = await Stockist.findByIdAndUpdate(req.params.id, { approved: true }, { new: true });
         res.json({ success: true, stockist });
     } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- SETTINGS & MASTERS ---
+
+app.get('/api/admin/settings', async (req, res) => {
+    let settings = await Company.findOne();
+    if (!settings) settings = await Company.create({});
+    res.json(settings);
+});
+
+app.post('/api/admin/settings', async (req, res) => {
+    try {
+        let settings = await Company.findOne();
+        if (!settings) settings = new Company(req.body);
+        else Object.assign(settings, req.body);
+        await settings.save();
+        res.json({ success: true, settings });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Category Master
+app.get('/api/admin/categories', async (req, res) => res.json(await Category.find()));
+app.post('/api/admin/categories', async (req, res) => {
+    try {
+        const cat = new Category(req.body);
+        await cat.save();
+        res.json({ success: true, category: cat });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/admin/categories/:id', async (req, res) => {
+    await Category.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+});
+
+// HSN Master
+app.get('/api/admin/hsns', async (req, res) => res.json(await HSN.find()));
+app.post('/api/admin/hsns', async (req, res) => {
+    try {
+        const hsn = new HSN(req.body);
+        await hsn.save();
+        res.json({ success: true, hsn });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/admin/hsns/:id', async (req, res) => {
+    await HSN.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+});
+
+// GST Master
+app.get('/api/admin/gst', async (req, res) => res.json(await GST.find()));
+app.post('/api/admin/gst', async (req, res) => {
+    try {
+        const gst = new GST(req.body);
+        await gst.save();
+        res.json({ success: true, gst });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/admin/gst/:id', async (req, res) => {
+    await GST.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
 });
 
 // Public Products List
