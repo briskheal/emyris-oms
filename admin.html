@@ -84,6 +84,29 @@
         </div>
     </nav>
 
+    <!-- ADMIN LOGIN OVERLAY -->
+    <div id="adminLoginOverlay" class="hidden" style="position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="glass-card" style="width: 400px; text-align: center;">
+            <div class="nav-logo" style="font-size: 2rem; margin-bottom: 2rem;">EMYRIS OMS</div>
+            <h2 class="section-title" style="justify-content: center; margin-bottom: 0.5rem;">Admin Access</h2>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 2rem;">Please verify your identity to continue</p>
+            
+            <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
+                <div class="form-group" style="text-align: left;">
+                    <label>Admin ID</label>
+                    <input type="text" id="admin-id-input" required placeholder="Enter Admin ID">
+                </div>
+                <div class="form-group" style="text-align: left;">
+                    <label>Password</label>
+                    <input type="password" id="admin-pass-input" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem;">VERIFY & ENTER</button>
+            </form>
+        </div>
+    </div>
+
     <div class="main-container">
         <aside class="sidebar">
             <div class="nav-item active" onclick="switchTab('dashboard', this)"><span>📊</span> Dashboard</div>

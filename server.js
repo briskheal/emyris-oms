@@ -123,12 +123,12 @@ app.post('/api/stockist/login', async (req, res) => {
 
 // Admin: Login
 app.post('/api/admin/login', (req, res) => {
-    const { password } = req.body;
-    const adminPass = process.env.ADMIN_PASSWORD || "Omrutam@1306";
-    if (password === adminPass) {
+    const { adminId, password } = req.body;
+    // As per user request: Fixed ID "EMYRIS" and Password "1234"
+    if (adminId === "EMYRIS" && password === "1234") {
         res.json({ success: true });
     } else {
-        res.status(401).json({ success: false, message: 'Invalid Admin Password' });
+        res.status(401).json({ success: false, message: 'Invalid Admin Credentials' });
     }
 });
 

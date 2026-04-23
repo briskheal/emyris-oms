@@ -7,31 +7,35 @@ let allOrders = [];
 // --- INITIALIZATION ---
 window.onload = async () => {
     if (sessionStorage.getItem('admin_logged') !== 'true') {
-        const pass = prompt("Enter Admin Password:");
-        if (!pass) { window.location.href = '/'; return; }
-
-        try {
-            const res = await fetch(`${API_BASE}/admin/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: pass })
-            });
-            const result = await res.json();
-            if (result.success) {
-                sessionStorage.setItem('admin_logged', 'true');
-                location.reload();
-            } else {
-                alert("Unauthorized");
-                window.location.href = '/';
-                return;
-            }
-        } catch (e) { alert("Auth Error"); }
+        document.getElementById('adminLoginOverlay').classList.remove('hidden');
+        return; // Wait for login
     }
     
     await refreshDashboard();
     await loadProducts();
     await loadStockists();
 };
+
+async function handleAdminLogin(e) {
+    e.preventDefault();
+    const adminId = document.getElementById('admin-id-input').value;
+    const password = document.getElementById('admin-pass-input').value;
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminId, password })
+        });
+        const result = await res.json();
+        if (result.success) {
+            sessionStorage.setItem('admin_logged', 'true');
+            window.location.reload();
+        } else {
+            alert("Invalid Credentials");
+        }
+    } catch (e) { alert("Auth Error"); }
+}
 
 // --- NAVIGATION ---
 function switchTab(tabId, el) {
