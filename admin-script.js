@@ -202,37 +202,41 @@ async function handleProductBulkUpload(input) {
 
 // --- STOCKIST MANAGEMENT ---
 async function loadStockists() {
-    // This would fetch from /api/admin/stockists in a full implementation
-    allStockists = [
-        { _id: '1', name: 'Brisk Heal Pharmacy', loginId: 'stock1', address: 'Mumbai', phone: '9876543210', approved: false },
-        { _id: '2', name: 'LifeCare Distributors', loginId: 'stock2', address: 'Delhi', phone: '9000011122', approved: true }
-    ];
-    renderStockists();
-    updateStats();
+    try {
+        const res = await fetch(`${API_BASE}/admin/stockists`);
+        allStockists = await res.json();
+        renderStockists();
+        updateStats();
+    } catch (e) { console.error("Load stockists fail"); }
 }
 
 function renderStockists() {
     const tbody = document.getElementById('stockistTableBody');
+    if (!tbody) return;
     tbody.innerHTML = allStockists.map(s => `
         <tr>
             <td style="font-weight:700;">${s.name}</td>
             <td style="font-family:monospace; color:var(--primary);">${s.loginId}</td>
-            <td>${s.address}</td>
-            <td>${s.phone}</td>
+            <td>${s.address || '-'}</td>
+            <td>${s.phone || '-'}</td>
             <td><span class="badge ${s.approved ? 'badge-approved' : 'badge-pending'}">${s.approved ? 'Approved' : 'Pending'}</span></td>
             <td>
-                ${!s.approved ? `<button class="btn btn-primary" style="padding: 5px 12px; font-size:0.75rem;" onclick="approveStockist('${s._id}')">APPROVE</button>` : '✅'}
+                ${!s.approved ? `<button class="btn btn-primary" style="padding: 5px 12px; font-size:0.75rem;" onclick="approveStockist('${s._id}')">APPROVE</button>` : '✅ Verified'}
             </td>
         </tr>
     `).join('');
 }
 
-function approveStockist(id) {
-    alert("Approving Stockist ID: " + id);
-    const s = allStockists.find(x => x._id === id);
-    if(s) s.approved = true;
-    renderStockists();
-    updateStats();
+async function approveStockist(id) {
+    if (!confirm("Are you sure you want to approve this stockist?")) return;
+    try {
+        const res = await fetch(`${API_BASE}/admin/stockists/${id}/approve`, { method: 'PUT' });
+        const result = await res.json();
+        if (result.success) {
+            alert("Stockist approved successfully!");
+            loadStockists();
+        }
+    } catch (e) { alert("Approval failed."); }
 }
 
 function logout() {

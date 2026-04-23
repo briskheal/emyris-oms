@@ -172,6 +172,22 @@ app.post('/api/admin/products', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Admin: Get All Stockists
+app.get('/api/admin/stockists', async (req, res) => {
+    try {
+        const stockists = await Stockist.find().sort({ registeredAt: -1 });
+        res.json(stockists);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Admin: Approve Stockist
+app.put('/api/admin/stockists/:id/approve', async (req, res) => {
+    try {
+        const stockist = await Stockist.findByIdAndUpdate(req.params.id, { approved: true }, { new: true });
+        res.json({ success: true, stockist });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Public Products List
 app.get('/api/products', async (req, res) => {
     try {
