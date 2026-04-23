@@ -2,8 +2,74 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const nodemailer = require('nodemailer');
 
 dotenv.config();
+
+// --- EMAIL CONFIGURATION ---
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.GMAIL_USER || 'emyrisbio@gmail.com',
+        pass: process.env.GMAIL_PASS // Use Google App Password
+    }
+});
+
+async function sendOrderEmails(order, stockist) {
+    try {
+        const itemRows = order.items.map(item => `
+            <tr>
+                <td style="padding:8px; border-bottom:1px solid #eee;">${item.name}</td>
+                <td style="padding:8px; border-bottom:1px solid #eee; text-align:center;">${item.qty}</td>
+                <td style="padding:8px; border-bottom:1px solid #eee; text-align:center;">${item.bonusQty || 0}</td>
+                <td style="padding:8px; border-bottom:1px solid #eee; text-align:right;">₹${item.totalValue.toFixed(2)}</td>
+            </tr>
+        `).join('');
+
+        const emailBody = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                <div style="background: #6366f1; color: white; padding: 20px; text-align: center;">
+                    <h2 style="margin: 0;">New Order Received: ${order.orderNo}</h2>
+                </div>
+                <div style="padding: 20px;">
+                    <p><strong>Stockist:</strong> ${stockist.name}</p>
+                    <p><strong>Address:</strong> ${stockist.address || 'N/A'}</p>
+                    <p><strong>Phone:</strong> ${stockist.phone || 'N/A'}</p>
+                    <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8fafc;">
+                                <th style="text-align:left; padding:8px;">Product</th>
+                                <th style="padding:8px;">Qty</th>
+                                <th style="padding:8px;">Bonus</th>
+                                <th style="text-align:right; padding:8px;">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>${itemRows}</tbody>
+                    </table>
+                    <div style="margin-top: 20px; text-align: right; border-top: 2px solid #6366f1; padding-top: 10px;">
+                        <p style="margin: 5px 0;"><strong>Subtotal:</strong> ₹${order.subTotal.toFixed(2)}</p>
+                        <p style="margin: 5px 0;"><strong>GST Amount:</strong> ₹${order.gstAmount.toFixed(2)}</p>
+                        <p style="margin: 5px 0; font-size: 1.2rem; color: #6366f1;"><strong>Grand Total:</strong> ₹${order.grandTotal.toFixed(2)}</p>
+                    </div>
+                </div>
+                <div style="background: #f8fafc; padding: 15px; font-size: 0.8rem; color: #64748b; text-align: center;">
+                    This is an automated order notification from EMYRIS OMS.
+                </div>
+            </div>
+        `;
+
+        const mailOptions = {
+            from: `"EMYRIS OMS" <${process.env.GMAIL_USER}>`,
+            to: `emyrisbio@gmail.com, ${process.env.SUPER_DISTRIBUTOR_EMAIL || 'emyrisbio@gmail.com'}`,
+            subject: `📦 New Order Alert: ${order.orderNo} from ${stockist.name}`,
+            html: emailBody
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`✅ Order Emails Sent: ${order.orderNo}`);
+    } catch (e) { console.error("❌ Email Trigger Fail:", e.message); }
+}
 
 const dns = require('dns');
 // Force Google DNS for SRV resolution (fixes connection issues on some networks)
@@ -201,8 +267,23 @@ app.post('/api/orders/create', async (req, res) => {
     try {
         const { stockistId, items, subTotal, gstAmount, grandTotal } = req.body;
         const orderNo = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
-        const newOrder = new Order({ orderNo, stockist: stockistId, items, subTotal, gstAmount, grandTotal });
+        
+        const newOrder = new Order({ 
+            orderNo, 
+            stockist: stockistId, 
+            items, 
+            subTotal, 
+            gstAmount, 
+            grandTotal 
+        });
         await newOrder.save();
+
+        // Fetch stockist details for the email
+        const stockist = await Stockist.findById(stockistId);
+        if (stockist) {
+            sendOrderEmails(newOrder, stockist);
+        }
+
         res.json({ success: true, orderNo });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
