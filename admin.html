@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMYRIS OMS | Admin Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --accent: #10b981;
+            --bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: var(--bg); color: var(--text-main); min-height: 100vh; overflow-x: hidden; }
+
+        /* --- BACKGROUND BLOBS --- */
+        .blob { position: fixed; width: 500px; height: 500px; background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%); filter: blur(60px); z-index: -1; }
+        .blob-1 { top: -100px; right: -100px; }
+        .blob-2 { bottom: -100px; left: -100px; }
+
+        /* --- LAYOUT --- */
+        .navbar { height: 70px; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: space-between; padding: 0 2rem; position: sticky; top: 0; z-index: 100; }
+        .nav-logo { font-weight: 800; font-size: 1.5rem; letter-spacing: -0.5px; background: linear-gradient(135deg, #fff 0%, #94a3b8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .main-container { display: flex; min-height: calc(100vh - 70px); }
+        .sidebar { width: 260px; background: rgba(15, 23, 42, 0.5); border-right: 1px solid var(--glass-border); padding: 2rem 1rem; }
+        .content { flex: 1; padding: 2.5rem; }
+
+        .nav-item { padding: 0.85rem 1.25rem; border-radius: 12px; margin-bottom: 0.5rem; cursor: pointer; transition: 0.3s; color: var(--text-muted); display: flex; align-items: center; gap: 12px; font-weight: 500; }
+        .nav-item:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
+        .nav-item.active { background: var(--primary); color: #fff; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3); }
+
+        /* --- COMPONENTS --- */
+        .glass-card { background: var(--card-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 24px; padding: 2rem; margin-bottom: 2rem; }
+        .section-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px; }
+
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
+        .stat-card { background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); padding: 1.5rem; border-radius: 20px; text-align: left; }
+        .stat-label { color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; margin-bottom: 0.5rem; display: block; }
+        .stat-value { font-size: 2rem; font-weight: 800; }
+
+        /* --- TABLES --- */
+        .table-container { border-radius: 16px; overflow: hidden; border: 1px solid var(--glass-border); }
+        table { width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.02); }
+        th { background: rgba(255,255,255,0.05); text-align: left; padding: 1.25rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; }
+        td { padding: 1.25rem; border-top: 1px solid var(--glass-border); font-size: 0.95rem; }
+        tr:hover { background: rgba(255,255,255,0.03); }
+
+        /* --- FORMS --- */
+        .form-group { margin-bottom: 1.25rem; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.5rem; }
+        input, select { width: 100%; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; padding: 0.75rem 1rem; color: #fff; font-size: 1rem; transition: 0.3s; }
+        input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
+
+        .btn { padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; border: none; display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); }
+        .btn-ghost { background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--glass-border); }
+        .btn-ghost:hover { background: rgba(255,255,255,0.1); }
+
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+        .badge-pending { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .badge-approved { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
+    <nav class="navbar">
+        <div class="nav-logo">EMYRIS OMS <span style="font-weight: 400; font-size: 0.8rem; opacity: 0.6; margin-left: 5px;">ADMIN COMMAND</span></div>
+        <div style="display: flex; align-items: center; gap: 1.5rem;">
+            <div id="adminStatus" style="font-size: 0.85rem; color: var(--accent); font-weight: 700;">● SYSTEM ACTIVE</div>
+            <button class="btn btn-ghost" onclick="logout()">LOGOUT</button>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <aside class="sidebar">
+            <div class="nav-item active" onclick="switchTab('dashboard', this)"><span>📊</span> Dashboard</div>
+            <div class="nav-item" onclick="switchTab('products', this)"><span>💊</span> Product Master</div>
+            <div class="nav-item" onclick="switchTab('stockists', this)"><span>🤝</span> Stockist Management</div>
+            <div class="nav-item" onclick="switchTab('orders', this)"><span>📦</span> Order History</div>
+            <div class="nav-item" onclick="switchTab('settings', this)"><span>⚙️</span> Company Settings</div>
+        </aside>
+
+        <main class="content">
+            <!-- DASHBOARD TAB -->
+            <div id="tab-dashboard">
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Total Orders</span>
+                        <div class="stat-value" id="stat-orders">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Revenue (Ex. GST)</span>
+                        <div class="stat-value">₹<span id="stat-revenue">0</span></div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Pending Approvals</span>
+                        <div class="stat-value" id="stat-pending">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Active Products</span>
+                        <div class="stat-value" id="stat-products">0</div>
+                    </div>
+                </div>
+
+                <div class="glass-card">
+                    <div class="section-title"><span>🚀</span> Recent Orders</div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Stockist</th>
+                                    <th>Date</th>
+                                    <th>Items</th>
+                                    <th>Total Value</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentOrdersBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PRODUCT MASTER TAB -->
+            <div id="tab-products" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" style="margin: 0;">💊 Product Master</h2>
+                    <div style="display: flex; gap: 0.75rem;">
+                        <button class="btn btn-ghost" onclick="downloadProductTemplate()">📥 Template</button>
+                        <button class="btn btn-ghost" onclick="document.getElementById('bulkProductInput').click()">📤 Bulk Upload</button>
+                        <input type="file" id="bulkProductInput" hidden accept=".csv, .xlsx, .xls" onchange="handleProductBulkUpload(this)">
+                        <button class="btn btn-primary" onclick="openProductModal()">+ Single Entry</button>
+                    </div>
+                </div>
+                
+                <div class="glass-card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Product Name</th>
+                                    <th>HSN</th>
+                                    <th>MRP</th>
+                                    <th>PTR</th>
+                                    <th>PTS</th>
+                                    <th>GST %</th>
+                                    <th>Stock</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STOCKIST MANAGEMENT TAB -->
+            <div id="tab-stockists" class="hidden">
+                <h2 class="section-title">🤝 Stockist Management</h2>
+                <div class="glass-card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Firm Name</th>
+                                    <th>Login ID</th>
+                                    <th>City/Address</th>
+                                    <th>Contact</th>
+                                    <th>Approval</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stockistTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SETTINGS TAB -->
+            <div id="tab-settings" class="hidden">
+                <h2 class="section-title">⚙️ Company Global Settings</h2>
+                <div class="glass-card">
+                    <form id="companyForm" onsubmit="saveSettings(event)">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                            <div class="form-group">
+                                <label>Company Full Name</label>
+                                <input type="text" id="set-name" placeholder="Emyris Biolifesciences Pvt. Ltd.">
+                            </div>
+                            <div class="form-group">
+                                <label>Website URL</label>
+                                <input type="text" id="set-web" placeholder="https://emyrisbio.com">
+                            </div>
+                            <div class="form-group">
+                                <label>GST Rate (%)</label>
+                                <input type="number" id="set-gst" value="12">
+                            </div>
+                            <div class="form-group">
+                                <label>Admin Notification Email</label>
+                                <input type="email" id="set-admin-email">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Full Address (Shown on Stockist Portal)</label>
+                            <textarea id="set-address" style="width: 100%; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; color: #fff; min-height: 100px;"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">SAVE CONFIGURATION</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL (Product Add/Edit) -->
+    <div id="productModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+        <div class="glass-card" style="width: 700px; margin: 0;">
+            <h3 class="section-title">📦 Manage Product</h3>
+            <form id="productForm" onsubmit="saveProduct(event)">
+                <input type="hidden" id="prod-id">
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Product Name</label>
+                        <input type="text" id="prod-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>HSN Code</label>
+                        <input type="text" id="prod-hsn">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="prod-cat">
+                            <option value="TABLETS">TABLETS</option>
+                            <option value="SYRUPS">SYRUPS</option>
+                            <option value="INJECTIONS">INJECTIONS</option>
+                            <option value="CAPSULES">CAPSULES</option>
+                            <option value="SACHETS">SACHETS</option>
+                            <option value="MISC">MISCELLANEOUS</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>MRP (₹)</label>
+                        <input type="number" id="prod-mrp" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>GST %</label>
+                        <input type="number" id="prod-gst" value="12">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>PTR (Price to Retailer)</label>
+                        <input type="number" id="prod-ptr" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>PTS (Price to Stockist)</label>
+                        <input type="number" id="prod-pts" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Qty Available</label>
+                        <input type="number" id="prod-qty" value="0">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Bonus Scheme (Buy X)</label>
+                        <input type="number" id="prod-buy" placeholder="10">
+                    </div>
+                    <div class="form-group">
+                        <label>Bonus Scheme (Get Y Free)</label>
+                        <input type="number" id="prod-get" placeholder="1">
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+                    <button type="button" class="btn btn-ghost" onclick="closeProductModal()">CANCEL</button>
+                    <button type="submit" class="btn btn-primary">SAVE PRODUCT</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="admin-script.js"></script>
+</body>
+</html>
