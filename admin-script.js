@@ -8,13 +8,24 @@ let allOrders = [];
 window.onload = async () => {
     if (sessionStorage.getItem('admin_logged') !== 'true') {
         const pass = prompt("Enter Admin Password:");
-        if (pass === 'Omrutam@1306') {
-            sessionStorage.setItem('admin_logged', 'true');
-        } else {
-            alert("Unauthorized");
-            window.location.href = '/';
-            return;
-        }
+        if (!pass) { window.location.href = '/'; return; }
+
+        try {
+            const res = await fetch(`${API_BASE}/admin/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: pass })
+            });
+            const result = await res.json();
+            if (result.success) {
+                sessionStorage.setItem('admin_logged', 'true');
+                location.reload();
+            } else {
+                alert("Unauthorized");
+                window.location.href = '/';
+                return;
+            }
+        } catch (e) { alert("Auth Error"); }
     }
     
     await refreshDashboard();

@@ -121,6 +121,17 @@ app.post('/api/stockist/login', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Admin: Login
+app.post('/api/admin/login', (req, res) => {
+    const { password } = req.body;
+    const adminPass = process.env.ADMIN_PASSWORD || "Omrutam@1306";
+    if (password === adminPass) {
+        res.json({ success: true });
+    } else {
+        res.status(401).json({ success: false, message: 'Invalid Admin Password' });
+    }
+});
+
 // Admin: Bulk Add Products
 app.post('/api/admin/products/bulk', async (req, res) => {
     try {
