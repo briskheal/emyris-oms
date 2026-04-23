@@ -69,7 +69,7 @@
         .badge-pending { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
         .badge-approved { background: rgba(16, 185, 129, 0.15); color: #10b981; }
 
-        .hidden { display: none; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -262,20 +262,21 @@
                     </div>
                     <div class="form-group">
                         <label>HSN Code</label>
-                        <input type="text" id="prod-hsn">
+                        <input type="text" id="prod-hsn" list="hsn-list" placeholder="Enter or select HSN">
+                        <datalist id="hsn-list"></datalist>
                     </div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
                     <div class="form-group">
                         <label>Category</label>
-                        <select id="prod-cat">
-                            <option value="TABLETS">TABLETS</option>
-                            <option value="SYRUPS">SYRUPS</option>
-                            <option value="INJECTIONS">INJECTIONS</option>
-                            <option value="CAPSULES">CAPSULES</option>
-                            <option value="SACHETS">SACHETS</option>
-                            <option value="MISC">MISCELLANEOUS</option>
-                        </select>
+                        <input type="text" id="prod-cat" list="category-list" placeholder="Select or type new">
+                        <datalist id="category-list">
+                            <option value="TABLETS"></option>
+                            <option value="SYRUPS"></option>
+                            <option value="INJECTIONS"></option>
+                            <option value="CAPSULES"></option>
+                            <option value="SACHETS"></option>
+                        </datalist>
                     </div>
                     <div class="form-group">
                         <label>MRP (₹)</label>

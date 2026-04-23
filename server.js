@@ -187,7 +187,10 @@ app.post('/api/admin/login', (req, res) => {
     const correctId = process.env.ADMIN_ID || "EMYRIS";
     const correctPass = process.env.ADMIN_PASSWORD || "1234";
 
-    if (adminId === correctId && password === correctPass) {
+    console.log(`[DEBUG] Login attempt - ID: "${adminId}" (${adminId.length}), Pass: "${password}" (${password.length})`);
+    console.log(`[DEBUG] Correct - ID: "${correctId}" (${correctId.length}), Pass: "${correctPass}" (${correctPass.length})`);
+
+    if (adminId.trim() === correctId.trim() && password.trim() === correctPass.trim()) {
         res.json({ success: true });
     } else {
         res.status(401).json({ success: false, message: 'Invalid Admin Credentials' });

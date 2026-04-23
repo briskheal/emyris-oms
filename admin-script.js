@@ -70,7 +70,28 @@ async function loadProducts() {
         allProducts = await res.json();
         renderProducts();
         updateStats();
+        updateDatalists();
     } catch (e) { console.error("Load products fail"); }
+}
+
+function updateDatalists() {
+    const cats = new Set(["TABLETS", "SYRUPS", "INJECTIONS", "CAPSULES", "SACHETS"]);
+    const hsns = new Set();
+
+    allProducts.forEach(p => {
+        if (p.category) cats.add(p.category.toUpperCase());
+        if (p.hsn) hsns.add(p.hsn);
+    });
+
+    const catList = document.getElementById('category-list');
+    const hsnList = document.getElementById('hsn-list');
+
+    if (catList) {
+        catList.innerHTML = Array.from(cats).map(c => `<option value="${c}"></option>`).join('');
+    }
+    if (hsnList) {
+        hsnList.innerHTML = Array.from(hsns).map(h => `<option value="${h}"></option>`).join('');
+    }
 }
 
 function renderProducts() {
