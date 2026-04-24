@@ -99,9 +99,13 @@ try {
 }
 
 const app = express();
+// --- CLOUD HEALTH CHECK ---
+app.get('/health', (req, res) => res.status(200).json({ status: 'UP', timestamp: new Date() }));
+
 // DB Stats
 app.get('/api/admin/db-stats', async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) throw new Error("Database not connected");
         const stats = await mongoose.connection.db.command({ dbStats: 1 });
         // MongoDB Atlas free tier is 512MB
         const capacityMB = 512;
@@ -121,10 +125,19 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 // MongoDB Connection
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/emyris-oms";
-mongoose.connect(MONGODB_URI)
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+    console.warn('⚠️ WARNING: MONGODB_URI not found in environment. Deployment may fail.');
+}
+
+mongoose.connect(MONGODB_URI || "mongodb://127.0.0.1:27017/emyris-oms", {
+    serverSelectionTimeoutMS: 10000 // 10s timeout to prevent hanging on Render
+})
     .then(() => console.log('✅ EMYRIS-OMS Database Connected'))
-    .catch(err => console.error('❌ Database Connection Error:', err));
+    .catch(err => {
+        console.error('❌ Database Connection Error:', err.message);
+        console.log('💡 TIP: Ensure you have added MONGODB_URI in Render Environment Variables and whitelisted Render IP (0.0.0.0/0) in Atlas.');
+    });
 
 // --- SCHEMAS ---
 
@@ -751,7 +764,9 @@ app.put('/api/admin/orders/:id/approve', async (req, res) => {
             'bonusApproval.approvedBy': approvedBy || 'ADMIN',
             'bonusApproval.approvedAt': new Date()
         }, { new: true });
-        
+        res.json({ success: true, order });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
 // Admin: Reject Order
 app.put('/api/admin/orders/:id/reject', async (req, res) => {
     try {
