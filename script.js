@@ -9,7 +9,6 @@ let currentSearch = '';
 let companySettings = null;
 let askingRates = {}; // Store negotiated rates
 let negotiationNotes = {}; // Store authorization details
-let pendingLoginId = null; // Stores ID during PIN phase
 
 // --- INITIALIZATION ---
 window.onload = async () => {
@@ -155,7 +154,7 @@ async function handleLogin(e) {
     const originalText = btn.innerText;
 
     try {
-        btn.innerText = "⌛ CHECKING...";
+        btn.innerText = "⌛ SECURING SESSION...";
         btn.disabled = true;
 
         const res = await fetch(`${API_BASE}/stockist/login`, {
@@ -165,48 +164,24 @@ async function handleLogin(e) {
         });
         const result = await res.json();
         if (result.success) {
-            pendingLoginId = loginId; // Save for PIN phase
-            switchView('pin');
-        } else {
-            alert(result.message);
-        }
-    } catch (e) { alert("Login failed. Server error."); }
-    finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
-    }
-}
-
-async function handleVerifyPin(e) {
-    e.preventDefault();
-    const pin = document.getElementById('login-pin-input').value;
-    const btn = document.getElementById('pinBtn');
-    const originalText = btn.innerText;
-
-    try {
-        btn.innerText = "⌛ VERIFYING...";
-        btn.disabled = true;
-
-        const res = await fetch(`${API_BASE}/stockist/verify-login-pin`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ loginId: pendingLoginId, pin })
-        });
-        const result = await res.json();
-        if (result.success) {
             currentUser = result.user;
             localStorage.setItem('emyris_user', JSON.stringify(currentUser));
             switchView('order');
             initOrderSystem();
+            console.log('✅ [LOGIN] Direct session established for:', currentUser.name);
         } else {
             alert(result.message);
         }
-    } catch (e) { alert("Verification failed."); }
+    } catch (e) { 
+        console.error("❌ [LOGIN] Connection failed:", e);
+        alert("Login failed. Server error."); 
+    }
     finally {
         btn.innerText = originalText;
         btn.disabled = false;
     }
 }
+
 
 async function handleForgotPassword(e) {
     e.preventDefault();

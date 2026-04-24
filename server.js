@@ -380,29 +380,10 @@ app.post('/api/stockist/login', async (req, res) => {
         if (!user) return res.status(401).json({ success: false, message: 'Invalid Credentials' });
         if (!user.approved) return res.status(403).json({ success: false, message: 'Account pending approval' });
         
-        // Generate 6-digit PIN
-        const pin = Math.floor(100000 + Math.random() * 900000).toString();
-        user.loginPin = pin;
-        await user.save();
-
-        // Send PIN Email
-        const pinEmail = `
-            <div style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; padding: 40px; background: #0f172a; color: #fff; text-align: center;">
-                <div style="background: rgba(255,255,255,0.05); padding: 40px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); max-width: 400px; margin: 0 auto;">
-                    <h2 style="color: #6366f1; margin-bottom: 10px;">Security Verification</h2>
-                    <p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px;">Use the code below to complete your login</p>
-                    <div style="font-size: 3rem; font-weight: 900; letter-spacing: 10px; color: #fff; margin-bottom: 30px; background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border: 1px dashed #6366f1;">
-                        ${pin}
-                    </div>
-                    <p style="font-size: 12px; color: #64748b;">This code will expire shortly. Do not share this PIN with anyone.</p>
-                </div>
-            </div>
-        `;
+        await sendEmail(user.email, "📦 Login Notification", `Hello ${user.name}, you have successfully logged into your EMYRIS Portal.`);
+        console.log(`[LOGIN] Success: ${loginId} (${user.email})`);
         
-        await sendEmail(user.email, "🔐 EMYRIS Security PIN: " + pin, pinEmail);
-        console.log(`[LOGIN] PIN Sent to ${user.email} for ${loginId}`);
-        
-        res.json({ success: true, message: 'PIN sent to your registered email' });
+        res.json({ success: true, user, message: 'Login successful' });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

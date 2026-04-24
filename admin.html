@@ -6,6 +6,7 @@
     <title>EMYRIS OMS | Admin Command Center</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary: #6366f1;
@@ -312,6 +313,26 @@
                         <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 1.5rem;">📦 Order Fulfillment</h3>
                         <div style="height: 300px; display: flex; align-items: center; justify-content: center;">
                             <canvas id="orderStatusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW ANALYTICS: Group Share & GST -->
+                <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 2rem; margin-top: 2rem;">
+                    <div class="glass-card" style="padding: 2.5rem; display: flex; flex-direction: column; align-items: center;">
+                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 2rem; width: 100%; text-align: center;">💊 Product Group Share</h3>
+                        <div style="flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: center; height: 320px;">
+                            <canvas id="groupPieChart"></canvas>
+                        </div>
+                        <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Revenue Share by Group</div>
+                    </div>
+                    <div class="glass-card" style="padding: 2.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <h3 class="section-title" style="margin: 0; font-size: 1.1rem;">💰 GST Liability (Per Group)</h3>
+                            <div id="total-gst-display" style="color: var(--primary); font-weight: 900; background: rgba(99, 102, 241, 0.1); padding: 5px 12px; border-radius: 8px; font-size: 0.9rem; border: 1px solid rgba(99, 102, 241, 0.2);">₹0.00</div>
+                        </div>
+                        <div style="height: 320px;">
+                            <canvas id="gstBarChart"></canvas>
                         </div>
                     </div>
                 </div>

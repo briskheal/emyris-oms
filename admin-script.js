@@ -264,6 +264,70 @@ function renderCharts(currentMonthOrders, totalOrders) {
             cutout: '70%'
         }
     });
+
+    // --- NEW ANALYTICS: PRODUCT GROUP SHARE & GST ---
+    const groupSales = {};
+    const groupGST = {};
+    let totalGSTAll = 0;
+
+    totalOrders.filter(o => o.status === 'approved').forEach(o => {
+        o.items.forEach(item => {
+            const prod = allProducts.find(p => p._id === item.product);
+            const group = (prod && prod.group) ? prod.group.toUpperCase() : 'GENERAL';
+            
+            groupSales[group] = (groupSales[group] || 0) + (item.totalValue || 0);
+            
+            const gstRate = prod ? (prod.gstPercent || 12) : 12;
+            const itemGst = ((item.totalValue || 0) * gstRate) / 100;
+            groupGST[group] = (groupGST[group] || 0) + itemGst;
+            totalGSTAll += itemGst;
+        });
+    });
+
+    chartInstances.groupPie = new Chart(document.getElementById('groupPieChart'), {
+        type: 'pie',
+        data: {
+            labels: Object.keys(groupSales),
+            datasets: [{
+                data: Object.values(groupSales),
+                backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6'],
+                borderWidth: 2,
+                borderColor: 'rgba(15, 23, 42, 0.5)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12, padding: 15 } } }
+        }
+    });
+
+    chartInstances.gstBar = new Chart(document.getElementById('gstBarChart'), {
+        type: 'bar',
+        data: {
+            labels: Object.keys(groupGST),
+            datasets: [{
+                label: 'GST Amount (₹)',
+                data: Object.values(groupGST),
+                backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                borderColor: '#6366f1',
+                borderWidth: 2,
+                borderRadius: 12
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+            }
+        }
+    });
+
+    const gstDisplay = document.getElementById('total-gst-display');
+    if (gstDisplay) gstDisplay.innerText = `₹${totalGSTAll.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 }
 
 // --- PRODUCT MASTER ---
