@@ -243,13 +243,16 @@ app.put('/api/admin/orders/:orderId/items/:itemId/negotiate', async (req, res) =
         const item = order.items.id(req.params.itemId);
         if (!item) return res.status(404).json({ success: false, message: "Item not found" });
 
+        const { customRate } = req.body;
+        const finalRate = customRate !== undefined ? Number(customRate) : (item.askingRate || item.priceUsed);
+
         if (action === 'reject') {
             item.priceUsed = item.masterRate;
             item.askingRate = undefined;
         } else if (action === 'onetime') {
-            item.priceUsed = item.askingRate;
+            item.priceUsed = finalRate;
         } else {
-            item.priceUsed = item.askingRate;
+            item.priceUsed = finalRate;
             let expiry = new Date();
             if (action === 'month') expiry.setMonth(expiry.getMonth() + 1);
             if (action === 'year') expiry.setFullYear(expiry.getFullYear() + 1);
@@ -260,7 +263,7 @@ app.put('/api/admin/orders/:orderId/items/:itemId/negotiate', async (req, res) =
             await Stockist.findByIdAndUpdate(order.stockist, {
                 $push: { negotiatedPrices: {
                     productId: item.product,
-                    lockedRate: item.askingRate,
+                    lockedRate: item.priceUsed,
                     expiryDate: expiry,
                     note: item.negotiationNote
                 }}
@@ -749,6 +752,12 @@ app.put('/api/admin/orders/:id/approve', async (req, res) => {
             'bonusApproval.approvedAt': new Date()
         }, { new: true });
         
+// Admin: Reject Order
+app.put('/api/admin/orders/:id/reject', async (req, res) => {
+    try {
+        const order = await Order.findByIdAndUpdate(req.params.id, {
+            status: 'rejected'
+        }, { new: true });
         res.json({ success: true, order });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });

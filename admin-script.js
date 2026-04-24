@@ -813,7 +813,7 @@ function renderOrderHistory(filter = '') {
             <td>${new Date(o.createdAt).toLocaleDateString('en-GB')}</td>
             <td style="text-align:center;">${o.items.length}</td>
             <td style="text-align:right; font-weight:700;">₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-            <td style="text-align:center;"><span class="badge ${o.status === 'approved' ? 'badge-approved' : 'badge-pending'}">${o.status.toUpperCase()}</span></td>
+            <td style="text-align:center;"><span class="badge ${o.status === 'approved' ? 'badge-approved' : (o.status === 'rejected' ? 'badge-pending' : 'badge-pending')}" style="${o.status === 'rejected' ? 'background:#ef4444; color:#fff;' : ''}">${o.status.toUpperCase()}</span></td>
             <td style="text-align:right;">
                 <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewOrderDetails('${o._id}')">👁️ VIEW</button>
             </td>
@@ -836,7 +836,7 @@ function viewOrderDetails(id) {
     
     const statusEl = document.getElementById('detail-status');
     statusEl.innerText = o.status.toUpperCase();
-    statusEl.style.background = o.status === 'approved' ? '#10b981' : '#f59e0b';
+    statusEl.style.background = o.status === 'approved' ? '#10b981' : (o.status === 'rejected' ? '#ef4444' : '#f59e0b');
     statusEl.style.color = '#fff';
 
     const itemsBody = document.getElementById('detail-items-body');
@@ -845,24 +845,28 @@ function viewOrderDetails(id) {
         const rateStatusClass = isNegotiated ? 'price-warning' : '';
         
         return `
-            <tr>
-                <td style="font-weight:700; color:#fff;">${item.name}</td>
-                <td style="text-align:right; color:var(--text-muted);">₹${(item.masterRate || item.priceUsed).toFixed(2)}</td>
+            <tr style="transition: all 0.2s;">
+                <td style="position: sticky; left: 0; z-index: 5; background: #1e293b; font-weight: 700; color: #fff; border-right: 1px solid var(--glass-border);">${item.name}</td>
+                <td style="text-align:right; color:var(--text-muted); opacity: 0.8;">₹${(item.masterRate || item.priceUsed).toFixed(2)}</td>
                 <td style="text-align:right; font-weight:700; color:${isNegotiated ? '#ef4444' : '#fff'};">₹${(item.askingRate || item.priceUsed).toFixed(2)}</td>
-                <td style="text-align:center; font-style:italic; font-size:0.75rem;">${item.negotiationNote || '-'}</td>
-                <td style="text-align:center; font-weight:800; color:var(--accent);">₹${item.priceUsed.toFixed(2)}</td>
+                <td style="text-align:center; font-style:italic; font-size:0.75rem; color: #cbd5e1;">${item.negotiationNote || '-'}</td>
+                <td style="text-align:center;">
+                    <input type="number" step="0.01" class="final-rate-input" id="rate-${o._id}-${item._id}" 
+                        value="${item.priceUsed.toFixed(2)}" 
+                        style="width: 80px; background: rgba(255,255,255,0.05); border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-weight: 800; text-align: center; padding: 4px;">
+                </td>
                 <td style="text-align:center; font-weight:700;">${item.qty}</td>
                 <td style="text-align:center; color:var(--accent); font-weight:700;">+${item.bonusQty || 0}</td>
-                <td style="text-align:right; font-weight:800; color:var(--primary);">₹${item.totalValue.toFixed(2)}</td>
+                <td style="text-align:right; font-weight:800; color:var(--primary); font-size: 0.9rem;">₹${item.totalValue.toFixed(2)}</td>
                 <td style="text-align:center;">
                     ${o.status === 'pending' ? `
-                        <div style="display:flex; gap:4px; justify-content:center;">
-                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:#ef4444;" onclick="negotiateItem('${o._id}', '${item._id}', 'reject', this)" title="Revert to Master PTS">REJECT</button>
-                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:var(--primary);" onclick="negotiateItem('${o._id}', '${item._id}', 'onetime', this)" title="Apply for this order only">1-TIME</button>
-                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:var(--accent);" onclick="negotiateItem('${o._id}', '${item._id}', 'month', this)" title="Lock for 1 Month">MONTH</button>
-                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:#10b981;" onclick="negotiateItem('${o._id}', '${item._id}', 'year', this)" title="Lock for 1 Year">YEAR</button>
+                        <div style="display:flex; gap:6px; justify-content:center;">
+                            <button class="btn" style="padding:4px 8px; font-size:0.6rem; background: rgba(239, 68, 68, 0.1); color:#ef4444; border: 1px solid rgba(239, 68, 68, 0.2);" onclick="negotiateItem('${o._id}', '${item._id}', 'reject', this)" title="Revert to Master PTS">REJECT</button>
+                            <button class="btn" style="padding:4px 8px; font-size:0.6rem; background: rgba(99, 102, 241, 0.1); color:var(--primary); border: 1px solid rgba(99, 102, 241, 0.2);" onclick="negotiateItem('${o._id}', '${item._id}', 'onetime', this)" title="Apply for this order only">1-TIME</button>
+                            <button class="btn" style="padding:4px 8px; font-size:0.6rem; background: rgba(16, 185, 129, 0.1); color:#10b981; border: 1px solid rgba(16, 185, 129, 0.2);" onclick="negotiateItem('${o._id}', '${item._id}', 'month', this)" title="Lock for 1 Month">MONTH</button>
+                            <button class="btn" style="padding:4px 8px; font-size:0.6rem; background: var(--accent); color:#fff;" onclick="negotiateItem('${o._id}', '${item._id}', 'year', this)" title="Lock for 1 Year">YEAR</button>
                         </div>
-                    ` : '<span style="font-size:0.7rem; color:var(--text-muted);">LOCKED</span>'}
+                    ` : '<span style="font-size:0.7rem; font-weight: 800; color:var(--text-muted);">🔒 LOCKED</span>'}
                 </td>
             </tr>
         `;
@@ -872,17 +876,27 @@ function viewOrderDetails(id) {
     document.getElementById('detail-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     document.getElementById('detail-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
-    const approveBtn = document.getElementById('detail-approve-btn');
-    const deleteBtn = document.getElementById('detail-delete-btn');
+    const rejectBtn = document.getElementById('detail-reject-btn');
 
     if (o.status === 'pending') {
         approveBtn.classList.remove('hidden');
         approveBtn.onclick = () => {
-            approveOrder(o._id);
-            closeOrderModal();
+            if(confirm("Approve this order for billing?")) {
+                approveOrder(o._id);
+                closeOrderModal();
+            }
+        };
+
+        rejectBtn.classList.remove('hidden');
+        rejectBtn.onclick = () => {
+            if(confirm("Reject this order? It will be marked as REJECTED for the stockist.")) {
+                rejectOrder(o._id);
+                closeOrderModal();
+            }
         };
     } else {
         approveBtn.classList.add('hidden');
+        rejectBtn.classList.add('hidden');
     }
 
     deleteBtn.onclick = () => {
@@ -902,11 +916,13 @@ async function negotiateItem(orderId, itemId, action, btn) {
     btn.disabled = true;
     btn.innerHTML = `⏳`;
 
+    const customRate = document.getElementById(`rate-${orderId}-${itemId}`).value;
+
     try {
         const res = await fetch(`${API_BASE}/admin/orders/${orderId}/items/${itemId}/negotiate`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action })
+            body: JSON.stringify({ action, customRate })
         });
         const result = await res.json();
         if (result.success) {
