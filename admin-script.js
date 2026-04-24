@@ -60,9 +60,21 @@ async function refreshDashboard() {
         
         // Update Stats
         const pendingOrders = allOrders.filter(o => o.status === 'pending');
+        const approvedOrders = allOrders.filter(o => o.status === 'approved');
+        
         document.getElementById('stat-orders').innerText = allOrders.length;
         document.getElementById('stat-pending').innerText = pendingOrders.length;
         document.getElementById('stat-stockists').innerText = allStockists.length;
+
+        // Revenue (Ex. GST) calculation from approved orders
+        const totalRevenue = approvedOrders.reduce((sum, o) => sum + (o.subTotal || 0), 0);
+        const revenueEl = document.getElementById('stat-revenue');
+        if (revenueEl) {
+            revenueEl.innerText = totalRevenue.toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
 
         // Month-over-Month Logic
         const now = new Date();
