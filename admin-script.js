@@ -311,11 +311,21 @@ async function addMaster(type) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        if (res.ok) {
-            document.getElementById(`new-${type.slice(0,-1).replace('categorie','cat')}-${type==='gst'?'rate':(type==='hsns'?'code':'name')}`).value = '';
+        const result = await res.json();
+        if (res.ok && result.success) {
+            let prefix = type.slice(0, -1).replace('categorie', 'cat');
+            if (type === 'gst') prefix = 'gst'; // Special case for gst
+            const inputId = `new-${prefix}-${type === 'gst' ? 'rate' : (type === 'hsns' ? 'code' : 'name')}`;
+            const input = document.getElementById(inputId);
+            if (input) input.value = '';
             loadMasters();
+        } else {
+            alert("Action Failed: " + (result.message || result.error || "Unknown error"));
         }
-    } catch (e) { alert("Add master failed"); }
+    } catch (e) { 
+        console.error("Master Error:", e);
+        alert("Operation failed. Check console for details."); 
+    }
 }
 
 async function deleteMaster(type, id) {
