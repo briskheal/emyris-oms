@@ -155,6 +155,7 @@ const stockistSchema = new mongoose.Schema({
     dlNo: String,
     gstNo: String,
     fssaiNo: String,
+    panNo: { type: String, required: true },
     approved: { type: Boolean, default: false },
     stockistCode: String,
     loginPin: String,
@@ -196,7 +197,7 @@ app.get('/api/health', (req, res) => res.json({ status: 'running', database: mon
 // Auth & Registration
 app.post('/api/stockist/register', async (req, res) => {
     try {
-        const { name, password, address, phone, email, dlNo, gstNo, fssaiNo } = req.body;
+        const { name, password, address, phone, email, dlNo, gstNo, fssaiNo, panNo } = req.body;
         
         // Auto-generate Login ID (EMY + Random 6 Digits)
         let loginId;
@@ -207,7 +208,7 @@ app.post('/api/stockist/register', async (req, res) => {
             if (!existing) isUnique = true;
         }
 
-        const newStockist = new Stockist({ name, loginId, password, address, phone, email, dlNo, gstNo, fssaiNo });
+        const newStockist = new Stockist({ name, loginId, password, address, phone, email, dlNo, gstNo, fssaiNo, panNo });
         await newStockist.save();
 
         // 1. Send Registration Confirmation to Stockist
@@ -229,13 +230,29 @@ app.post('/api/stockist/register', async (req, res) => {
 
         // 2. Send Admin Notification to emyrisbio@gmail.com
         const adminNotifyEmail = `
-            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee;">
-                <h3>New Stockist Registered</h3>
-                <p><strong>Name:</strong> ${name}</p>
-                <p><strong>Email:</strong> ${email}</p>
-                <p><strong>Phone:</strong> ${phone}</p>
-                <p><strong>DL No:</strong> ${dlNo}</p>
-                <p>Please check the admin portal to verify and approve this record.</p>
+            <div style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; padding: 30px; background-color: #f8fafc;">
+                <div style="background-color: #ffffff; padding: 40px; border-radius: 24px; border: 1px solid #e2e8f0; max-width: 600px; margin: 0 auto; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+                    <h2 style="color: #6366f1; margin-top: 0; font-size: 20px;">🔔 New Stockist Registration</h2>
+                    <p style="color: #64748b; font-size: 14px;">A new application has been submitted for the EMYRIS Distribution Network.</p>
+                    
+                    <div style="background: #f1f5f9; padding: 25px; border-radius: 16px; margin: 25px 0; border: 1px solid #e2e8f0;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #1e293b;">
+                            <tr><td style="padding: 8px 0; color: #64748b;">Firm Name:</td><td style="padding: 8px 0; font-weight: 700; text-transform: uppercase;">${name}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Phone:</td><td style="padding: 8px 0; font-weight: 700;">${phone}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Email:</td><td style="padding: 8px 0; font-weight: 700;">${email}</td></tr>
+                            <tr><td colspan="2"><hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 10px 0;"></td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">GSTIN:</td><td style="padding: 8px 0; font-weight: 700; font-family: monospace; text-transform: uppercase;">${gstNo}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">PAN:</td><td style="padding: 8px 0; font-weight: 700; font-family: monospace; text-transform: uppercase;">${panNo}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">DL No:</td><td style="padding: 8px 0; font-weight: 700; font-family: monospace; text-transform: uppercase;">${dlNo}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">FSSAI:</td><td style="padding: 8px 0; font-weight: 700; font-family: monospace; text-transform: uppercase;">${fssaiNo}</td></tr>
+                        </table>
+                    </div>
+                    
+                    <p style="font-size: 14px; color: #475569;">Please log in to the <strong>Admin Command Center</strong> to verify compliance documents and approve this registration.</p>
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="http://localhost:4000/admin.html" style="background-color: #6366f1; color: #ffffff; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 14px;">OPEN ADMIN DASHBOARD</a>
+                    </div>
+                </div>
             </div>
         `;
         await sendEmail("emyrisbio@gmail.com", "🔔 New Stockist Registration: " + name, adminNotifyEmail);
@@ -284,29 +301,31 @@ app.post('/api/stockist/forgot-id-pw', async (req, res) => {
         }
 
         const emailContent = `
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background-color: #f1f5f9; border-radius: 20px;">
-                <div style="background-color: #ffffff; padding: 40px; border-radius: 24px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto;">
-                    <div style="text-align: center; margin-bottom: 30px;">
-                        <h1 style="color: #6366f1; margin: 0; font-size: 24px; letter-spacing: -1px;">EMYRIS BIOLIFESCIENCES</h1>
-                        <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Secure Account Recovery</p>
+            <div style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; padding: 40px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #f1f5f9;">
+                <div style="background: rgba(30, 41, 59, 0.7); padding: 50px; border-radius: 32px; border: 1px solid rgba(255, 255, 255, 0.1); max-width: 500px; margin: 0 auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+                    <div style="text-align: center; margin-bottom: 40px;">
+                        <h1 style="color: #6366f1; margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">EMYRIS BIOLIFESCIENCES</h1>
+                        <p style="color: #94a3b8; font-size: 14px; margin-top: 8px; font-weight: 600; letter-spacing: 1px;">SECURE CREDENTIALS RECOVERY</p>
                     </div>
                     
-                    <p style="color: #1e293b; font-size: 16px; line-height: 1.6;">Hello <strong>${user.name}</strong>,</p>
-                    <p style="color: #475569; font-size: 15px; line-height: 1.6;">We received a request to retrieve your account credentials. Please use the details below to access your portal:</p>
+                    <p style="font-size: 16px; line-height: 1.6; color: #cbd5e1;">Hello <strong>${user.name}</strong>,</p>
+                    <p style="font-size: 15px; line-height: 1.6; color: #94a3b8;">We received a request to retrieve your account credentials. Please use the details below to securely access your portal:</p>
                     
-                    <div style="background: #f8fafc; padding: 30px; border-radius: 16px; margin: 30px 0; border: 1px solid #e2e8f0; text-align: center;">
-                        <div style="margin-bottom: 15px;">
-                            <label style="display: block; color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Login ID</label>
-                            <span style="font-family: 'Courier New', Courier, monospace; color: #6366f1; font-size: 20px; font-weight: 700;">${user.loginId}</span>
+                    <div style="background: rgba(15, 23, 42, 0.6); padding: 35px; border-radius: 24px; margin: 35px 0; border: 1px solid rgba(255, 255, 255, 0.05); text-align: center;">
+                        <div style="margin-bottom: 25px;">
+                            <label style="display: block; color: #6366f1; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">Login ID</label>
+                            <span style="font-family: 'Courier New', monospace; color: #fff; font-size: 24px; font-weight: 800; letter-spacing: 1px;">${user.loginId}</span>
                         </div>
                         <div>
-                            <label style="display: block; color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Current Password</label>
-                            <span style="font-family: 'Courier New', Courier, monospace; color: #1e293b; font-size: 20px; font-weight: 700;">${user.password}</span>
+                            <label style="display: block; color: #6366f1; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">Password</label>
+                            <span style="font-family: 'Courier New', monospace; color: #fff; font-size: 24px; font-weight: 800; letter-spacing: 1px;">${user.password}</span>
                         </div>
                     </div>
                     
-                    <div style="text-align: center; margin-top: 30px;">
-                        <p style="font-size: 13px; color: #94a3b8;">If you did not request this, please contact support immediately.</p>
+                    <div style="text-align: center; margin-top: 40px;">
+                        <p style="font-size: 12px; color: #64748b; font-weight: 500;">If you did not request this, please contact support immediately.</p>
+                        <hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.05); margin: 25px 0;">
+                        <p style="font-size: 11px; color: #475569;">&copy; 2026 EMYRIS OMS • ADVANCED DISTRIBUTION SYSTEM</p>
                     </div>
                 </div>
             </div>
@@ -566,6 +585,13 @@ app.post('/api/orders/create', async (req, res) => {
         }
 
         res.json({ success: true, orderNo });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/admin/orders', async (req, res) => {
+    try {
+        const orders = await Order.find().populate('stockist').sort({ createdAt: -1 });
+        res.json(orders);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

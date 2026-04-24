@@ -11,11 +11,12 @@ window.onload = async () => {
         return; // Wait for login
     }
     
-    await refreshDashboard();
     await loadProducts();
     await loadStockists();
+    await loadOrders();
     await loadMasters();
     await loadSettings();
+    await refreshDashboard();
 };
 
 async function handleAdminLogin(e) {
@@ -51,9 +52,36 @@ function switchTab(tabId, el) {
 // --- DASHBOARD ---
 async function refreshDashboard() {
     try {
-        const res = await fetch(`${API_BASE}/health`);
+        await loadOrders(); // Refresh order data
         updateStats();
+        renderRecentOrders();
     } catch (e) { console.error("Dashboard refresh fail"); }
+}
+
+async function loadOrders() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/orders`);
+        allOrders = await res.json();
+    } catch (e) { console.error("Load orders fail"); }
+}
+
+function renderRecentOrders() {
+    const tbody = document.getElementById('recentOrdersBody');
+    if (!tbody) return;
+    const recent = allOrders.slice(0, 10);
+    tbody.innerHTML = recent.map(o => `
+        <tr>
+            <td style="font-family:monospace; font-weight:700;">${o.orderNo}</td>
+            <td>${o.stockist ? o.stockist.name : 'Unknown'}</td>
+            <td>${new Date(o.createdAt).toLocaleDateString('en-GB')}</td>
+            <td>${o.items.length} Items</td>
+            <td style="font-weight:700; color:var(--primary);">₹${o.grandTotal.toFixed(2)}</td>
+            <td><span class="badge badge-approved">${o.status}</span></td>
+            <td>
+                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="alert('Order detailing feature coming soon!')">👁️</button>
+            </td>
+        </tr>
+    `).join('');
 }
 
 function updateStats() {
@@ -97,13 +125,16 @@ function updateDatalists() {
 
     const catList = document.getElementById('category-list');
     const hsnList = document.getElementById('hsn-list');
-    const gstInput = document.getElementById('prod-gst');
+    const gstList = document.getElementById('gst-rate-list');
 
     if (catList) {
         catList.innerHTML = Array.from(cats).map(c => `<option value="${c}"></option>`).join('');
     }
     if (hsnList) {
         hsnList.innerHTML = Array.from(hsns).map(h => `<option value="${h}"></option>`).join('');
+    }
+    if (gstList) {
+        gstList.innerHTML = Array.from(gsts).map(g => `<option value="${g}"></option>`).join('');
     }
 }
 
@@ -437,6 +468,9 @@ function viewStockistDetails(id) {
                 
                 <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">FSSAI Number</label>
                 <div style="color:#fff; font-family:monospace; margin-bottom:1rem;">${s.fssaiNo || 'Not Provided'}</div>
+                
+                <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">PAN Number</label>
+                <div style="color:#fff; font-family:monospace; margin-bottom:1rem;">${s.panNo || 'Not Provided'}</div>
             </div>
             <div>
                 <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">Contact Phone</label>
@@ -447,6 +481,23 @@ function viewStockistDetails(id) {
                 
                 <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">Full Address</label>
                 <div style="color:#fff; font-size:0.85rem; line-height:1.4;">${s.address || 'No address provided'}</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 2rem; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 20px; padding: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h4 style="margin: 0; font-size: 0.9rem; color: var(--primary);">💼 Business Summary</h4>
+                <span class="badge badge-approved" style="font-size: 0.6rem;">REAL-TIME DATA</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div style="text-align: center; border-right: 1px solid var(--glass-border);">
+                    <div style="color: var(--text-muted); font-size: 0.65rem; text-transform: uppercase; margin-bottom: 5px;">Total Orders</div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #fff;">${allOrders.filter(o => o.stockist && o.stockist._id === s._id).length}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="color: var(--text-muted); font-size: 0.65rem; text-transform: uppercase; margin-bottom: 5px;">Life-time Business</div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent);">₹${allOrders.filter(o => o.stockist && o.stockist._id === s._id).reduce((acc, curr) => acc + curr.grandTotal, 0).toLocaleString('en-IN')}</div>
+                </div>
             </div>
         </div>
     `;
