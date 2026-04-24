@@ -752,15 +752,22 @@ function viewOrderDetails(orderId) {
     document.getElementById('detail-item-count').innerText = `${o.items.length} Items`;
 
     const body = document.getElementById('detail-items-body');
-    body.innerHTML = o.items.map(i => `
-        <tr>
-            <td style="font-weight: 700; color: #fff;">${i.name}</td>
-            <td style="text-align: right; color: var(--accent); font-weight: 800;">₹${i.priceUsed.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-            <td style="text-align: center; font-weight: 700;">${i.qty}</td>
-            <td style="text-align: center; color: var(--accent); font-weight: 700;">+${i.bonusQty || 0}</td>
-            <td style="text-align: right; font-weight: 800; color: #fff;">₹${i.totalValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-        </tr>
-    `).join('');
+    body.innerHTML = o.items.map(i => {
+        const requested = i.askingRate || i.masterRate || i.priceUsed;
+        const approved = i.priceUsed;
+        const lineTotal = Number(approved) * Number(i.qty);
+        
+        return `
+            <tr>
+                <td style="font-weight: 700; color: #fff;">${i.name}</td>
+                <td style="text-align: right; color: var(--text-muted); font-size: 0.85rem;">₹${requested.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td style="text-align: right; color: var(--accent); font-weight: 800;">₹${approved.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td style="text-align: center; font-weight: 900; color: #10b981; font-size: 1.1rem;">${i.qty}</td>
+                <td style="text-align: center; color: var(--accent); font-weight: 700;">+${i.bonusQty || 0}</td>
+                <td style="text-align: right; font-weight: 900; color: #fff; font-size: 1rem;">₹${lineTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+            </tr>
+        `;
+    }).join('');
 
     document.getElementById('detail-subtotal').innerText = `₹${o.subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
     document.getElementById('detail-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;

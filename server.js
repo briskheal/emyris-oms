@@ -283,7 +283,10 @@ app.put('/api/admin/orders/:orderId/items/:itemId/negotiate', async (req, res) =
             });
         }
 
-        order.subTotal = order.items.reduce((acc, curr) => acc + (curr.priceUsed * curr.qty), 0);
+        // --- CRITICAL FIX: Update Item Total Value ---
+        item.totalValue = Number(item.priceUsed || 0) * Number(item.qty || 0);
+
+        order.subTotal = order.items.reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
         order.gstAmount = order.subTotal * 0.12; 
         order.grandTotal = order.subTotal + order.gstAmount;
 
