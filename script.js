@@ -712,3 +712,26 @@ function renderMyOrders(orders) {
     }
     container.innerHTML = html;
 }
+
+function handleLogout() {
+    if (!confirm('Are you sure you want to log out from your secure session?')) return;
+    
+    // Clear Session Variables
+    currentUser = null;
+    cart = {};
+    manualBonuses = {};
+    askingRates = {};
+    negotiationNotes = {};
+    
+    // Reset UI
+    renderExcelProducts();
+    updateFooter();
+    
+    // Redirect to Login
+    switchView('login');
+    
+    // Optional: Clear any local session storage if added in future
+    localStorage.removeItem('emyris_session');
+    
+    console.log('🚪 [LOGOUT] Session ended successfully');
+}
