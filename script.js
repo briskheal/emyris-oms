@@ -140,12 +140,46 @@ async function handleLogin(e) {
     e.preventDefault();
     const loginId = document.getElementById('login-id').value;
     const password = document.getElementById('login-pass').value;
+    const btn = document.getElementById('loginBtn');
+    const originalText = btn.innerText;
 
     try {
+        btn.innerText = "⌛ CHECKING...";
+        btn.disabled = true;
+
         const res = await fetch(`${API_BASE}/stockist/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ loginId, password })
+        });
+        const result = await res.json();
+        if (result.success) {
+            pendingLoginId = loginId; // Save for PIN phase
+            switchView('pin');
+        } else {
+            alert(result.message);
+        }
+    } catch (e) { alert("Login failed. Server error."); }
+    finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}
+
+async function handleVerifyPin(e) {
+    e.preventDefault();
+    const pin = document.getElementById('login-pin-input').value;
+    const btn = document.getElementById('pinBtn');
+    const originalText = btn.innerText;
+
+    try {
+        btn.innerText = "⌛ VERIFYING...";
+        btn.disabled = true;
+
+        const res = await fetch(`${API_BASE}/stockist/verify-login-pin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ loginId: pendingLoginId, pin })
         });
         const result = await res.json();
         if (result.success) {
@@ -156,7 +190,11 @@ async function handleLogin(e) {
         } else {
             alert(result.message);
         }
-    } catch (e) { alert("Login failed. Server error."); }
+    } catch (e) { alert("Verification failed."); }
+    finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
 }
 
 async function handleForgotPassword(e) {
