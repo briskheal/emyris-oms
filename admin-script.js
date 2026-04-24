@@ -68,20 +68,45 @@ async function loadOrders() {
 function renderRecentOrders() {
     const tbody = document.getElementById('recentOrdersBody');
     if (!tbody) return;
-    const recent = allOrders.slice(0, 10);
+    const recent = allOrders.slice(0, 15);
     tbody.innerHTML = recent.map(o => `
         <tr>
             <td style="font-family:monospace; font-weight:700;">${o.orderNo}</td>
-            <td>${o.stockist ? o.stockist.name : 'Unknown'}</td>
+            <td>
+                <div>${o.stockist ? o.stockist.name : 'Unknown'}</div>
+                ${o.bonusApproval && o.bonusApproval.isManual ? '<span style="font-size:0.6rem; background:#fff7ed; color:#ea580c; padding:2px 6px; border-radius:4px; border:1px solid #ffedd5;">⚠️ MANUAL BONUS</span>' : ''}
+            </td>
             <td>${new Date(o.createdAt).toLocaleDateString('en-GB')}</td>
             <td>${o.items.length} Items</td>
-            <td style="font-weight:700; color:var(--primary);">₹${o.grandTotal.toFixed(2)}</td>
-            <td><span class="badge badge-approved">${o.status}</span></td>
+            <td style="font-weight:700; color:var(--primary);">₹${o.grandTotal.toLocaleString('en-IN')}</td>
+            <td><span class="badge ${o.status === 'approved' ? 'badge-approved' : 'badge-pending'}">${o.status.toUpperCase()}</span></td>
             <td>
-                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="alert('Order detailing feature coming soon!')">👁️</button>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="alert('Viewing Details for ' + '${o.orderNo}')">👁️</button>
+                    ${o.status === 'pending' ? `<button class="btn btn-primary" style="padding:5px 10px; font-size:0.7rem;" onclick="approveOrder('${o._id}')">APPROVE</button>` : ''}
+                </div>
             </td>
         </tr>
     `).join('');
+}
+
+async function approveOrder(id) {
+    if (!confirm("Approve this order and record bonus status?")) return;
+    const adminName = prompt("Enter Approver Name:", "EMYRIS ADMIN");
+    if (!adminName) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/orders/${id}/approve`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ approvedBy: adminName })
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert("Order Approved Successfully!");
+            refreshDashboard();
+        }
+    } catch (e) { alert("Approval failed."); }
 }
 
 function updateStats() {

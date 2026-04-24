@@ -3,6 +3,7 @@ const API_BASE = '/api';
 let currentUser = null;
 let allProducts = [];
 let cart = {}; // { productId: qty }
+let manualBonuses = {}; // Track manually edited bonuses
 let companySettings = null;
 let pendingLoginId = null; // Stores ID during PIN phase
 
@@ -33,18 +34,6 @@ function switchView(viewId) {
 // --- AUTH ---
 async function handleRegister(e) {
     e.preventDefault();
-    const data = {
-        name: document.getElementById('reg-name').value,
-        email: document.getElementById('reg-email').value,
-        phone: document.getElementById('reg-phone').value,
-        password: document.getElementById('reg-pass').value,
-        address: document.getElementById('reg-address').value,
-        dlNo: document.getElementById('reg-dl').value,
-        gstNo: document.getElementById('reg-gst').value,
-        fssaiNo: document.getElementById('reg-fssai').value,
-        panNo: document.getElementById('reg-pan').value
-    };
-
     try {
         const data = {
             name: document.getElementById('reg-name').value.toUpperCase(),
@@ -240,7 +229,7 @@ function renderExcelProducts(catFilter = null, searchFilter = null) {
         const qty = cart[p._id] || '';
         const price = p.pts || p.ptr || 0;
         const total = qty ? (qty * price).toFixed(2) : '0.00';
-        const free = p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0;
+        const free = manualBonuses[p._id] !== undefined ? manualBonuses[p._id] : (p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0);
         
         return `
             <tr id="row-${p._id}">
@@ -254,11 +243,16 @@ function renderExcelProducts(catFilter = null, searchFilter = null) {
                 <td style="text-align: right; font-weight: 700; color: var(--accent);">₹${p.pts || '-'}</td>
                 <td style="text-align: center;">${p.gstPercent}%</td>
                 <td style="text-align: center;">
-                    <input type="number" class="qty-input" value="${qty}" min="0" 
+                    <input type="number" class="qty-input" value="${qty}" min="0" step="1"
                         oninput="updateCart('${p._id}', this.value, this)" 
                         style="width: 80px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-weight: 700;">
                 </td>
-                <td style="text-align: center; font-weight: 700; color: #10b981;" id="bonus-${p._id}">${free > 0 ? '+' + free : '-'}</td>
+                <td style="text-align: center;">
+                    <input type="number" class="bonus-input" value="${free}" min="0" step="1"
+                        id="bonus-${p._id}"
+                        oninput="updateBonus('${p._id}', this.value)"
+                        style="width: 70px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-weight: 700; color: #10b981;">
+                </td>
                 <td style="text-align: right; font-weight: 800; font-size: 1rem;" id="total-${p._id}">₹${total}</td>
             </tr>
         `;
@@ -269,17 +263,22 @@ function updateCart(pid, qty, inputEl) {
     qty = parseInt(qty) || 0;
     const p = allProducts.find(x => x._id === pid);
     if (qty > 0) cart[pid] = qty;
-    else delete cart[pid];
+    else {
+        delete cart[pid];
+        delete manualBonuses[pid];
+    }
 
     // Update row total immediately
     const price = p.pts || p.ptr || 0;
     const rowTotal = (qty * price).toFixed(2);
     document.getElementById(`total-${pid}`).innerText = `₹${rowTotal}`;
     
-    // Update Bonus
-    const free = p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0;
-    const bonusEl = document.getElementById(`bonus-${pid}`);
-    if (bonusEl) bonusEl.innerText = free > 0 ? '+' + free : '-';
+    // Auto-calculate Bonus if not manually edited
+    if (manualBonuses[pid] === undefined) {
+        const free = p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0;
+        const bonusEl = document.getElementById(`bonus-${pid}`);
+        if (bonusEl) bonusEl.value = free;
+    }
 
     // Highlight row if qty > 0
     const row = document.getElementById(`row-${pid}`);
@@ -289,6 +288,19 @@ function updateCart(pid, qty, inputEl) {
         inputEl.style.borderColor = qty > 0 ? 'var(--primary)' : 'var(--border)';
     }
 
+    updateFooter();
+}
+
+function updateBonus(pid, bonusQty) {
+    bonusQty = parseInt(bonusQty) || 0;
+    manualBonuses[pid] = bonusQty;
+    
+    // Visual feedback for manual edit
+    const bonusEl = document.getElementById(`bonus-${pid}`);
+    if (bonusEl) {
+        bonusEl.style.borderColor = '#10b981';
+        bonusEl.style.background = '#f0fdf4';
+    }
     updateFooter();
 }
 
@@ -309,7 +321,7 @@ function updateFooter() {
         itemCount++;
     });
 
-    const grandTotal = taxableValue + gstTotal;
+    const grandTotal = Math.ceil(taxableValue + gstTotal); // Round Up Formula Applied
 
     // Update UI elements
     const taxableEl = document.getElementById('footer-subtotal');
@@ -359,11 +371,14 @@ async function placeOrder() {
     
     const orderData = {
         stockistId: currentUser._id,
-        stockistCode: currentUser.loginId, // Automatically fetch stockist code (EMY...)
+        stockistCode: currentUser.loginId,
         items: orderItems,
         subTotal,
         gstAmount: gstAmt,
-        grandTotal: subTotal + gstAmt
+        grandTotal: subTotal + gstAmt,
+        bonusApproval: {
+            isManual: Object.keys(manualBonuses).length > 0
+        }
     };
 
     try {

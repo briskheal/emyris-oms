@@ -188,6 +188,11 @@ const orderSchema = new mongoose.Schema({
     gstAmount: Number,
     grandTotal: Number,
     status: { type: String, default: 'pending' },
+    bonusApproval: {
+        isManual: { type: Boolean, default: false },
+        approvedBy: String,
+        approvedAt: Date
+    },
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -609,6 +614,20 @@ app.get('/api/admin/orders', async (req, res) => {
     try {
         const orders = await Order.find().populate('stockist').sort({ createdAt: -1 });
         res.json(orders);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Admin: Approve Order
+app.put('/api/admin/orders/:id/approve', async (req, res) => {
+    try {
+        const { approvedBy } = req.body;
+        const order = await Order.findByIdAndUpdate(req.params.id, {
+            status: 'approved',
+            'bonusApproval.approvedBy': approvedBy || 'ADMIN',
+            'bonusApproval.approvedAt': new Date()
+        }, { new: true });
+        
+        res.json({ success: true, order });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
