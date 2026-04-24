@@ -237,11 +237,11 @@ function renderExcelProducts(catFilter = null, searchFilter = null) {
                     <div style="font-weight: 800; color: var(--primary);">${p.name}</div>
                     <div style="font-size: 0.65rem; color: var(--text-muted);">${p.category || '-'}</div>
                 </td>
-                <td style="font-family: monospace; text-align: center;">${p.hsn || '-'}</td>
-                <td style="text-align: right; font-weight: 600;">₹${p.mrp}</td>
-                <td style="text-align: right; color: var(--text-muted);">₹${p.ptr || '-'}</td>
-                <td style="text-align: right; font-weight: 700; color: var(--accent);">₹${p.pts || '-'}</td>
-                <td style="text-align: center;">${p.gstPercent}%</td>
+                <td style="font-family: monospace; text-align: center; color: #475569;">${p.hsn || '-'}</td>
+                <td style="text-align: right; font-weight: 600; color: #1e293b;">₹${p.mrp}</td>
+                <td style="text-align: right; color: #64748b;">₹${p.ptr || '-'}</td>
+                <td style="text-align: right; font-weight: 700; color: #4338ca;">₹${p.pts || '-'}</td>
+                <td style="text-align: center; color: #1e293b; font-weight: 600;">${p.gstPercent}%</td>
                 <td style="text-align: center;">
                     <input type="number" class="qty-input" value="${qty}" min="0" step="1"
                         oninput="updateCart('${p._id}', this.value, this)" 
