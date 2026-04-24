@@ -663,7 +663,7 @@ function renderMyOrders(orders) {
     if (!container) return;
 
     if (orders.length === 0) {
-        container.innerHTML = `<div class="glass-card" style="text-align:center; color:var(--text-muted);">No orders placed yet.</div>`;
+        container.innerHTML = `<div class="glass-card" style="text-align:center; color:var(--text-muted); padding: 3rem;">No orders found in your history.</div>`;
         return;
     }
 
@@ -680,32 +680,52 @@ function renderMyOrders(orders) {
     for (const [month, list] of Object.entries(grouped)) {
         html += `
             <div style="margin-bottom: 3rem;">
-                <h3 style="color:var(--primary); border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem; margin-bottom: 1.5rem;">${month}</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem;">
-                    ${list.map(o => `
-                        <div class="glass-card" style="padding: 1.5rem; margin-bottom: 0;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                <div style="font-family: monospace; font-weight: 800; font-size: 1.1rem; color: #fff;">${o.orderNo}</div>
-                                <div style="background: ${o.status === 'approved' ? '#10b981' : '#f59e0b'}; color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;">${o.status}</div>
-                            </div>
-                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Placed on ${new Date(o.createdAt).toLocaleDateString('en-GB')}</div>
-                            <div style="border-top: 1px solid var(--glass-border); padding-top: 1rem;">
-                                <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">Order Details</div>
-                                <div style="max-height: 150px; overflow-y: auto;">
-                                    ${o.items.map(i => `
-                                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
-                                            <span style="color: #cbd5e1;">${i.name} (${i.qty})</span>
-                                            <span style="font-weight: 700; color: #fff;">₹${i.totalValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                                <div style="border-top: 1px dashed var(--glass-border); margin-top: 1rem; padding-top: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="font-weight: 800; color: #fff;">GRAND TOTAL</span>
-                                    <span style="font-size: 1.25rem; font-weight: 900; color: var(--primary);">₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('')}
+                <h3 style="color:var(--primary); border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem; margin-bottom: 1.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 10px;">
+                    📅 ${month} <span style="font-size: 0.75rem; background: rgba(99, 102, 241, 0.1); padding: 2px 10px; border-radius: 20px; font-weight: 500;">${list.length} Orders</span>
+                </h3>
+                <div class="excel-container" style="border-radius: 16px;">
+                    <table class="excel-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 180px;">Order Number</th>
+                                <th style="width: 180px;">Placed Date & Time</th>
+                                <th>Items Summary</th>
+                                <th style="width: 120px; text-align: center;">Status</th>
+                                <th style="width: 150px; text-align: right;">Grand Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${list.map(o => {
+                                const dateObj = new Date(o.createdAt);
+                                const dateStr = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                                const timeStr = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
+                                
+                                const itemsBrief = o.items.map(i => `${i.name} (${i.qty})`).join(', ');
+                                const statusColor = o.status === 'approved' ? '#10b981' : '#f59e0b';
+                                
+                                return `
+                                    <tr style="cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                                        <td style="font-family: monospace; font-weight: 800; color: #fff;">${o.orderNo}</td>
+                                        <td style="font-size: 0.8rem;">
+                                            <div style="color: #fff; font-weight: 600;">${dateStr}</div>
+                                            <div style="color: var(--text-muted); font-size: 0.7rem;">🕒 ${timeStr}</div>
+                                        </td>
+                                        <td style="font-size: 0.8rem; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 400px;">
+                                            ${itemsBrief}
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <span style="background: ${statusColor}15; color: ${statusColor}; border: 1px solid ${statusColor}30; padding: 4px 10px; border-radius: 8px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; display: inline-block;">
+                                                ${o.status}
+                                            </span>
+                                        </td>
+                                        <td style="text-align: right; font-weight: 900; color: var(--primary); font-size: 1rem;">
+                                            ₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         `;
