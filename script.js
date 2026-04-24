@@ -7,6 +7,8 @@ let manualBonuses = {}; // Track manually edited bonuses
 let currentCat = 'ALL';
 let currentSearch = '';
 let companySettings = null;
+let askingRates = {}; // Store negotiated rates
+let negotiationNotes = {}; // Store authorization details
 let pendingLoginId = null; // Stores ID during PIN phase
 
 // --- INITIALIZATION ---
@@ -303,23 +305,39 @@ function renderExcelProducts() {
 
     tbody.innerHTML = filtered.map(p => {
         const qty = cart[p._id] || '';
-        const price = p.pts || p.ptr || 0;
-        const total = qty ? (qty * price).toFixed(2) : '0.00';
+        const locked = currentUser.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
+        
+        const masterRate = p.pts || 0;
+        const currentRate = askingRates[p._id] !== undefined ? askingRates[p._id] : (locked ? locked.lockedRate : masterRate);
+        const note = negotiationNotes[p._id] || (locked ? locked.note : '');
+        
+        const total = qty ? (qty * currentRate).toFixed(2) : '0.00';
         const free = manualBonuses[p._id] !== undefined ? manualBonuses[p._id] : (p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0);
         
+        const isWarning = currentRate < masterRate;
+
         return `
             <tr id="row-${p._id}">
                 <td>
                     <div style="font-weight: 800; color: var(--primary);">${p.name}</div>
                     <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">${p.category || 'GENERAL'}</div>
                 </td>
-                <td style="text-align: center; font-weight: 700; color: #fff; font-size: 0.8rem;">
-                    ${p.packing || '-'}
-                </td>
+                <td style="text-align: center; font-weight: 700; color: #fff; font-size: 0.8rem;">${p.packing || '-'}</td>
                 <td style="font-family: monospace; text-align: center; color: #cbd5e1;">${p.hsn || '-'}</td>
-                <td style="text-align: right; font-weight: 600; color: #ffffff;">₹${p.mrp}</td>
+                <td style="text-align: right; color: #ffffff;">₹${p.mrp}</td>
                 <td style="text-align: right; color: #94a3b8;">₹${p.ptr || '-'}</td>
-                <td style="text-align: right; font-weight: 700; color: #818cf8;">₹${p.pts || '-'}</td>
+                <td style="text-align: center;">
+                    <input type="number" class="negotiation-input ${isWarning ? 'price-warning' : ''}" 
+                        value="${currentRate}" 
+                        oninput="updateRate('${p._id}', this.value, ${masterRate})"
+                        title="Master PTS: ₹${masterRate}">
+                </td>
+                <td style="text-align: center;">
+                    <input type="text" class="note-input" 
+                        value="${note}" 
+                        placeholder="Auth Details..."
+                        oninput="updateNote('${p._id}', this.value)">
+                </td>
                 <td style="text-align: center; color: #ffffff; font-weight: 600;">${p.gstPercent}%</td>
                 <td style="text-align: center;">
                     <input type="number" class="qty-input" value="${qty}" min="0" step="1"
@@ -336,6 +354,15 @@ function renderExcelProducts() {
             </tr>
         `;
     }).join('');
+}
+
+function updateRate(id, val, master) {
+    askingRates[id] = parseFloat(val) || 0;
+    renderExcelProducts(); // Re-render to update warning color and totals
+}
+
+function updateNote(id, val) {
+    negotiationNotes[id] = val;
 }
 
 function updateCart(pid, qty, inputEl) {
@@ -431,16 +458,20 @@ async function placeOrder() {
     const orderItems = pids.map(pid => {
         const p = allProducts.find(x => x._id === pid);
         const qty = cart[pid];
-        const free = p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0;
-        const price = p.pts || p.ptr || 0;
+        const locked = currentUser.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
+        const rate = askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : p.pts);
+        
         return {
             productId: pid,
             name: p.name,
             qty,
-            bonusQty: free,
-            priceUsed: price,
+            bonusQty: manualBonuses[pid] !== undefined ? manualBonuses[pid] : (p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0),
+            priceUsed: rate,
+            askingRate: askingRates[pid],
+            masterRate: p.pts,
+            negotiationNote: negotiationNotes[pid] || (locked ? locked.note : ''),
             mrp: p.mrp,
-            totalValue: qty * price
+            totalValue: qty * rate
         };
     });
 

@@ -808,15 +808,33 @@ function viewOrderDetails(id) {
     statusEl.style.color = '#fff';
 
     const itemsBody = document.getElementById('detail-items-body');
-    itemsBody.innerHTML = o.items.map(item => `
-        <tr>
-            <td style="font-weight:700; color:#fff;">${item.name}</td>
-            <td style="text-align:right;">₹${item.priceUsed.toFixed(2)}</td>
-            <td style="text-align:center; font-weight:700;">${item.qty}</td>
-            <td style="text-align:center; color:var(--accent); font-weight:700;">+${item.bonusQty || 0}</td>
-            <td style="text-align:right; font-weight:800; color:var(--primary);">₹${item.totalValue.toFixed(2)}</td>
-        </tr>
-    `).join('');
+    itemsBody.innerHTML = o.items.map(item => {
+        const isNegotiated = item.askingRate && item.askingRate !== item.masterRate;
+        const rateStatusClass = isNegotiated ? 'price-warning' : '';
+        
+        return `
+            <tr>
+                <td style="font-weight:700; color:#fff;">${item.name}</td>
+                <td style="text-align:right; color:var(--text-muted);">₹${(item.masterRate || item.priceUsed).toFixed(2)}</td>
+                <td style="text-align:right; font-weight:700; color:${isNegotiated ? '#ef4444' : '#fff'};">₹${(item.askingRate || item.priceUsed).toFixed(2)}</td>
+                <td style="text-align:center; font-style:italic; font-size:0.75rem;">${item.negotiationNote || '-'}</td>
+                <td style="text-align:center; font-weight:800; color:var(--accent);">₹${item.priceUsed.toFixed(2)}</td>
+                <td style="text-align:center; font-weight:700;">${item.qty}</td>
+                <td style="text-align:center; color:var(--accent); font-weight:700;">+${item.bonusQty || 0}</td>
+                <td style="text-align:right; font-weight:800; color:var(--primary);">₹${item.totalValue.toFixed(2)}</td>
+                <td style="text-align:center;">
+                    ${o.status === 'pending' ? `
+                        <div style="display:flex; gap:4px; justify-content:center;">
+                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:#ef4444;" onclick="negotiateItem('${o._id}', '${item._id}', 'reject')" title="Revert to Master PTS">REJECT</button>
+                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:var(--primary);" onclick="negotiateItem('${o._id}', '${item._id}', 'onetime')" title="Apply for this order only">1-TIME</button>
+                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:var(--accent);" onclick="negotiateItem('${o._id}', '${item._id}', 'month')" title="Lock for 1 Month">MONTH</button>
+                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:#10b981;" onclick="negotiateItem('${o._id}', '${item._id}', 'year')" title="Lock for 1 Year">YEAR</button>
+                        </div>
+                    ` : '<span style="font-size:0.7rem; color:var(--text-muted);">LOCKED</span>'}
+                </td>
+            </tr>
+        `;
+    }).join('');
 
     document.getElementById('detail-subtotal').innerText = `₹${o.subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     document.getElementById('detail-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -843,6 +861,34 @@ function viewOrderDetails(id) {
     };
 
     document.getElementById('orderDetailModal').classList.remove('hidden');
+}
+
+async function negotiateItem(orderId, itemId, action) {
+    if (!confirm(`Are you sure you want to apply the [${action.toUpperCase()}] negotiation logic to this item?`)) return;
+    try {
+        const res = await fetch(`${API_BASE}/admin/orders/${orderId}/items/${itemId}/negotiate`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action })
+        });
+        const result = await res.json();
+        if (result.success) {
+            allOrders = allOrders.map(o => o._id === orderId ? result.order : o);
+            viewOrderDetails(orderId); // Re-render modal
+            renderOrderHistory(); // Refresh main list
+        }
+    } catch (e) { alert("Negotiation failed."); }
+}
+
+async function approveOrder(id) {
+    try {
+        const res = await fetch(`${API_BASE}/admin/orders/${id}/approve`, { method: 'PUT' });
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ Order approved successfully.");
+            loadOrders(); // Refresh history
+        }
+    } catch (e) { alert("Approval failed."); }
 }
 
 async function deleteOrder(id) {

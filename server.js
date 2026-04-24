@@ -114,6 +114,52 @@ app.get('/api/admin/db-stats', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Negotiate Order Rates (One-time, Month, Year, Reject)
+app.put('/api/admin/orders/:orderId/items/:itemId/negotiate', async (req, res) => {
+    const { action } = req.body; // 'reject', 'onetime', 'month', 'year'
+    try {
+        const order = await Order.findById(req.params.orderId);
+        if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+
+        const item = order.items.id(req.params.itemId);
+        if (!item) return res.status(404).json({ success: false, message: "Item not found" });
+
+        if (action === 'reject') {
+            item.priceUsed = item.masterRate;
+            item.askingRate = undefined;
+        } else if (action === 'onetime') {
+            item.priceUsed = item.askingRate;
+        } else {
+            // Persistent lock (Month/Year)
+            item.priceUsed = item.askingRate;
+            let expiry = new Date();
+            if (action === 'month') expiry.setMonth(expiry.getMonth() + 1);
+            if (action === 'year') expiry.setFullYear(expiry.getFullYear() + 1);
+
+            await Stockist.findByIdAndUpdate(order.stockist, {
+                $pull: { negotiatedPrices: { productId: item.product } }
+            });
+            await Stockist.findByIdAndUpdate(order.stockist, {
+                $push: { negotiatedPrices: {
+                    productId: item.product,
+                    lockedRate: item.askingRate,
+                    expiryDate: expiry,
+                    note: item.negotiationNote
+                }}
+            });
+        }
+
+        // Re-calculate order totals
+        order.subTotal = order.items.reduce((acc, curr) => acc + (curr.priceUsed * curr.qty), 0);
+        // Simplified GST for re-calc (could be improved to use item-level GST)
+        order.gstAmount = order.subTotal * 0.12; 
+        order.grandTotal = order.subTotal + order.gstAmount;
+
+        await order.save();
+        res.json({ success: true, order });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 const PORT = process.env.PORT || 4000;
 
 app.use(cors());
@@ -183,6 +229,12 @@ const stockistSchema = new mongoose.Schema({
     fssaiNo: String,
     panNo: { type: String, required: true },
     approved: { type: Boolean, default: false },
+    negotiatedPrices: [{
+        productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+        lockedRate: Number,
+        expiryDate: Date,
+        note: String
+    }],
     stockistCode: String,
     loginPin: String,
     registeredAt: { type: Date, default: Date.now }
@@ -194,12 +246,14 @@ const orderSchema = new mongoose.Schema({
     stockist: { type: mongoose.Schema.Types.ObjectId, ref: 'Stockist' },
     stockistCode: String,
     items: [{
-        productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+        product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
         name: String,
         qty: Number,
         bonusQty: { type: Number, default: 0 },
         priceUsed: Number,
-        mrp: Number,
+        askingRate: Number,
+        masterRate: Number,
+        negotiationNote: String,
         totalValue: Number
     }],
     subTotal: Number,
