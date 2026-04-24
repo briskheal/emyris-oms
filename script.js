@@ -66,7 +66,13 @@ function switchOrderTab(tab) {
 }
 async function handleRegister(e) {
     e.preventDefault();
+    const btn = document.getElementById('regBtn');
+    const originalText = btn.innerText;
+    
     try {
+        btn.innerText = "⌛ CREATING ACCOUNT...";
+        btn.disabled = true;
+
         const data = {
             name: document.getElementById('reg-name').value.toUpperCase(),
             email: document.getElementById('reg-email').value,
@@ -79,19 +85,28 @@ async function handleRegister(e) {
             panNo: document.getElementById('reg-pan').value.toUpperCase()
         };
 
+        console.log("📝 Registering Stockist:", data);
+
         const res = await fetch(`${API_BASE}/stockist/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
+        
         const result = await res.json();
         if (result.success) {
             alert(result.message);
             switchView('login');
         } else {
-            alert(result.message);
+            alert(result.message || "Registration failed. Please check your details.");
         }
-    } catch (e) { alert("Registration failed. Server error."); }
+    } catch (e) { 
+        console.error("❌ Registration Error:", e);
+        alert("Registration failed. Server error."); 
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
 }
 
 function handleGstInput(el) {
