@@ -6,7 +6,12 @@ const axios = require('axios');
 
 dotenv.config();
 
-const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbzwd4FlloFDymjkWWGo9BV3SB11_3cHximWDgNcvNW86bz6Q-NNRbR1m2j7dAX0qVVPFA/exec";
+const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL;
+if (!GOOGLE_SCRIPT_URL) {
+    console.error("❌ CRITICAL: GOOGLE_SCRIPT_URL is not defined in .env!");
+} else {
+    console.log("✅ Email Bridge Configured:", GOOGLE_SCRIPT_URL.substring(0, 40) + "...");
+}
 
 // --- EMAIL CONFIGURATION (VIA GOOGLE SCRIPT BRIDGE) ---
 async function sendOrderEmails(order, stockist) {
@@ -54,29 +59,32 @@ async function sendOrderEmails(order, stockist) {
             </div>
         `;
 
-        const recipients = `emyrisbio@gmail.com, ${process.env.SUPER_DISTRIBUTOR_EMAIL || 'aadicfa@gmail.com'}`;
+        const recipients = `emyrisbio@gmail.com, ${process.env.SUPER_DISTRIBUTOR_EMAIL || 'emyrisbio@gmail.com'}`;
         
-        await axios.post(GOOGLE_SCRIPT_URL, {
-            to: recipients,
-            subject: `📦 Order Received: ${order.orderNo} [${stockist.name}]`,
-            html: emailBody
-        });
+        await sendEmail(recipients, `📦 Order Received: ${order.orderNo} [${stockist.name}]`, emailBody);
 
         console.log(`✅ Bridge Email Success: ${order.orderNo}`);
     } catch (e) { console.error("❌ Bridge Email Fail:", e.message); }
 }
 
 async function sendEmail(to, subject, html) {
-    const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL;
     if (!GOOGLE_SCRIPT_URL) {
-        console.warn("⚠️ No GOOGLE_SCRIPT_URL configured. Email not sent.");
-        return;
+        console.warn("⚠️ No GOOGLE_SCRIPT_URL configured. Email not sent to:", to);
+        return false;
     }
     try {
-        await axios.post(GOOGLE_SCRIPT_URL, { to, subject, html });
-        return true;
+        console.log(`📤 Attempting email to: ${to} | Subject: ${subject}`);
+        const res = await axios.post(GOOGLE_SCRIPT_URL, { to, subject, html }, { timeout: 15000 });
+        if (res.data && res.data.status === 'success') {
+            console.log(`✅ Email Sent Successfully to: ${to}`);
+            return true;
+        } else {
+            console.error(`❌ Bridge returned error for ${to}:`, res.data);
+            return false;
+        }
     } catch (e) {
-        console.error("❌ Email failed:", e.message);
+        console.error(`❌ Email failed for ${to}:`, e.message);
+        if (e.code === 'ECONNABORTED') console.error("   Reason: Request timed out (15s)");
         return false;
     }
 }
@@ -210,6 +218,7 @@ app.post('/api/stockist/register', async (req, res) => {
 
         const newStockist = new Stockist({ name, loginId, password, address, phone, email, dlNo, gstNo, fssaiNo, panNo });
         await newStockist.save();
+        console.log(`👤 DB: New Stockist saved -> ${name}`);
 
         // 1. Send Registration Confirmation to Stockist
         const welcomeEmail = `
@@ -226,6 +235,7 @@ app.post('/api/stockist/register', async (req, res) => {
                 </div>
             </div>
         `;
+        console.log(`📧 Sending welcome email to: ${email}`);
         await sendEmail(email, "📦 EMYRIS Registration Received - Approval Pending", welcomeEmail);
 
         // 2. Send Admin Notification to emyrisbio@gmail.com
@@ -255,6 +265,7 @@ app.post('/api/stockist/register', async (req, res) => {
                 </div>
             </div>
         `;
+        console.log(`📧 Sending admin notification to: emyrisbio@gmail.com`);
         await sendEmail("emyrisbio@gmail.com", "🔔 New Stockist Registration: " + name, adminNotifyEmail);
 
         res.json({ success: true, message: `Registration successful! Please wait for Admin approval. Your ID will be sent to ${email} once approved.` });
