@@ -403,23 +403,72 @@ function renderStockists() {
     if (!tbody) return;
     tbody.innerHTML = allStockists.map(s => `
         <tr>
-            <td style="font-weight:700;">${s.name}</td>
-            <td style="font-family:monospace; color:var(--primary);">
+            <td>
+                <a href="javascript:void(0)" onclick="viewStockistDetails('${s._id}')" style="color:var(--primary); font-weight:700; text-decoration:none; border-bottom:1px dashed var(--primary);">
+                    ${s.name}
+                </a>
+            </td>
+            <td style="font-family:monospace; font-size:0.85rem;">
                 ${s.loginId}
                 ${s.stockistCode ? `<div style="color:var(--accent); font-size:0.7rem; margin-top:4px;">CODE: ${s.stockistCode}</div>` : ''}
             </td>
-            <td style="font-family:monospace; font-size:0.85rem; color:#fff;">${s.dlNo || '-'}</td>
-            <td style="font-family:monospace; font-size:0.85rem; color:#fff;">${s.gstNo || '-'}</td>
-            <td style="font-family:monospace; font-size:0.85rem; color:#fff;">${s.fssaiNo || '-'}</td>
-            <td style="font-size:0.85rem;">${s.address || '-'}</td>
-            <td style="font-size:0.85rem;">${s.phone || '-'}</td>
+            <td style="font-size:0.85rem; color:var(--text-muted);">
+                ${new Date(s.registeredAt || Date.now()).toLocaleDateString('en-GB')}
+            </td>
             <td><span class="badge ${s.approved ? 'badge-approved' : 'badge-pending'}">${s.approved ? 'Approved' : 'Pending'}</span></td>
-            <td style="white-space: nowrap;">
+            <td style="text-align: right; white-space: nowrap;">
                 ${!s.approved ? `<button class="btn btn-primary" style="padding: 5px 12px; font-size:0.75rem; margin-right:5px;" onclick="approveStockist('${s._id}')">APPROVE</button>` : '<span style="color:var(--accent); margin-right:10px; font-size:0.8rem; font-weight:700;">✅ VERIFIED</span>'}
                 <button class="btn btn-ghost" style="padding: 5px 10px; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteStockist('${s._id}')" title="Delete Stockist">🗑️</button>
             </td>
         </tr>
     `).join('');
+}
+
+function viewStockistDetails(id) {
+    const s = allStockists.find(x => x._id === id);
+    if (!s) return;
+
+    const content = document.getElementById('stockist-details-content');
+    const actions = document.getElementById('stockist-modal-actions');
+    
+    content.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div>
+                <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">Drug License (DL)</label>
+                <div style="color:#fff; font-family:monospace; margin-bottom:1rem;">${s.dlNo || 'Not Provided'}</div>
+                
+                <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">GST Number</label>
+                <div style="color:#fff; font-family:monospace; margin-bottom:1rem;">${s.gstNo || 'Not Provided'}</div>
+                
+                <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">FSSAI Number</label>
+                <div style="color:#fff; font-family:monospace; margin-bottom:1rem;">${s.fssaiNo || 'Not Provided'}</div>
+            </div>
+            <div>
+                <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">Contact Phone</label>
+                <div style="color:#fff; margin-bottom:1rem;">${s.phone || '-'}</div>
+                
+                <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">Email Address</label>
+                <div style="color:#fff; margin-bottom:1rem;">${s.email || '-'}</div>
+                
+                <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">Full Address</label>
+                <div style="color:#fff; font-size:0.85rem; line-height:1.4;">${s.address || 'No address provided'}</div>
+            </div>
+        </div>
+    `;
+
+    actions.innerHTML = `
+        <button class="btn btn-ghost" onclick="closeStockistModal()" style="flex:1; justify-content:center;">CLOSE</button>
+        ${!s.approved ? `
+            <button class="btn btn-primary" onclick="approveStockist('${s._id}'); closeStockistModal();" style="flex:2; justify-content:center;">APPROVE STOCKIST</button>
+        ` : ''}
+        <button class="btn btn-ghost" onclick="deleteStockist('${s._id}'); closeStockistModal();" style="color:#ef4444; border-color:rgba(239,68,68,0.2);">DELETE RECORD</button>
+    `;
+
+    document.getElementById('stockistModal').classList.remove('hidden');
+}
+
+function closeStockistModal() {
+    document.getElementById('stockistModal').classList.add('hidden');
 }
 
 async function approveStockist(id) {

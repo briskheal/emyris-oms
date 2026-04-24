@@ -309,14 +309,10 @@
                             <thead>
                                 <tr>
                                     <th>Firm Name</th>
-                                    <th>Login ID</th>
-                                    <th style="width: 150px;">DL Number</th>
-                                    <th style="width: 180px;">GST Number</th>
-                                    <th style="width: 150px;">FSSAI Number</th>
-                                    <th>City/Address</th>
-                                    <th>Contact</th>
-                                    <th>Approval</th>
-                                    <th>Actions</th>
+                                    <th>Login ID / Code</th>
+                                    <th>Request Date</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="stockistTableBody"></tbody>
@@ -500,6 +496,24 @@
             </div>
         </div>
     </footer>
+
+    <!-- MODAL (Stockist Details) -->
+    <div id="stockistModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+        <div class="glass-card" style="width: 600px; margin: 0; border-top: 4px solid var(--primary); padding: 2.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h3 class="section-title" style="margin: 0;">📋 Stockist Dossier</h3>
+                <button class="btn btn-ghost" onclick="closeStockistModal()" style="padding: 5px 10px;">✕</button>
+            </div>
+            
+            <div id="stockist-details-content">
+                <!-- Content populated by JS -->
+            </div>
+
+            <div id="stockist-modal-actions" style="margin-top: 2.5rem; display: flex; gap: 1rem; border-top: 1px solid var(--glass-border); padding-top: 2rem;">
+                <!-- Actions populated by JS -->
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="admin-script.js"></script>
