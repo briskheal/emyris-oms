@@ -297,7 +297,7 @@ function updateCart(pid, qty, inputEl) {
     // Update row total immediately
     const price = p.pts || p.ptr || 0;
     const rowTotal = (qty * price).toFixed(2);
-    document.getElementById(`total-${pid}`).innerText = `₹${rowTotal}`;
+    document.getElementById(`total-${pid}`).innerText = `₹${parseFloat(rowTotal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     
     // Auto-calculate Bonus if not manually edited
     if (manualBonuses[pid] === undefined) {
@@ -348,7 +348,7 @@ function updateFooter() {
     });
 
     const netAmount = taxableValue + gstTotal;
-    const grandTotal = Math.ceil(netAmount); // Round Up Formula Applied
+    const grandTotal = Math.round(netAmount); // Standard Rounding Logic Applied (.50+ up, else down)
 
     // Update UI elements
     const taxableEl = document.getElementById('footer-subtotal');
@@ -356,10 +356,10 @@ function updateFooter() {
     const netEl = document.getElementById('footer-net');
     const totalEl = document.getElementById('footer-total');
 
-    if (taxableEl) taxableEl.innerText = `₹${taxableValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    if (gstEl) gstEl.innerText = `₹${gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    if (netEl) netEl.innerText = `₹${netAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    if (totalEl) totalEl.innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (taxableEl) taxableEl.innerText = `₹${taxableValue.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (gstEl) gstEl.innerText = `₹${gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (netEl) netEl.innerText = `₹${netAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (totalEl) totalEl.innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
     const footer = document.getElementById('orderFooter');
     if (footer) {

@@ -613,7 +613,7 @@ function renderOrderHistory(filter = '') {
             <td style="font-weight:600;">${o.stockist ? o.stockist.name : 'Unknown'}</td>
             <td>${new Date(o.createdAt).toLocaleDateString('en-GB')}</td>
             <td style="text-align:center;">${o.items.length}</td>
-            <td style="text-align:right; font-weight:700;">₹${o.grandTotal.toLocaleString('en-IN')}</td>
+            <td style="text-align:right; font-weight:700;">₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
             <td style="text-align:center;"><span class="badge ${o.status === 'approved' ? 'badge-approved' : 'badge-pending'}">${o.status.toUpperCase()}</span></td>
             <td style="text-align:right;">
                 <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewOrderDetails('${o._id}')">👁️ VIEW</button>
@@ -651,9 +651,9 @@ function viewOrderDetails(id) {
         </tr>
     `).join('');
 
-    document.getElementById('detail-subtotal').innerText = `₹${o.subTotal.toLocaleString('en-IN')}`;
-    document.getElementById('detail-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN')}`;
-    document.getElementById('detail-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN')}`;
+    document.getElementById('detail-subtotal').innerText = `₹${o.subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('detail-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('detail-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
     const approveBtn = document.getElementById('detail-approve-btn');
     if (o.status === 'pending') {
