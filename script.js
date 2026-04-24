@@ -243,41 +243,54 @@ async function loadSettings() {
         const res = await fetch(`${API_BASE}/admin/settings`);
         companySettings = await res.json();
         
-        // Update UI
-        document.getElementById('co-name').innerText = companySettings.name || "EMYRIS BIOLIFESCIENCES";
-        document.getElementById('co-address').innerText = companySettings.address || "Loading address...";
-        document.getElementById('co-tollfree').innerText = companySettings.tollFree || "7993163300";
-        document.getElementById('co-phone').innerText = `WhatsApp: ${companySettings.phone || '+91-XXXXXXXXXX'}`;
+        const safeSet = (id, text) => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = text;
+        };
+
+        // Dashboard Header
+        safeSet('co-name', companySettings.name || "EMYRIS BIOLIFESCIENCES");
+        safeSet('co-address', companySettings.address || "Office Address Loading...");
+        safeSet('co-tollfree', companySettings.tollFree || "7993163300");
         
-        // Websites
+        const mainPhone = (companySettings.phones && companySettings.phones[0]) ? companySettings.phones[0] : '+91-XXXXXXXXXX';
+        safeSet('co-phone', `WhatsApp: ${mainPhone}`);
+        
+        // Digital Channels
         if (companySettings.websites) {
-            document.getElementById('co-web1').innerText = `🌐 ${companySettings.websites[0] || ''}`;
-            document.getElementById('co-web2').innerText = companySettings.websites[1] ? `🌐 ${companySettings.websites[1]}` : '';
+            safeSet('co-web1', `🌐 ${companySettings.websites[0] || ''}`);
+            safeSet('co-web2', companySettings.websites[1] ? `🌐 ${companySettings.websites[1]}` : '');
         }
         
-        // Emails
         if (companySettings.emails) {
-            document.getElementById('co-email1').innerText = `✉️ ${companySettings.emails[0] || ''}`;
-            document.getElementById('co-email2').innerText = companySettings.emails[1] ? `✉️ ${companySettings.emails[1]}` : '';
-            document.getElementById('co-email3').innerText = companySettings.emails[2] ? `✉️ ${companySettings.emails[2]}` : '';
+            safeSet('co-email1', `✉️ ${companySettings.emails[0] || ''}`);
+            safeSet('co-email2', companySettings.emails[1] ? `✉️ ${companySettings.emails[1]}` : '');
+            safeSet('co-email3', companySettings.emails[2] ? `✉️ ${companySettings.emails[2]}` : '');
         }
 
         // Landing Footer population (Synchronized)
-        if (document.getElementById('land-web')) document.getElementById('land-web').innerText = `🌐 ${companySettings.websites ? companySettings.websites[0] : 'www.emyrisbio.com'}`;
-        if (document.getElementById('land-tollfree')) document.getElementById('land-tollfree').innerText = `📞 TOLL-FREE: ${companySettings.tollFree || '7993163300'}`;
-        if (document.getElementById('land-phone')) document.getElementById('land-phone').innerText = `💬 WHATSAPP: ${companySettings.phone || '+91-XXXXXXXXXX'}`;
-        if (document.getElementById('land-email')) document.getElementById('land-email').innerText = `✉️ ${companySettings.emails ? companySettings.emails[0] : 'contact@emyrisbio.com'}`;
+        const web = (companySettings.websites && companySettings.websites[0]) ? companySettings.websites[0] : 'www.emyrisbio.com';
+        const toll = companySettings.tollFree || '7993163300';
+        const email = (companySettings.emails && companySettings.emails[0]) ? companySettings.emails[0] : 'contact@emyrisbio.com';
+        
+        safeSet('land-web', `🌐 ${web}`);
+        safeSet('land-tollfree', `📞 TOLL-FREE: ${toll}`);
+        safeSet('land-phone', `💬 WHATSAPP: ${mainPhone}`);
+        safeSet('land-email', `✉️ ${email}`);
+        safeSet('land-address', companySettings.address || "Corporate Office: EMYRIS BIOLIFESCIENCES");
 
         // Marquee
         if (companySettings.scrollingMessage && companySettings.scrollingMessage.text) {
             const m = document.getElementById('marquee');
             const mc = document.getElementById('marquee-content');
-            m.classList.remove('hidden');
-            m.style.background = companySettings.scrollingMessage.color || 'var(--primary)';
-            mc.innerText = companySettings.scrollingMessage.text;
-            mc.style.animationDuration = `${companySettings.scrollingMessage.speed || 30}s`;
+            if (m && mc) {
+                m.classList.remove('hidden');
+                m.style.background = companySettings.scrollingMessage.color || 'var(--primary)';
+                mc.innerText = companySettings.scrollingMessage.text;
+                mc.style.animationDuration = `${companySettings.scrollingMessage.speed || 30}s`;
+            }
         }
-    } catch (e) { console.error("Load settings failed"); }
+    } catch (e) { console.error("Load settings failed", e); }
 }
 
 async function loadMasters() {
