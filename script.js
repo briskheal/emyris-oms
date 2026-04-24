@@ -650,10 +650,13 @@ async function placeOrder() {
     }
 }
 
+let myOrdersHistory = []; // Cache for history viewing
+
 async function fetchMyOrders() {
     try {
         const res = await fetch(`${API_BASE}/orders/my-orders/${currentUser._id}`);
         const orders = await res.json();
+        myOrdersHistory = orders;
         renderMyOrders(orders);
     } catch (e) { console.error("Fetch orders failed", e); }
 }
@@ -701,10 +704,10 @@ function renderMyOrders(orders) {
                                 const timeStr = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
                                 
                                 const itemsBrief = o.items.map(i => `${i.name} (${i.qty})`).join(', ');
-                                const statusColor = o.status === 'approved' ? '#10b981' : '#f59e0b';
+                                const statusColor = o.status === 'approved' ? '#10b981' : (o.status === 'rejected' ? '#ef4444' : '#f59e0b');
                                 
                                 return `
-                                    <tr style="cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                                    <tr onclick="viewOrderDetails('${o._id}')" style="cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
                                         <td style="font-family: monospace; font-weight: 800; color: #fff;">${o.orderNo}</td>
                                         <td style="font-size: 0.8rem;">
                                             <div style="color: #fff; font-weight: 600;">${dateStr}</div>
@@ -742,6 +745,7 @@ function handleLogout() {
     manualBonuses = {};
     askingRates = {};
     negotiationNotes = {};
+    myOrdersHistory = [];
     
     // Reset UI
     renderExcelProducts();
@@ -754,4 +758,39 @@ function handleLogout() {
     localStorage.removeItem('emyris_user');
     
     console.log('🚪 [LOGOUT] Session ended successfully');
+}
+
+function viewOrderDetails(orderId) {
+    const o = myOrdersHistory.find(x => x._id === orderId);
+    if (!o) return;
+
+    document.getElementById('detail-order-no').innerText = `Order #${o.orderNo}`;
+    document.getElementById('detail-date').innerText = `Placed on ${new Date(o.createdAt).toLocaleString('en-GB')}`;
+    
+    const statusEl = document.getElementById('detail-status');
+    statusEl.innerText = o.status.toUpperCase();
+    statusEl.style.color = o.status === 'approved' ? '#10b981' : (o.status === 'rejected' ? '#ef4444' : '#f59e0b');
+
+    document.getElementById('detail-item-count').innerText = `${o.items.length} Items`;
+
+    const body = document.getElementById('detail-items-body');
+    body.innerHTML = o.items.map(i => `
+        <tr>
+            <td style="font-weight: 700; color: #fff;">${i.name}</td>
+            <td style="text-align: right; color: var(--accent); font-weight: 800;">₹${i.priceUsed.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+            <td style="text-align: center; font-weight: 700;">${i.qty}</td>
+            <td style="text-align: center; color: var(--accent); font-weight: 700;">+${i.bonusQty || 0}</td>
+            <td style="text-align: right; font-weight: 800; color: #fff;">₹${i.totalValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+        </tr>
+    `).join('');
+
+    document.getElementById('detail-subtotal').innerText = `₹${o.subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('detail-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('detail-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+    document.getElementById('orderDetailModal').classList.remove('hidden');
+}
+
+function closeOrderModal() {
+    document.getElementById('orderDetailModal').classList.add('hidden');
 }
