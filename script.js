@@ -482,7 +482,7 @@ function updateCart(pid, qty, inputEl) {
 
     // --- SMART PRICING LOGIC ---
     // Use the same priority as the final order: Negotiated > Locked > Master
-    const locked = currentUser.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
+    const locked = currentUser?.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
     const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : (p.pts || p.ptr || 0)));
 
     const rowTotal = (qty * rate).toFixed(2);
@@ -532,7 +532,7 @@ function updateFooter() {
         const qty = cart[pid];
         
         // Use Negotiated Rate for Calculations
-        const locked = currentUser.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
+        const locked = currentUser?.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
         const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : (p.pts || p.ptr || 0)));
         
         const itemVal = qty * rate;
@@ -750,8 +750,8 @@ function handleLogout() {
     // Redirect to Login
     switchView('login');
     
-    // Optional: Clear any local session storage if added in future
-    localStorage.removeItem('emyris_session');
+    // Clear persistent storage
+    localStorage.removeItem('emyris_user');
     
     console.log('🚪 [LOGOUT] Session ended successfully');
 }
