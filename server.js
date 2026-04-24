@@ -261,7 +261,7 @@ app.post('/api/stockist/register', async (req, res) => {
                     
                     <p style="font-size: 14px; color: #475569;">Please log in to the <strong>Admin Command Center</strong> to verify compliance documents and approve this registration.</p>
                     <div style="text-align: center; margin-top: 30px;">
-                        <a href="http://localhost:4000/admin.html" style="background-color: #6366f1; color: #ffffff; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 14px;">OPEN ADMIN DASHBOARD</a>
+                        <a href="${process.env.PORTAL_URL || 'https://emyris-oms.onrender.com'}/admin.html" style="background-color: #6366f1; color: #ffffff; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 14px;">OPEN ADMIN DASHBOARD</a>
                     </div>
                 </div>
             </div>
@@ -491,7 +491,7 @@ app.put('/api/admin/stockists/:id/approve', async (req, res) => {
                     </div>
                 </div>
                 
-                <p>Access the portal here: <a href="http://localhost:4000" style="color: #6366f1; font-weight: 700; text-decoration: none;">Stockist Portal</a></p>
+                <p>Access the portal here: <a href="${process.env.PORTAL_URL || 'https://emyris-oms.onrender.com'}" style="color: #6366f1; font-weight: 700; text-decoration: none;">Stockist Portal</a></p>
                 
                 <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
                 <p style="font-size: 0.8rem; color: #64748b; text-align: center;">Welcome to the EMYRIS network. We look forward to a successful partnership.</p>
