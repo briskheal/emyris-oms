@@ -419,14 +419,18 @@
     </div>
 
     <div id="orderFooter" class="sticky-footer hidden">
-        <div style="display: flex; gap: 3rem;">
+        <div style="display: flex; gap: 2.5rem; align-items: center;">
             <div>
-                <span style="color: #475569; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">Taxable Value</span>
-                <div id="footer-subtotal" style="font-size: 1.25rem; font-weight: 800; color: #1e293b;">₹0.00</div>
+                <span style="color: var(--text-muted); font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">Taxable Value</span>
+                <div id="footer-subtotal" style="font-size: 1.1rem; font-weight: 800; color: #fff;">₹0.00</div>
             </div>
             <div>
-                <span style="color: #475569; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">GST Total</span>
-                <div id="footer-gst" style="font-size: 1.25rem; font-weight: 800; color: #1e293b;">₹0.00</div>
+                <span style="color: var(--text-muted); font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">GST Total</span>
+                <div id="footer-gst" style="font-size: 1.1rem; font-weight: 800; color: #fff;">₹0.00</div>
+            </div>
+            <div style="padding-left: 1rem; border-left: 1px solid var(--glass-border);">
+                <span style="color: var(--text-muted); font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">Net Amount</span>
+                <div id="footer-net" style="font-size: 1.1rem; font-weight: 800; color: var(--accent);">₹0.00</div>
             </div>
         </div>
         <div style="display: flex; align-items: center; gap: 2rem;">

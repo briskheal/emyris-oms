@@ -237,11 +237,11 @@ function renderExcelProducts(catFilter = null, searchFilter = null) {
                     <div style="font-weight: 800; color: var(--primary);">${p.name}</div>
                     <div style="font-size: 0.65rem; color: var(--text-muted);">${p.category || '-'}</div>
                 </td>
-                <td style="font-family: monospace; text-align: center; color: #475569;">${p.hsn || '-'}</td>
-                <td style="text-align: right; font-weight: 600; color: #1e293b;">₹${p.mrp}</td>
-                <td style="text-align: right; color: #64748b;">₹${p.ptr || '-'}</td>
-                <td style="text-align: right; font-weight: 700; color: #4338ca;">₹${p.pts || '-'}</td>
-                <td style="text-align: center; color: #1e293b; font-weight: 600;">${p.gstPercent}%</td>
+                <td style="font-family: monospace; text-align: center; color: #cbd5e1;">${p.hsn || '-'}</td>
+                <td style="text-align: right; font-weight: 600; color: #ffffff;">₹${p.mrp}</td>
+                <td style="text-align: right; color: #94a3b8;">₹${p.ptr || '-'}</td>
+                <td style="text-align: right; font-weight: 700; color: #818cf8;">₹${p.pts || '-'}</td>
+                <td style="text-align: center; color: #ffffff; font-weight: 600;">${p.gstPercent}%</td>
                 <td style="text-align: center;">
                     <input type="number" class="qty-input" value="${qty}" min="0" step="1"
                         oninput="updateCart('${p._id}', this.value, this)" 
@@ -321,15 +321,18 @@ function updateFooter() {
         itemCount++;
     });
 
-    const grandTotal = Math.ceil(taxableValue + gstTotal); // Round Up Formula Applied
+    const netAmount = taxableValue + gstTotal;
+    const grandTotal = Math.ceil(netAmount); // Round Up Formula Applied
 
     // Update UI elements
     const taxableEl = document.getElementById('footer-subtotal');
     const gstEl = document.getElementById('footer-gst');
+    const netEl = document.getElementById('footer-net');
     const totalEl = document.getElementById('footer-total');
 
     if (taxableEl) taxableEl.innerText = `₹${taxableValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
     if (gstEl) gstEl.innerText = `₹${gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (netEl) netEl.innerText = `₹${netAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
     if (totalEl) totalEl.innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
     const footer = document.getElementById('orderFooter');
