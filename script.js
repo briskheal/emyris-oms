@@ -73,42 +73,14 @@ async function handleLogin(e) {
         });
         const result = await res.json();
         if (result.success) {
-            if (result.requiresPin) {
-                pendingLoginId = result.loginId;
-                switchView('pin');
-            } else {
-                currentUser = result.user;
-                localStorage.setItem('emyris_user', JSON.stringify(currentUser));
-                switchView('order');
-                initOrderSystem();
-            }
-        } else {
-            alert(result.message);
-        }
-    } catch (e) { alert("Login failed. Server error."); }
-}
-
-async function handleVerifyPin(e) {
-    e.preventDefault();
-    const pin = document.getElementById('login-pin-input').value;
-
-    try {
-        const res = await fetch(`${API_BASE}/stockist/verify-login-pin`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ loginId: pendingLoginId, pin })
-        });
-        const result = await res.json();
-        if (result.success) {
             currentUser = result.user;
             localStorage.setItem('emyris_user', JSON.stringify(currentUser));
             switchView('order');
             initOrderSystem();
-            pendingLoginId = null;
         } else {
             alert(result.message);
         }
-    } catch (e) { alert("PIN verification failed."); }
+    } catch (e) { alert("Login failed. Server error."); }
 }
 
 async function handleForgotPassword(e) {

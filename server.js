@@ -210,24 +210,37 @@ app.post('/api/stockist/register', async (req, res) => {
         const newStockist = new Stockist({ name, loginId, password, address, phone, email, dlNo, gstNo, fssaiNo });
         await newStockist.save();
 
-        // Send Registration Confirmation Email
+        // 1. Send Registration Confirmation to Stockist
         const welcomeEmail = `
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background-color: #f1f5f9;">
                 <div style="background-color: #ffffff; padding: 40px; border-radius: 24px; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0;">
                     <h2 style="color: #6366f1; margin-top: 0;">Registration Received!</h2>
                     <p>Hello <strong>${name}</strong>,</p>
-                    <p>Thank you for registering with the EMYRIS Distribution Network. Your application is currently under review.</p>
+                    <p>Thank you for registering with the EMYRIS Distribution Network. Your application is currently under review by our administration team.</p>
                     <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid #e2e8f0;">
-                        <p style="margin: 0; color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase;">Your Login ID</p>
-                        <p style="margin: 5px 0 0 0; font-size: 20px; font-weight: 800; color: #6366f1;">${loginId}</p>
+                        <p style="margin: 0; color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase;">Status</p>
+                        <p style="margin: 5px 0 0 0; font-size: 18px; font-weight: 800; color: #f59e0b;">APPROVAL PENDING</p>
                     </div>
-                    <p style="font-size: 14px; color: #64748b;">An administrator will verify your Drug License and compliance details shortly. You will receive another email once your account is activated.</p>
+                    <p style="font-size: 14px; color: #64748b;">Once your Drug License and compliance data are verified, you will receive another email with your activation details.</p>
                 </div>
             </div>
         `;
-        await sendEmail(email, "📦 EMYRIS Registration Received", welcomeEmail);
+        await sendEmail(email, "📦 EMYRIS Registration Received - Approval Pending", welcomeEmail);
 
-        res.json({ success: true, message: `Registration successful! Your Auto-Generated Login ID is: ${loginId}. Please wait for Admin approval.` });
+        // 2. Send Admin Notification to emyrisbio@gmail.com
+        const adminNotifyEmail = `
+            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee;">
+                <h3>New Stockist Registered</h3>
+                <p><strong>Name:</strong> ${name}</p>
+                <p><strong>Email:</strong> ${email}</p>
+                <p><strong>Phone:</strong> ${phone}</p>
+                <p><strong>DL No:</strong> ${dlNo}</p>
+                <p>Please check the admin portal to verify and approve this record.</p>
+            </div>
+        `;
+        await sendEmail("emyrisbio@gmail.com", "🔔 New Stockist Registration: " + name, adminNotifyEmail);
+
+        res.json({ success: true, message: `Registration successful! Please wait for Admin approval. Your ID will be sent to ${email} once approved.` });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -238,26 +251,8 @@ app.post('/api/stockist/login', async (req, res) => {
         if (!user) return res.status(401).json({ success: false, message: 'Invalid Credentials' });
         if (!user.approved) return res.status(403).json({ success: false, message: 'Account pending approval' });
         
-        // Generate Login PIN
-        const pin = Math.floor(100000 + Math.random() * 900000).toString();
-        user.loginPin = pin;
-        await user.save();
-
-        const emailContent = `
-            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; max-width: 500px;">
-                <h2 style="color: #6366f1;">Login Verification</h2>
-                <p>Hello <strong>${user.name}</strong>,</p>
-                <p>Your login ID is: <strong style="font-family: monospace;">${user.loginId}</strong></p>
-                <p>Your 6-digit verification code is:</p>
-                <div style="font-size: 2.5rem; font-weight: 900; color: #6366f1; padding: 20px; background: #f5f3ff; text-align: center; border-radius: 12px; margin: 25px 0; letter-spacing: 5px;">
-                    ${pin}
-                </div>
-                <p style="font-size: 0.8rem; color: #64748b; line-height: 1.5;">This PIN is for single-use login. If you did not attempt to log in, please secure your account.</p>
-            </div>
-        `;
-        
-        await sendEmail(user.email, "🔑 EMYRIS Login PIN", emailContent);
-        res.json({ success: true, requiresPin: true, loginId: user.loginId });
+        console.log(`[LOGIN] Success for ${loginId}`);
+        res.json({ success: true, user });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -453,8 +448,16 @@ app.put('/api/admin/stockists/:id/approve', async (req, res) => {
                 <p>Hello <strong>${stockist.name}</strong>,</p>
                 <p>Your account has been verified and successfully approved by the EMYRIS Admin team.</p>
                 
-                <div style="background: #f0fdf4; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid #bbf7d0; text-align: center;">
-                    <p style="margin: 0; color: #166534; font-size: 1rem; font-weight: 600;">You can now log in to the portal using your Login ID and Password.</p>
+                <div style="background: #f0fdf4; padding: 25px; border-radius: 16px; margin: 25px 0; border: 1px solid #bbf7d0; text-align: center;">
+                    <p style="margin: 0 0 10px 0; color: #166534; font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Your Portal Credentials</p>
+                    <div style="margin-bottom: 15px;">
+                        <span style="color: #64748b; font-size: 13px;">Login ID:</span><br>
+                        <strong style="font-family: monospace; font-size: 1.2rem; color: #10b981;">${stockist.loginId}</strong>
+                    </div>
+                    <div>
+                        <span style="color: #64748b; font-size: 13px;">Password:</span><br>
+                        <strong style="font-family: monospace; font-size: 1.2rem; color: #10b981;">${stockist.password}</strong>
+                    </div>
                 </div>
                 
                 <p>Access the portal here: <a href="http://localhost:4000" style="color: #6366f1; font-weight: 700; text-decoration: none;">Stockist Portal</a></p>
