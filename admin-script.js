@@ -398,16 +398,14 @@ function renderStockists() {
                 ${s.loginId}
                 ${s.stockistCode ? `<div style="color:var(--accent); font-size:0.7rem; margin-top:4px;">CODE: ${s.stockistCode}</div>` : ''}
             </td>
-            <td>
-                <div style="font-size:0.8rem;">DL: ${s.dlNo || '-'}</div>
-                <div style="font-size:0.8rem;">GST: ${s.gstNo || '-'}</div>
-                <div style="font-size:0.8rem;">FSSAI: ${s.fssaiNo || '-'}</div>
-            </td>
-            <td>${s.address || '-'}</td>
-            <td>${s.phone || '-'}</td>
+            <td style="font-family:monospace; font-size:0.85rem; color:#fff;">${s.dlNo || '-'}</td>
+            <td style="font-family:monospace; font-size:0.85rem; color:#fff;">${s.gstNo || '-'}</td>
+            <td style="font-family:monospace; font-size:0.85rem; color:#fff;">${s.fssaiNo || '-'}</td>
+            <td style="font-size:0.85rem;">${s.address || '-'}</td>
+            <td style="font-size:0.85rem;">${s.phone || '-'}</td>
             <td><span class="badge ${s.approved ? 'badge-approved' : 'badge-pending'}">${s.approved ? 'Approved' : 'Pending'}</span></td>
-            <td>
-                ${!s.approved ? `<button class="btn btn-primary" style="padding: 5px 12px; font-size:0.75rem; margin-right:5px;" onclick="approveStockist('${s._id}')">APPROVE</button>` : '<span style="color:var(--accent); margin-right:10px;">✅ Verified</span>'}
+            <td style="white-space: nowrap;">
+                ${!s.approved ? `<button class="btn btn-primary" style="padding: 5px 12px; font-size:0.75rem; margin-right:5px;" onclick="approveStockist('${s._id}')">APPROVE</button>` : '<span style="color:var(--accent); margin-right:10px; font-size:0.8rem; font-weight:700;">✅ VERIFIED</span>'}
                 <button class="btn btn-ghost" style="padding: 5px 10px; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteStockist('${s._id}')" title="Delete Stockist">🗑️</button>
             </td>
         </tr>
