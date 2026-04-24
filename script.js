@@ -221,10 +221,23 @@ async function loadMasters() {
         if (!container) return;
         
         const uniqueCats = ['ALL', ...Array.from(catSet).sort()];
-        container.innerHTML = uniqueCats.map(c => `
-            <div class="cat-chip ${c === currentCat ? 'active' : ''}" 
-                onclick="filterCat('${c}', this)">${c}</div>
-        `).join('');
+        container.innerHTML = uniqueCats.map(c => {
+            let icon = '📦';
+            if (c === 'ALL') icon = '🌍';
+            else if (c.includes('SYRUP')) icon = '🧪';
+            else if (c.includes('TABLET')) icon = '💊';
+            else if (c.includes('CAPSULE')) icon = '💊';
+            else if (c.includes('INJECTION')) icon = '💉';
+            else if (c.includes('PROTEIN')) icon = '💪';
+            else if (c.includes('ANTIBIOTIC')) icon = '🦠';
+            else if (c.includes('ANTIFUNGAL')) icon = '🍄';
+
+            return `
+                <div class="cat-chip ${c === currentCat ? 'active' : ''}" onclick="filterCat('${c}', this)">
+                    <span class="cat-icon">${icon}</span> ${c}
+                </div>
+            `;
+        }).join('');
     } catch (e) { console.error("Load masters failed", e); }
 }
 
@@ -298,7 +311,10 @@ function renderExcelProducts() {
             <tr id="row-${p._id}">
                 <td>
                     <div style="font-weight: 800; color: var(--primary);">${p.name}</div>
-                    <div style="font-size: 0.65rem; color: var(--text-muted);">${p.category || '-'}</div>
+                    <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">${p.category || 'GENERAL'}</div>
+                </td>
+                <td style="text-align: center; font-weight: 700; color: #fff; font-size: 0.8rem;">
+                    ${p.packing || '-'}
                 </td>
                 <td style="font-family: monospace; text-align: center; color: #cbd5e1;">${p.hsn || '-'}</td>
                 <td style="text-align: right; font-weight: 600; color: #ffffff;">₹${p.mrp}</td>
@@ -316,7 +332,7 @@ function renderExcelProducts() {
                         oninput="updateBonus('${p._id}', this.value)"
                         style="width: 70px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-weight: 700; color: #10b981;">
                 </td>
-                <td style="text-align: right; font-weight: 800; font-size: 1rem;" id="total-${p._id}">₹${total}</td>
+                <td style="text-align: right;" class="total-cell" id="total-${p._id}">₹${total}</td>
             </tr>
         `;
     }).join('');
