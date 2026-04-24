@@ -52,12 +52,49 @@ function switchTab(tabId, el) {
 }
 
 // --- DASHBOARD ---
+let chartInstances = {};
+
 async function refreshDashboard() {
     try {
-        await loadOrders(); // Refresh order data
-        updateStats();
-        renderRecentOrders();
-    } catch (e) { console.error("Dashboard refresh fail"); }
+        await Promise.all([loadOrders(), loadStockists(), loadProducts()]);
+        
+        // Update Stats
+        const pendingOrders = allOrders.filter(o => o.status === 'pending');
+        document.getElementById('stat-orders').innerText = allOrders.length;
+        document.getElementById('stat-pending').innerText = pendingOrders.length;
+        document.getElementById('stat-stockists').innerText = allStockists.length;
+
+        // Month-over-Month Logic
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        
+        const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+        const currentOrders = allOrders.filter(o => {
+            const d = new Date(o.createdAt);
+            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        });
+
+        const previousOrders = allOrders.filter(o => {
+            const d = new Date(o.createdAt);
+            return d.getMonth() === prevMonth && d.getFullYear() === prevYear;
+        });
+
+        const currentTotal = currentOrders.reduce((sum, o) => sum + o.grandTotal, 0);
+        const previousTotal = previousOrders.reduce((sum, o) => sum + o.grandTotal, 0);
+
+        const growth = previousTotal === 0 ? 100 : (((currentTotal - previousTotal) / previousTotal) * 100);
+        const momBadge = document.getElementById('mom-badge');
+        if (momBadge) {
+            momBadge.innerText = `${growth >= 0 ? '▲' : '▼'} ${Math.abs(growth).toFixed(1)}% vs Last Month`;
+            momBadge.style.background = growth >= 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+            momBadge.style.color = growth >= 0 ? '#10b981' : '#ef4444';
+        }
+
+        renderCharts(currentOrders, allOrders);
+    } catch (e) { console.error("Dashboard refresh fail", e); }
 }
 
 async function loadOrders() {
@@ -67,57 +104,131 @@ async function loadOrders() {
     } catch (e) { console.error("Load orders fail"); }
 }
 
-function renderRecentOrders() {
-    const tbody = document.getElementById('recentOrdersBody');
-    if (!tbody) return;
-    const recent = allOrders.slice(0, 15);
-    tbody.innerHTML = recent.map(o => `
-        <tr>
-            <td style="font-family:monospace; font-weight:700;">${o.orderNo}</td>
-            <td>
-                <div>${o.stockist ? o.stockist.name : 'Unknown'}</div>
-                ${o.bonusApproval && o.bonusApproval.isManual ? '<span style="font-size:0.6rem; background:#fff7ed; color:#ea580c; padding:2px 6px; border-radius:4px; border:1px solid #ffedd5;">⚠️ MANUAL BONUS</span>' : ''}
-            </td>
-            <td>${new Date(o.createdAt).toLocaleDateString('en-GB')}</td>
-            <td>${o.items.length} Items</td>
-            <td style="font-weight:700; color:var(--primary);">₹${o.grandTotal.toLocaleString('en-IN')}</td>
-            <td><span class="badge ${o.status === 'approved' ? 'badge-approved' : 'badge-pending'}">${o.status.toUpperCase()}</span></td>
-            <td>
-                <div style="display:flex; gap:5px;">
-                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="alert('Viewing Details for ' + '${o.orderNo}')">👁️</button>
-                    ${o.status === 'pending' ? `<button class="btn btn-primary" style="padding:5px 10px; font-size:0.7rem;" onclick="approveOrder('${o._id}')">APPROVE</button>` : ''}
-                </div>
-            </td>
-        </tr>
-    `).join('');
-}
+function renderCharts(currentMonthOrders, totalOrders) {
+    // Destroy existing charts
+    Object.values(chartInstances).forEach(chart => chart.destroy());
 
-async function approveOrder(id) {
-    if (!confirm("Approve this order and record bonus status?")) return;
-    const adminName = prompt("Enter Approver Name:", "EMYRIS ADMIN");
-    if (!adminName) return;
+    // --- SALES TREND (Current Month) ---
+    const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+    const dailyData = Array(daysInMonth).fill(0);
+    currentMonthOrders.forEach(o => {
+        const day = new Date(o.createdAt).getDate();
+        dailyData[day - 1] += o.grandTotal;
+    });
 
-    try {
-        const res = await fetch(`${API_BASE}/admin/orders/${id}/approve`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ approvedBy: adminName })
-        });
-        const result = await res.json();
-        if (result.success) {
-            alert("Order Approved Successfully!");
-            refreshDashboard();
+    chartInstances.sales = new Chart(document.getElementById('salesChart'), {
+        type: 'line',
+        data: {
+            labels: Array.from({length: daysInMonth}, (_, i) => i + 1),
+            datasets: [{
+                label: 'Revenue (₹)',
+                data: dailyData,
+                borderColor: '#6366f1',
+                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3,
+                pointRadius: 4,
+                pointBackgroundColor: '#6366f1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+            }
         }
-    } catch (e) { alert("Approval failed."); }
-}
+    });
 
-function updateStats() {
-    document.getElementById('stat-products').innerText = allProducts.length;
-    document.getElementById('stat-pending').innerText = allStockists.filter(s => !s.approved).length;
-    document.getElementById('stat-orders').innerText = allOrders.length;
-    
-    const rev = allOrders.reduce((acc, curr) => acc + (curr.subTotal || 0), 0);
-    document.getElementById('stat-revenue').innerText = rev.toLocaleString('en-IN');
+    // --- TOP PRODUCTS ---
+    const productCounts = {};
+    totalOrders.forEach(o => {
+        o.items.forEach(item => {
+            productCounts[item.name] = (productCounts[item.name] || 0) + item.qty;
+        });
+    });
+    const topProds = Object.entries(productCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+    chartInstances.products = new Chart(document.getElementById('topProductsChart'), {
+        type: 'bar',
+        data: {
+            labels: topProds.map(p => p[0]),
+            datasets: [{
+                label: 'Units Sold',
+                data: topProds.map(p => p[1]),
+                backgroundColor: '#818cf8',
+                borderRadius: 8
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                y: { ticks: { color: '#94a3b8' } }
+            }
+        }
+    });
+
+    // --- TOP STOCKISTS ---
+    const stockistSales = {};
+    totalOrders.forEach(o => {
+        const name = o.stockist ? o.stockist.name : 'Unknown';
+        stockistSales[name] = (stockistSales[name] || 0) + o.grandTotal;
+    });
+    const topStockists = Object.entries(stockistSales).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+    chartInstances.stockists = new Chart(document.getElementById('topStockistsChart'), {
+        type: 'bar',
+        data: {
+            labels: topStockists.map(s => s[0]),
+            datasets: [{
+                label: 'Total Purchase (₹)',
+                data: topStockists.map(s => s[1]),
+                backgroundColor: '#10b981',
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                x: { ticks: { color: '#94a3b8' } }
+            }
+        }
+    });
+
+    // --- ORDER STATUS ---
+    const statusCounts = { pending: 0, approved: 0 };
+    totalOrders.forEach(o => { statusCounts[o.status] = (statusCounts[o.status] || 0) + 1; });
+
+    chartInstances.status = new Chart(document.getElementById('orderStatusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Pending', 'Approved'],
+            datasets: [{
+                data: [statusCounts.pending, statusCounts.approved],
+                backgroundColor: ['#f59e0b', '#10b981'],
+                borderWidth: 0,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#94a3b8', font: { weight: 'bold' } } }
+            },
+            cutout: '70%'
+        }
+    });
 }
 
 // --- PRODUCT MASTER ---

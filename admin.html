@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EMYRIS OMS | Admin Command Center</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary: #6366f1;
@@ -256,28 +257,41 @@
                         <div class="stat-value" id="stat-pending">0</div>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-label">Active Products</span>
-                        <div class="stat-value" id="stat-products">0</div>
+                        <span class="stat-label">Stockists</span>
+                        <div class="stat-value" id="stat-stockists">0</div>
                     </div>
                 </div>
 
-                <div class="glass-card">
-                    <div class="section-title"><span>🚀</span> Recent Orders</div>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Order ID</th>
-                                    <th>Stockist</th>
-                                    <th>Date</th>
-                                    <th>Items</th>
-                                    <th>Total Value</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="recentOrdersBody"></tbody>
-                        </table>
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div class="glass-card" style="padding: 2rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h3 class="section-title" style="margin: 0; font-size: 1.1rem;">📈 Sales Performance (This Month)</h3>
+                            <div id="mom-badge" style="padding: 4px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 800;">-</div>
+                        </div>
+                        <div style="height: 350px;">
+                            <canvas id="salesChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass-card" style="padding: 2rem;">
+                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 1.5rem;">🎯 Top 5 Best Sellers</h3>
+                        <div style="height: 350px;">
+                            <canvas id="topProductsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <div class="glass-card" style="padding: 2rem;">
+                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 1.5rem;">🤝 Leading Stockists</h3>
+                        <div style="height: 300px;">
+                            <canvas id="topStockistsChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass-card" style="padding: 2rem;">
+                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 1.5rem;">📦 Order Fulfillment</h3>
+                        <div style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                            <canvas id="orderStatusChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>

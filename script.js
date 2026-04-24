@@ -239,11 +239,32 @@ function filterCat(cat, el) {
     document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
     el.classList.add('active');
     currentCat = cat;
+    
+    // Clear search input when clicking a category chip
+    const searchInput = document.getElementById('productSearch');
+    if (searchInput) {
+        searchInput.value = '';
+        currentSearch = '';
+    }
+    
     renderExcelProducts();
 }
 
 function searchProducts(query) {
-    currentSearch = query.toLowerCase();
+    currentSearch = query.toLowerCase().trim();
+    
+    // Reset category chip to ALL when typing in search
+    if (currentSearch !== '') {
+        currentCat = 'ALL';
+        document.querySelectorAll('.cat-chip').forEach(c => {
+            if (c.innerText.toUpperCase() === 'ALL' || c.innerText.toUpperCase() === 'ALL PRODUCTS') {
+                c.classList.add('active');
+            } else {
+                c.classList.remove('active');
+            }
+        });
+    }
+    
     renderExcelProducts();
 }
 
@@ -253,14 +274,17 @@ function renderExcelProducts() {
 
     let filtered = allProducts;
     
+    // 1. Apply Category Filter
     if (currentCat !== 'ALL') {
-        filtered = filtered.filter(p => p.category && p.category.toUpperCase() === currentCat.toUpperCase());
+        filtered = filtered.filter(p => p.category && p.category.toString().toUpperCase().trim() === currentCat.toUpperCase().trim());
     }
     
+    // 2. Apply Search Filter (Name, HSN, or Category)
     if (currentSearch) {
         filtered = filtered.filter(p => 
             (p.name && p.name.toLowerCase().includes(currentSearch)) || 
-            (p.hsn && p.hsn.includes(currentSearch))
+            (p.hsn && p.hsn.toString().toLowerCase().includes(currentSearch)) ||
+            (p.category && p.category.toString().toLowerCase().includes(currentSearch))
         );
     }
 
