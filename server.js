@@ -692,7 +692,7 @@ app.post('/api/orders/create', async (req, res) => {
             sendOrderEmails(newOrder, stockist);
         }
 
-        res.json({ success: true, orderNo });
+        res.json({ success: true, order: newOrder });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

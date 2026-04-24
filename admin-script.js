@@ -599,10 +599,11 @@ async function loadSettings() {
 
 async function saveSettings(e) {
     e.preventDefault();
-    const btn = e.target.querySelector('button[type="submit"]');
+    const btn = document.querySelector('button[form="companyForm"]');
+    if (!btn) return;
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `⏳ SAVING...`;
+    btn.innerHTML = `⏳ SAVING CONFIGURATION...`;
 
     const data = {
         name: document.getElementById('set-name').value,

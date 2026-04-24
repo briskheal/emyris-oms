@@ -449,8 +449,12 @@ function updateFooter() {
     Object.keys(cart).forEach(pid => {
         const p = allProducts.find(x => x._id === pid);
         const qty = cart[pid];
-        const price = p.pts || p.ptr || 0;
-        const itemVal = qty * price;
+        
+        // Use Negotiated Rate for Calculations
+        const locked = currentUser.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
+        const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : (p.pts || p.ptr || 0)));
+        
+        const itemVal = qty * rate;
         const itemGst = (itemVal * (p.gstPercent || 12)) / 100;
         
         taxableValue += itemVal;
@@ -481,10 +485,10 @@ function updateFooter() {
 
 async function placeOrder() {
     const btn = document.querySelector('button[onclick="placeOrder()"]');
+    if (!btn) return;
     const originalHtml = btn.innerHTML;
 
     // Validate negotiation notes
-    for (const pid of Object.keys(cart)) {
         const p = allProducts.find(x => x._id === pid);
         const locked = currentUser.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
         const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : p.pts));
@@ -525,7 +529,7 @@ async function placeOrder() {
     const subTotal = orderItems.reduce((a, b) => a + b.totalValue, 0);
     let gstAmt = 0;
     orderItems.forEach(item => {
-        const p = allProducts.find(x => x._id === item.productId);
+        const p = allProducts.find(x => x._id === item.product); // Fixed: item.product instead of item.productId
         gstAmt += (item.totalValue * (p.gstPercent || 12)) / 100;
     });
     

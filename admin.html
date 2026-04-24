@@ -470,80 +470,99 @@
 
             <!-- SETTINGS TAB -->
             <div id="tab-settings" class="hidden">
-                <h2 class="section-title">⚙️ Company & Portal Configuration</h2>
-                <div class="glass-card">
-                    <form id="companyForm" onsubmit="saveSettings(event)">
-                        <h3 class="section-title" style="font-size: 1rem;">🏢 Company Details</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" style="margin: 0;">⚙️ Company & Portal Configuration</h2>
+                    <button class="btn btn-primary" type="submit" form="companyForm">💾 SAVE ALL SETTINGS</button>
+                </div>
+
+                <form id="companyForm" onsubmit="saveSettings(event)">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+                        
+                        <!-- Card 1: Identity & Address -->
+                        <div class="glass-card" style="padding: 1.5rem; height: 100%;">
+                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: var(--primary);">🏢 Corporate Identity</h3>
                             <div class="form-group">
                                 <label>Company Full Name</label>
                                 <input type="text" id="set-name" placeholder="Emyris Biolifesciences Pvt. Ltd.">
                             </div>
-                            <div class="form-group">
-                                <label>Toll Free Number</label>
-                                <input type="text" id="set-tollfree" placeholder="7993163300">
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>Registered Office Address</label>
+                                <textarea id="set-address" style="width: 100%; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; color: #fff; min-height: 100px;"></textarea>
                             </div>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+
+                        <!-- Card 2: Hotlines & Communication -->
+                        <div class="glass-card" style="padding: 1.5rem; height: 100%;">
+                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: var(--accent);">📞 Official Hotlines</h3>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label>Toll Free Number</label>
+                                    <input type="text" id="set-tollfree" placeholder="7993163300">
+                                </div>
+                                <div class="form-group">
+                                    <label>WhatsApp / Mobile</label>
+                                    <input type="text" id="set-phone" placeholder="+91-XXXXXXXXXX">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>Admin Notification Email (Private)</label>
+                                <input type="email" id="set-admin-email" placeholder="admin@emyrisbio.com">
+                            </div>
+                        </div>
+
+                        <!-- Card 3: Digital Channels -->
+                        <div class="glass-card" style="padding: 1.5rem; height: 100%;">
+                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: #10b981;">🌐 Digital Presence</h3>
                             <div class="form-group">
                                 <label>Primary Website</label>
                                 <input type="text" id="set-web1" placeholder="www.emyrisbio.com">
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" style="margin-top: 1rem;">
                                 <label>Secondary Website</label>
                                 <input type="text" id="set-web2" placeholder="www.emyris.in">
                             </div>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
+
+                        <!-- Card 4: Email Ecosystem -->
+                        <div class="glass-card" style="padding: 1.5rem; height: 100%;">
+                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: #f59e0b;">✉️ Contact Emails</h3>
                             <div class="form-group">
-                                <label>Primary Email</label>
+                                <label>General Inquiries</label>
                                 <input type="email" id="set-email1" placeholder="contact@emyrisbio.com">
                             </div>
-                            <div class="form-group">
-                                <label>Secondary Email</label>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>Sales & Distribution</label>
                                 <input type="email" id="set-email2" placeholder="sales@emyrisbio.com">
                             </div>
-                            <div class="form-group">
-                                <label>Support Email</label>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>Technical Support</label>
                                 <input type="email" id="set-email3" placeholder="support@emyrisbio.com">
                             </div>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                            <div class="form-group">
-                                <label>WhatsApp / Primary Mobile</label>
-                                <input type="text" id="set-phone" placeholder="+91-XXXXXXXXXX">
-                            </div>
-                            <div class="form-group">
-                                <label>Admin Notification Email (Backend)</label>
-                                <input type="email" id="set-admin-email">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Full Address (Header/Footer Details)</label>
-                            <textarea id="set-address" style="width: 100%; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; color: #fff; min-height: 80px;"></textarea>
-                        </div>
 
-                        <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 2rem 0;">
-                        
-                        <h3 class="section-title" style="font-size: 1rem;">📢 Scrolling Announcement</h3>
-                        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1.5rem;">
-                            <div class="form-group">
-                                <label>Message Text</label>
-                                <input type="text" id="set-msg-text" placeholder="Welcome to EMYRIS OMS...">
-                            </div>
-                            <div class="form-group">
-                                <label>Message Color</label>
-                                <input type="color" id="set-msg-color" value="#6366f1" style="height: 45px; padding: 5px;">
-                            </div>
-                            <div class="form-group">
-                                <label>Scroll Speed (sec)</label>
-                                <input type="number" id="set-msg-speed" value="30">
+                        <!-- Card 5: Portal Experience -->
+                        <div class="glass-card" style="grid-column: span 2; padding: 1.5rem;">
+                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: #ec4899;">📢 Portal Announcement Bar</h3>
+                            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1.5rem; align-items: end;">
+                                <div class="form-group">
+                                    <label>Message Content</label>
+                                    <input type="text" id="set-msg-text" placeholder="Type your announcement here...">
+                                </div>
+                                <div class="form-group">
+                                    <label>Text Color</label>
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <input type="color" id="set-msg-color" oninput="document.getElementById('color-hex').innerText = this.value.toUpperCase()" value="#6366f1" style="height: 45px; width: 60px; padding: 5px; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 8px;">
+                                        <span id="color-hex" style="font-family: monospace; font-size: 0.8rem; opacity: 0.7;">#6366F1</span>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Animation Speed (s)</label>
+                                    <input type="number" id="set-msg-speed" value="30">
+                                </div>
                             </div>
                         </div>
-
-                        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">UPDATE GLOBAL CONFIGURATION</button>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
         </main>
     </div>
