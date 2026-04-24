@@ -176,11 +176,12 @@ mongoose.connect(MONGODB_URI)
 
 // 1. Company Profile
 const companySchema = new mongoose.Schema({
-    name: { type: String, default: "Emyris Biolifesciences Pvt. Ltd." },
-    address: String,
-    website: String,
-    phones: [String],
-    email: String,
+    name: { type: String, default: "EMYRIS BIOLIFESCIENCES" },
+    address: { type: String, default: "Your Office Address Here" },
+    websites: { type: [String], default: ["www.emyrisbio.com", "www.emyris.in"] },
+    phones: { type: [String], default: ["+91-XXXXXXXXXX"] },
+    tollFree: { type: String, default: "7993163300" },
+    emails: { type: [String], default: ["contact@emyrisbio.com", "sales@emyrisbio.com", "support@emyrisbio.com"] },
     superDistributorEmail: String,
     adminEmail: String,
     gstRate: { type: Number, default: 12 },

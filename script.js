@@ -186,9 +186,21 @@ async function loadSettings() {
         // Update UI
         document.getElementById('co-name').innerText = companySettings.name || "EMYRIS BIOLIFESCIENCES";
         document.getElementById('co-address').innerText = companySettings.address || "Loading address...";
-        document.getElementById('co-web').innerText = `🌐 ${companySettings.website || 'www.emyrisbio.com'}`;
-        document.getElementById('co-phone').innerText = `📞 ${companySettings.phones ? companySettings.phones[0] : 'N/A'}`;
-        document.getElementById('co-email').innerText = `✉️ ${companySettings.adminEmail || 'contact@emyrisbio.com'}`;
+        document.getElementById('co-tollfree').innerText = companySettings.tollFree || "7993163300";
+        document.getElementById('co-phone').innerText = `WhatsApp: ${companySettings.phones ? companySettings.phones[0] : 'N/A'}`;
+        
+        // Websites
+        if (companySettings.websites) {
+            document.getElementById('co-web1').innerText = `🌐 ${companySettings.websites[0] || ''}`;
+            document.getElementById('co-web2').innerText = companySettings.websites[1] ? `🌐 ${companySettings.websites[1]}` : '';
+        }
+        
+        // Emails
+        if (companySettings.emails) {
+            document.getElementById('co-email1').innerText = `✉️ ${companySettings.emails[0] || ''}`;
+            document.getElementById('co-email2').innerText = companySettings.emails[1] ? `✉️ ${companySettings.emails[1]}` : '';
+            document.getElementById('co-email3').innerText = companySettings.emails[2] ? `✉️ ${companySettings.emails[2]}` : '';
+        }
 
         // Footer population
         if (document.getElementById('f-co-name')) document.getElementById('f-co-name').innerText = companySettings.name || "EMYRIS BIOLIFESCIENCES";
@@ -462,16 +474,16 @@ async function placeOrder() {
         const rate = askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : p.pts);
         
         return {
-            productId: pid,
+            product: pid, // Corrected from productId to match schema
             name: p.name,
-            qty,
+            qty: qty,
             bonusQty: manualBonuses[pid] !== undefined ? manualBonuses[pid] : (p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0),
-            priceUsed: rate,
-            askingRate: askingRates[pid],
-            masterRate: p.pts,
+            priceUsed: Number(rate) || 0,
+            askingRate: askingRates[pid] !== undefined ? Number(askingRates[pid]) : Number(rate),
+            masterRate: Number(p.pts) || 0,
             negotiationNote: negotiationNotes[pid] || (locked ? locked.note : ''),
             mrp: p.mrp,
-            totalValue: qty * rate
+            totalValue: Number(qty * rate) || 0
         };
     });
 

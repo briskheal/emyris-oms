@@ -566,15 +566,28 @@ async function loadSettings() {
         const res = await fetch(`${API_BASE}/admin/settings`);
         const s = await res.json();
         document.getElementById('set-name').value = s.name || '';
-        document.getElementById('set-web').value = s.website || '';
+        document.getElementById('set-tollfree').value = s.tollFree || '';
+        
+        // Websites
+        if (s.websites) {
+            document.getElementById('set-web1').value = s.websites[0] || '';
+            document.getElementById('set-web2').value = s.websites[1] || '';
+        }
+        
+        // Emails
+        if (s.emails) {
+            document.getElementById('set-email1').value = s.emails[0] || '';
+            document.getElementById('set-email2').value = s.emails[1] || '';
+            document.getElementById('set-email3').value = s.emails[2] || '';
+        }
+
         document.getElementById('set-phone').value = s.phones ? s.phones[0] : '';
         document.getElementById('set-address').value = s.address || '';
         document.getElementById('set-admin-email').value = s.adminEmail || '';
 
-        // Footer population
+        // Footer population (handled by script.js in stockist, but here for completeness)
         if (document.getElementById('footer-co-name')) document.getElementById('footer-co-name').innerText = s.name || 'EMYRIS OMS';
         if (document.getElementById('footer-co-address')) document.getElementById('footer-co-address').innerText = s.address || '';
-        if (document.getElementById('footer-co-web')) document.getElementById('footer-co-web').innerText = s.website || '';
         
         if (s.scrollingMessage) {
             document.getElementById('set-msg-text').value = s.scrollingMessage.text || '';
@@ -588,7 +601,16 @@ async function saveSettings(e) {
     e.preventDefault();
     const data = {
         name: document.getElementById('set-name').value,
-        website: document.getElementById('set-web').value,
+        tollFree: document.getElementById('set-tollfree').value,
+        websites: [
+            document.getElementById('set-web1').value,
+            document.getElementById('set-web2').value
+        ].filter(v => v),
+        emails: [
+            document.getElementById('set-email1').value,
+            document.getElementById('set-email2').value,
+            document.getElementById('set-email3').value
+        ].filter(v => v),
         phones: [document.getElementById('set-phone').value],
         address: document.getElementById('set-address').value,
         adminEmail: document.getElementById('set-admin-email').value,

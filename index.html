@@ -459,16 +459,32 @@
             </div>
         </div>
 
-        <div class="company-header" style="background: var(--card-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); padding: 2.5rem; border-radius: 28px; margin-bottom: 2rem;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div class="company-header" style="background: var(--card-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); padding: 2rem; border-radius: 28px; margin-bottom: 2rem;">
+            <div style="display: grid; grid-template-columns: 1.5fr 1fr 1.5fr; gap: 2rem; align-items: start;">
+                <!-- Column 1: Identity -->
                 <div>
-                    <h1 id="co-name" style="font-size: 2rem; margin-bottom: 0.5rem;">EMYRIS BIOLIFESCIENCES</h1>
-                    <p id="co-address" style="opacity: 0.9; font-size: 0.85rem; max-width: 500px;">Loading address...</p>
+                    <h1 id="co-name" style="font-size: 1.8rem; margin-bottom: 0.5rem; letter-spacing: -1px;">EMYRIS BIOLIFESCIENCES</h1>
+                    <p id="co-address" style="opacity: 0.8; font-size: 0.8rem; line-height: 1.4;">Loading address...</p>
                 </div>
-                <div style="text-align: right; font-size: 0.85rem; opacity: 0.9;">
-                    <p id="co-web">🌐 www.emyrisbio.com</p>
-                    <p id="co-phone">📞 +91-XXXXXXXXXX</p>
-                    <p id="co-email">✉️ contact@emyrisbio.com</p>
+                
+                <!-- Column 2: Hotlines (Center) -->
+                <div style="text-align: center; background: rgba(99, 102, 241, 0.05); border: 1px dashed rgba(99, 102, 241, 0.3); border-radius: 20px; padding: 1rem;">
+                    <div style="font-size: 0.65rem; color: var(--primary); font-weight: 800; text-transform: uppercase; margin-bottom: 5px;">📞 Toll-Free Support</div>
+                    <div id="co-tollfree" style="font-size: 1.5rem; font-weight: 900; color: #fff;">7993163300</div>
+                    <div id="co-phone" style="font-size: 0.8rem; opacity: 0.7; margin-top: 5px;">WhatsApp: +91-XXXXXXXXXX</div>
+                </div>
+
+                <!-- Column 3: Digital Channels -->
+                <div style="text-align: right; display: flex; flex-direction: column; gap: 8px;">
+                    <div style="font-size: 0.75rem;">
+                        <span id="co-web1" style="display: block; color: var(--accent); font-weight: 700;">🌐 www.emyrisbio.com</span>
+                        <span id="co-web2" style="display: block; opacity: 0.8;">🌐 www.emyris.in</span>
+                    </div>
+                    <div style="font-size: 0.75rem; border-top: 1px solid var(--glass-border); padding-top: 8px;">
+                        <span id="co-email1" style="display: block;">✉️ contact@emyrisbio.com</span>
+                        <span id="co-email2" style="display: block; opacity: 0.8;">✉️ sales@emyrisbio.com</span>
+                        <span id="co-email3" style="display: block; opacity: 0.6; font-size: 0.7rem;">✉️ support@emyrisbio.com</span>
+                    </div>
                 </div>
             </div>
         </div>
