@@ -104,8 +104,47 @@
                     <input type="password" id="login-pass" required placeholder="••••••••">
                 </div>
                 <button type="submit" class="btn btn-primary">SIGN IN</button>
-                <div style="text-align: center; margin-top: 1.5rem;">
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button type="button" class="btn-link" onclick="switchView('forgot')">Forgot ID/PW?</button>
+                </div>
+                <div style="text-align: center; margin-top: 0.5rem;">
                     <button type="button" class="btn-link" onclick="switchView('register')">New Stockist? Register Here</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- FORGOT ID/PW VIEW -->
+    <div id="view-forgot" class="container hidden">
+        <div class="auth-card">
+            <h1 class="auth-title">Recover Account</h1>
+            <p class="auth-subtitle">Enter your registered email to receive your credentials</p>
+            <form onsubmit="handleForgotPassword(event)">
+                <div class="form-group">
+                    <label>Registered Email Address</label>
+                    <input type="email" id="forgot-email" required placeholder="example@mail.com">
+                </div>
+                <button type="submit" class="btn btn-primary">SEND CREDENTIALS</button>
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <button type="button" class="btn-link" onclick="switchView('login')">Back to Login</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- LOGIN PIN VIEW -->
+    <div id="view-pin" class="container hidden">
+        <div class="auth-card">
+            <h1 class="auth-title">Verify Login</h1>
+            <p class="auth-subtitle">We've sent a 6-digit PIN to your email</p>
+            <form onsubmit="handleVerifyPin(event)">
+                <div class="form-group">
+                    <label>Enter 6-Digit PIN</label>
+                    <input type="text" id="login-pin-input" required maxlength="6" pattern="\d{6}" placeholder="000000" style="text-align: center; font-size: 2rem; letter-spacing: 10px;">
+                </div>
+                <button type="submit" class="btn btn-primary">VERIFY & LOGIN</button>
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <button type="button" class="btn-link" onclick="switchView('login')">Cancel</button>
                 </div>
             </form>
         </div>
@@ -127,14 +166,24 @@
                         <input type="email" id="reg-email" required>
                     </div>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;">
                     <div class="form-group">
                         <label>Contact Phone</label>
                         <input type="tel" id="reg-phone" required>
                     </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
                     <div class="form-group">
-                        <label>Create Login ID</label>
-                        <input type="text" id="reg-login" required>
+                        <label>Drug License (DL) No.</label>
+                        <input type="text" id="reg-dl" placeholder="DL-XXXXXX">
+                    </div>
+                    <div class="form-group">
+                        <label>GST Number</label>
+                        <input type="text" id="reg-gst" placeholder="22AAAAA0000A1Z5">
+                    </div>
+                    <div class="form-group">
+                        <label>FSSAI Number</label>
+                        <input type="text" id="reg-fssai" placeholder="100XXXXXXXXXXX">
                     </div>
                 </div>
                 <div class="form-group">

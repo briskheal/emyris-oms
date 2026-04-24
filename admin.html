@@ -196,7 +196,10 @@
 
             <!-- STOCKIST MANAGEMENT TAB -->
             <div id="tab-stockists" class="hidden">
-                <h2 class="section-title">🤝 Stockist Management</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" style="margin: 0;">🤝 Stockist Management</h2>
+                    <button class="btn btn-ghost" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteAllStockists()">🗑️ MASTER DELETE ALL</button>
+                </div>
                 <div class="glass-card">
                     <div class="table-container">
                         <table>
@@ -204,6 +207,7 @@
                                 <tr>
                                     <th>Firm Name</th>
                                     <th>Login ID</th>
+                                    <th>Compliance</th>
                                     <th>City/Address</th>
                                     <th>Contact</th>
                                     <th>Approval</th>
@@ -272,6 +276,10 @@
                             <div class="form-group">
                                 <label>Admin Notification Email</label>
                                 <input type="email" id="set-admin-email">
+                            </div>
+                            <div class="form-group">
+                                <label>Stockist Serial Counter (Current)</label>
+                                <input type="number" id="set-stockist-counter" placeholder="0">
                             </div>
                         </div>
                         <div class="form-group">

@@ -335,6 +335,9 @@ async function loadSettings() {
         document.getElementById('set-phone').value = s.phones ? s.phones[0] : '';
         document.getElementById('set-address').value = s.address || '';
         document.getElementById('set-admin-email').value = s.adminEmail || '';
+        if (document.getElementById('set-stockist-counter')) {
+            document.getElementById('set-stockist-counter').value = s.stockistCounter || 0;
+        }
 
         // Footer population
         if (document.getElementById('footer-co-name')) document.getElementById('footer-co-name').innerText = s.name || 'EMYRIS OMS';
@@ -357,6 +360,7 @@ async function saveSettings(e) {
         phones: [document.getElementById('set-phone').value],
         address: document.getElementById('set-address').value,
         adminEmail: document.getElementById('set-admin-email').value,
+        stockistCounter: Number(document.getElementById('set-stockist-counter').value),
         scrollingMessage: {
             text: document.getElementById('set-msg-text').value,
             color: document.getElementById('set-msg-color').value,
@@ -390,27 +394,69 @@ function renderStockists() {
     tbody.innerHTML = allStockists.map(s => `
         <tr>
             <td style="font-weight:700;">${s.name}</td>
-            <td style="font-family:monospace; color:var(--primary);">${s.loginId}</td>
+            <td style="font-family:monospace; color:var(--primary);">
+                ${s.loginId}
+                ${s.stockistCode ? `<div style="color:var(--accent); font-size:0.7rem; margin-top:4px;">CODE: ${s.stockistCode}</div>` : ''}
+            </td>
+            <td>
+                <div style="font-size:0.8rem;">DL: ${s.dlNo || '-'}</div>
+                <div style="font-size:0.8rem;">GST: ${s.gstNo || '-'}</div>
+                <div style="font-size:0.8rem;">FSSAI: ${s.fssaiNo || '-'}</div>
+            </td>
             <td>${s.address || '-'}</td>
             <td>${s.phone || '-'}</td>
             <td><span class="badge ${s.approved ? 'badge-approved' : 'badge-pending'}">${s.approved ? 'Approved' : 'Pending'}</span></td>
             <td>
-                ${!s.approved ? `<button class="btn btn-primary" style="padding: 5px 12px; font-size:0.75rem;" onclick="approveStockist('${s._id}')">APPROVE</button>` : '✅ Verified'}
+                ${!s.approved ? `<button class="btn btn-primary" style="padding: 5px 12px; font-size:0.75rem; margin-right:5px;" onclick="approveStockist('${s._id}')">APPROVE</button>` : '<span style="color:var(--accent); margin-right:10px;">✅ Verified</span>'}
+                <button class="btn btn-ghost" style="padding: 5px 10px; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteStockist('${s._id}')" title="Delete Stockist">🗑️</button>
             </td>
         </tr>
     `).join('');
 }
 
 async function approveStockist(id) {
-    if (!confirm("Are you sure you want to approve this stockist?")) return;
+    // Removed confirm() for better automation and faster workflow
     try {
+        console.log("Attempting approval for ID:", id);
         const res = await fetch(`${API_BASE}/admin/stockists/${id}/approve`, { method: 'PUT' });
         const result = await res.json();
         if (result.success) {
+            console.log("Approval Success:", result.stockist.name);
             alert("Stockist approved successfully!");
             loadStockists();
+        } else {
+            alert("Approval failed: " + result.message);
         }
-    } catch (e) { alert("Approval failed."); }
+    } catch (e) { 
+        console.error("Approval error:", e);
+        alert("Approval failed."); 
+    }
+}
+
+async function deleteStockist(id) {
+    if (!confirm("Are you sure you want to delete this stockist record?")) return;
+    try {
+        const res = await fetch(`${API_BASE}/admin/stockists/${id}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (result.success) {
+            alert("Stockist record deleted.");
+            loadStockists();
+        }
+    } catch (e) { alert("Delete failed."); }
+}
+
+async function deleteAllStockists() {
+    const code = prompt("Type 'DELETE ALL' to confirm wiping all stockist records from the database:");
+    if (code !== 'DELETE ALL') return;
+    
+    try {
+        const res = await fetch(`${API_BASE}/admin/stockists-bulk/all`, { method: 'DELETE' });
+        const result = await res.json();
+        if (result.success) {
+            alert(result.message);
+            loadStockists();
+        }
+    } catch (e) { alert("Master delete failed."); }
 }
 
 function logout() {

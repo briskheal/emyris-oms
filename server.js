@@ -6,9 +6,10 @@ const axios = require('axios');
 
 dotenv.config();
 
+const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbzwd4FlloFDymjkWWGo9BV3SB11_3cHximWDgNcvNW86bz6Q-NNRbR1m2j7dAX0qVVPFA/exec";
+
 // --- EMAIL CONFIGURATION (VIA GOOGLE SCRIPT BRIDGE) ---
 async function sendOrderEmails(order, stockist) {
-    const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbzwd4FlloFDymjkWWGo9BV3SB11_3cHximWDgNcvNW86bz6Q-NNRbR1m2j7dAX0qVVPFA/exec";
     
     try {
         const itemRows = order.items.map(item => `
@@ -65,6 +66,16 @@ async function sendOrderEmails(order, stockist) {
     } catch (e) { console.error("❌ Bridge Email Fail:", e.message); }
 }
 
+async function sendEmail(to, subject, htmlBody) {
+    try {
+        await axios.post(GOOGLE_SCRIPT_URL, { to, subject, htmlBody });
+        return true;
+    } catch (e) {
+        console.error("❌ Email failed:", e.message);
+        return false;
+    }
+}
+
 const dns = require('dns');
 // Force Google DNS for SRV resolution (fixes connection issues on some networks)
 try {
@@ -103,7 +114,8 @@ const companySchema = new mongoose.Schema({
         text: { type: String, default: "Welcome to EMYRIS OMS Portal - Your partner in healthcare." },
         color: { type: String, default: "#6366f1" },
         speed: { type: Number, default: 30 }
-    }
+    },
+    stockistCounter: { type: Number, default: 0 }
 });
 
 // 2. Global Masters
@@ -136,7 +148,12 @@ const stockistSchema = new mongoose.Schema({
     address: String,
     phone: String,
     email: String,
+    dlNo: String,
+    gstNo: String,
+    fssaiNo: String,
     approved: { type: Boolean, default: false },
+    stockistCode: String,
+    loginPin: String,
     registeredAt: { type: Date, default: Date.now }
 });
 
@@ -175,22 +192,88 @@ app.get('/api/health', (req, res) => res.json({ status: 'running', database: mon
 // Auth & Registration
 app.post('/api/stockist/register', async (req, res) => {
     try {
-        const { name, loginId, password, address, phone, email } = req.body;
-        const existing = await Stockist.findOne({ loginId });
-        if (existing) return res.status(400).json({ success: false, message: 'Login ID already exists' });
-        const newStockist = new Stockist({ name, loginId, password, address, phone, email });
+        const { name, password, address, phone, email, dlNo, gstNo, fssaiNo } = req.body;
+        
+        // Auto-generate Login ID (EMY + Random 6 Digits)
+        let loginId;
+        let isUnique = false;
+        while (!isUnique) {
+            loginId = 'EMY' + Math.floor(100000 + Math.random() * 900000);
+            const existing = await Stockist.findOne({ loginId });
+            if (!existing) isUnique = true;
+        }
+
+        const newStockist = new Stockist({ name, loginId, password, address, phone, email, dlNo, gstNo, fssaiNo });
         await newStockist.save();
-        res.json({ success: true, message: 'Registration successful. Waiting for Admin approval.' });
+        res.json({ success: true, message: `Registration successful! Your Auto-Generated Login ID is: ${loginId}. Please wait for Admin approval.` });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/stockist/login', async (req, res) => {
+    const { loginId, password } = req.body;
     try {
-        const { loginId, password } = req.body;
         const user = await Stockist.findOne({ loginId, password });
         if (!user) return res.status(401).json({ success: false, message: 'Invalid Credentials' });
         if (!user.approved) return res.status(403).json({ success: false, message: 'Account pending approval' });
+        
+        // Generate Login PIN
+        const pin = Math.floor(100000 + Math.random() * 900000).toString();
+        user.loginPin = pin;
+        await user.save();
+
+        const emailContent = `
+            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; max-width: 500px;">
+                <h2 style="color: #6366f1;">Login Verification</h2>
+                <p>Hello <strong>${user.name}</strong>,</p>
+                <p>Your login ID is: <strong style="font-family: monospace;">${user.loginId}</strong></p>
+                <p>Your 6-digit verification code is:</p>
+                <div style="font-size: 2.5rem; font-weight: 900; color: #6366f1; padding: 20px; background: #f5f3ff; text-align: center; border-radius: 12px; margin: 25px 0; letter-spacing: 5px;">
+                    ${pin}
+                </div>
+                <p style="font-size: 0.8rem; color: #64748b; line-height: 1.5;">This PIN is for single-use login. If you did not attempt to log in, please secure your account.</p>
+            </div>
+        `;
+        
+        await sendEmail(user.email, "🔑 EMYRIS Login PIN", emailContent);
+        res.json({ success: true, requiresPin: true, loginId: user.loginId });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/stockist/verify-login-pin', async (req, res) => {
+    const { loginId, pin } = req.body;
+    try {
+        const user = await Stockist.findOne({ loginId, loginPin: pin });
+        if (!user) return res.status(401).json({ success: false, message: 'Invalid or expired PIN' });
+        
+        user.loginPin = undefined; // Clear pin
+        await user.save();
+        console.log(`[PIN] Verified for ${loginId}`);
         res.json({ success: true, user });
+    } catch (err) { console.error("[PIN] Error:", err.message); res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/stockist/forgot-id-pw', async (req, res) => {
+    const { email } = req.body;
+    try {
+        console.log(`[RECOVERY] Request for: ${email}`);
+        const user = await Stockist.findOne({ email });
+        if (!user) return res.status(404).json({ success: false, message: 'Account not found' });
+
+        const emailContent = `
+            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; max-width: 500px;">
+                <h2 style="color: #6366f1;">Account Recovery</h2>
+                <p>Hello <strong>${user.name}</strong>,</p>
+                <p>Here are your account credentials as requested:</p>
+                <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid #e2e8f0;">
+                    <p style="margin: 0 0 10px 0;"><strong>Login ID:</strong> <span style="font-family: monospace; color: #6366f1;">${user.loginId}</span></p>
+                    <p style="margin: 0;"><strong>Password:</strong> <span style="font-family: monospace; color: #6366f1;">${user.password}</span></p>
+                </div>
+                <p style="font-size: 0.8rem; color: #64748b;">For security, we recommend changing your password regularly.</p>
+            </div>
+        `;
+        
+        await sendEmail(user.email, "📦 Account Credentials Recovery", emailContent);
+        res.json({ success: true, message: 'Login details have been sent to your email.' });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -280,12 +363,76 @@ app.get('/api/admin/stockists', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Admin: Delete Individual Stockist
+app.delete('/api/admin/stockists/:id', async (req, res) => {
+    try {
+        await Stockist.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: 'Stockist deleted' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Admin: Master Delete All Stockists (Wipes only Stockists)
+app.delete('/api/admin/stockists-bulk/all', async (req, res) => {
+    try {
+        const result = await Stockist.deleteMany({});
+        res.json({ success: true, message: `${result.deletedCount} Stockists deleted.` });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Admin: Approve Stockist
 app.put('/api/admin/stockists/:id/approve', async (req, res) => {
     try {
-        const stockist = await Stockist.findByIdAndUpdate(req.params.id, { approved: true }, { new: true });
+        const sid = req.params.id;
+        console.log(`[ADMIN] Request to approve Stockist ID: ${sid}`);
+
+        // 1. Get and Increment Serial Counter
+        let settings = await Company.findOne();
+        if (!settings) settings = await Company.create({});
+        settings.stockistCounter = (settings.stockistCounter || 0) + 1;
+        await settings.save();
+
+        // 2. Generate Stockist Code (EMY-SRL-DT-YEAR)
+        const now = new Date();
+        const srl = settings.stockistCounter.toString().padStart(3, '0');
+        const dt = now.getDate().toString().padStart(2, '0');
+        const year = now.getFullYear();
+        const stockistCode = `EMY-${srl}-${dt}-${year}`;
+
+        // 3. Update Stockist
+        const stockist = await Stockist.findByIdAndUpdate(sid, { 
+            approved: true, 
+            stockistCode: stockistCode 
+        }, { new: true });
+
+        if (!stockist) {
+            console.error(`❌ [ADMIN] Stockist ${sid} not found`);
+            return res.status(404).json({ success: false, message: 'Stockist not found' });
+        }
+
+        console.log(`✅ [ADMIN] Approved: ${stockist.name} (Code: ${stockistCode})`);
+
+        // 4. Send Confirmation Email
+        const emailContent = `
+            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; max-width: 500px;">
+                <h2 style="color: #10b981;">Account Approved!</h2>
+                <p>Hello <strong>${stockist.name}</strong>,</p>
+                <p>Your account has been verified and approved by the EMYRIS Admin team.</p>
+                <div style="background: #f0fdf4; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid #bbf7d0; text-align: center;">
+                    <p style="margin: 0; color: #166534; font-size: 0.85rem; font-weight: 600;">YOUR OFFICIAL STOCKIST CODE</p>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #10b981; margin: 10px 0;">${stockistCode}</div>
+                </div>
+                <p>You can now log in to the portal using your Login ID and Password.</p>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                <p style="font-size: 0.8rem; color: #64748b;">Welcome to the EMYRIS network.</p>
+            </div>
+        `;
+        await sendEmail(stockist.email, "✅ EMYRIS Account Approved - Your Stockist Code", emailContent);
+
         res.json({ success: true, stockist });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        console.error("❌ [ADMIN] Approval logic failed:", err.message);
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
 // --- SETTINGS & MASTERS ---
