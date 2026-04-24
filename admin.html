@@ -61,6 +61,12 @@
             top: 0; 
             z-index: 1000; 
         }
+        .total-cell { color: #facc15 !important; font-weight: 900 !important; font-size: 1rem !important; }
+
+        /* --- DATABASE MONITOR --- */
+        .db-monitor { background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem; }
+        .db-bar-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.05); border-radius: 10px; margin: 10px 0; overflow: hidden; }
+        .db-bar-fill { height: 100%; background: var(--grad-primary); width: 0%; transition: 1s ease-out; }
         .nav-logo { font-weight: 800; font-size: 1.6rem; letter-spacing: -0.5px; background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
         .main-container { display: flex; min-height: calc(100vh - 75px); }
@@ -370,9 +376,24 @@
                 </div>
             </div>
 
-            <!-- GLOBAL MASTERS TAB -->
             <div id="tab-masters" class="hidden">
-                <h2 class="section-title">📦 Global Master Data</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" style="margin: 0;">📦 Global Master Data</h2>
+                    <button class="btn btn-primary" onclick="loadMasters(); alert('Masters Synchronized with Database!')">💾 SAVE & REFRESH ALL</button>
+                </div>
+
+                <!-- DB CAPACITY MONITOR -->
+                <div class="db-monitor">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">DATABASE UTILIZATION (FREE TIER)</span>
+                        <span id="db-usage-text" style="font-size: 0.8rem; font-weight: 800; color: var(--accent);">0.0 / 512 MB (0%)</span>
+                    </div>
+                    <div class="db-bar-bg">
+                        <div id="db-usage-bar" class="db-bar-fill"></div>
+                    </div>
+                    <p style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px;">*Data usage includes all product records, order history, and stockist data.</p>
+                </div>
+
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
                     <!-- Category Master -->
                     <div class="glass-card">

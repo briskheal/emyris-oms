@@ -106,7 +106,30 @@ async function refreshDashboard() {
         }
 
         renderCharts(currentOrders, allOrders);
+        updateDBStats();
     } catch (e) { console.error("Dashboard refresh fail", e); }
+}
+
+async function updateDBStats() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/db-stats`);
+        const stats = await res.json();
+        
+        const textEl = document.getElementById('db-usage-text');
+        const barEl = document.getElementById('db-usage-bar');
+        
+        if (textEl) {
+            textEl.innerText = `${stats.usedMB} / ${stats.capacityMB} MB (${stats.percent}%)`;
+        }
+        if (barEl) {
+            barEl.style.width = `${stats.percent}%`;
+            // Color warning if usage > 80%
+            if (parseFloat(stats.percent) > 80) {
+                barEl.style.background = '#ef4444';
+                textEl.style.color = '#ef4444';
+            }
+        }
+    } catch (e) { console.error("DB stats fail", e); }
 }
 
 async function loadOrders() {

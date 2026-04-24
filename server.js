@@ -99,6 +99,21 @@ try {
 }
 
 const app = express();
+// DB Stats
+app.get('/api/admin/db-stats', async (req, res) => {
+    try {
+        const stats = await mongoose.connection.db.command({ dbStats: 1 });
+        // MongoDB Atlas free tier is 512MB
+        const capacityMB = 512;
+        const usedMB = (stats.dataSize + stats.indexSize) / (1024 * 1024);
+        res.json({
+            usedMB: usedMB.toFixed(2),
+            capacityMB,
+            percent: ((usedMB / capacityMB) * 100).toFixed(1)
+        });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 const PORT = process.env.PORT || 4000;
 
 app.use(cors());
