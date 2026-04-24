@@ -941,6 +941,8 @@ function viewOrderDetails(id) {
     document.getElementById('detail-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
     const rejectBtn = document.getElementById('detail-reject-btn');
+    const approveBtn = document.getElementById('detail-approve-btn');
+    const deleteBtn = document.getElementById('detail-delete-btn');
 
     if (o.status === 'pending') {
         approveBtn.classList.remove('hidden');
@@ -971,6 +973,19 @@ function viewOrderDetails(id) {
     };
 
     document.getElementById('orderDetailModal').classList.remove('hidden');
+}
+
+async function rejectOrder(id) {
+    try {
+        const res = await fetch(`${API_BASE}/admin/orders/${id}/reject`, { method: 'PUT' });
+        const result = await res.json();
+        if (result.success) {
+            alert("❌ Order rejected and marked accordingly.");
+            loadOrders(); // Refresh history
+        } else {
+            alert("Rejection failed: " + result.message);
+        }
+    } catch (e) { alert("Rejection failed."); }
 }
 
 async function negotiateItem(orderId, itemId, action, btn) {

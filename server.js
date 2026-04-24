@@ -728,6 +728,14 @@ app.get('/api/admin/orders', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.put('/api/admin/orders/:id/reject', async (req, res) => {
+    try {
+        const order = await Order.findByIdAndUpdate(req.params.id, { status: 'rejected' }, { new: true });
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+        res.json({ success: true, order });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Stockist: Get My Orders
 app.get('/api/orders/my-orders/:stockistId', async (req, res) => {
     try {
