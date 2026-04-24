@@ -656,6 +656,8 @@ function viewOrderDetails(id) {
     document.getElementById('detail-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
     const approveBtn = document.getElementById('detail-approve-btn');
+    const deleteBtn = document.getElementById('detail-delete-btn');
+
     if (o.status === 'pending') {
         approveBtn.classList.remove('hidden');
         approveBtn.onclick = () => {
@@ -666,7 +668,25 @@ function viewOrderDetails(id) {
         approveBtn.classList.add('hidden');
     }
 
+    deleteBtn.onclick = () => {
+        if (confirm(`⚠️ CRITICAL: Are you sure you want to PERMANENTLY DELETE Order #${o.orderNo}?\n\nThis will also remove it from the Stockist's view.`)) {
+            deleteOrder(o._id);
+            closeOrderModal();
+        }
+    };
+
     document.getElementById('orderDetailModal').classList.remove('hidden');
+}
+
+async function deleteOrder(id) {
+    try {
+        const res = await fetch(`${API_BASE}/admin/orders/${id}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (result.success) {
+            alert("🗑️ Order deleted successfully.");
+            loadOrders(); // Refresh history
+        }
+    } catch (e) { alert("Delete failed."); }
 }
 
 function closeOrderModal() {

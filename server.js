@@ -639,4 +639,12 @@ app.put('/api/admin/orders/:id/approve', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Admin: Delete Order
+app.delete('/api/admin/orders/:id', async (req, res) => {
+    try {
+        await Order.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: 'Order deleted' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.listen(PORT, () => console.log(`🚀 OMS Server running on http://localhost:${PORT}`));
