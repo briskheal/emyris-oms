@@ -856,10 +856,10 @@ function viewOrderDetails(id) {
                 <td style="text-align:center;">
                     ${o.status === 'pending' ? `
                         <div style="display:flex; gap:4px; justify-content:center;">
-                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:#ef4444;" onclick="negotiateItem('${o._id}', '${item._id}', 'reject')" title="Revert to Master PTS">REJECT</button>
-                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:var(--primary);" onclick="negotiateItem('${o._id}', '${item._id}', 'onetime')" title="Apply for this order only">1-TIME</button>
-                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:var(--accent);" onclick="negotiateItem('${o._id}', '${item._id}', 'month')" title="Lock for 1 Month">MONTH</button>
-                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:#10b981;" onclick="negotiateItem('${o._id}', '${item._id}', 'year')" title="Lock for 1 Year">YEAR</button>
+                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:#ef4444;" onclick="negotiateItem('${o._id}', '${item._id}', 'reject', this)" title="Revert to Master PTS">REJECT</button>
+                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:var(--primary);" onclick="negotiateItem('${o._id}', '${item._id}', 'onetime', this)" title="Apply for this order only">1-TIME</button>
+                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:var(--accent);" onclick="negotiateItem('${o._id}', '${item._id}', 'month', this)" title="Lock for 1 Month">MONTH</button>
+                            <button class="btn btn-ghost" style="padding:2px 5px; font-size:0.65rem; color:#10b981;" onclick="negotiateItem('${o._id}', '${item._id}', 'year', this)" title="Lock for 1 Year">YEAR</button>
                         </div>
                     ` : '<span style="font-size:0.7rem; color:var(--text-muted);">LOCKED</span>'}
                 </td>
@@ -894,8 +894,13 @@ function viewOrderDetails(id) {
     document.getElementById('orderDetailModal').classList.remove('hidden');
 }
 
-async function negotiateItem(orderId, itemId, action) {
+async function negotiateItem(orderId, itemId, action, btn) {
     if (!confirm(`Are you sure you want to apply the [${action.toUpperCase()}] negotiation logic to this item?`)) return;
+    
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `⏳`;
+
     try {
         const res = await fetch(`${API_BASE}/admin/orders/${orderId}/items/${itemId}/negotiate`, {
             method: 'PUT',
@@ -905,10 +910,14 @@ async function negotiateItem(orderId, itemId, action) {
         const result = await res.json();
         if (result.success) {
             allOrders = allOrders.map(o => o._id === orderId ? result.order : o);
-            viewOrderDetails(orderId); // Re-render modal
-            renderOrderHistory(); // Refresh main list
+            viewOrderDetails(orderId);
+            renderOrderHistory();
         }
     } catch (e) { alert("Negotiation failed."); }
+    finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
 }
 
 async function approveOrder(id) {

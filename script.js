@@ -394,6 +394,10 @@ function updateNote(id, val) {
 
 function updateCart(pid, qty, inputEl) {
     qty = parseInt(qty) || 0;
+    if (qty < 0) {
+        qty = 0;
+        if (inputEl) inputEl.value = 0;
+    }
     const p = allProducts.find(x => x._id === pid);
     if (qty > 0) cart[pid] = qty;
     else {
@@ -476,11 +480,27 @@ function updateFooter() {
 }
 
 async function placeOrder() {
+    const btn = document.querySelector('button[onclick="placeOrder()"]');
+    const originalHtml = btn.innerHTML;
+
+    // Validate negotiation notes
+    for (const pid of Object.keys(cart)) {
+        const p = allProducts.find(x => x._id === pid);
+        const locked = currentUser.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
+        const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : p.pts));
+        
+        if (rate < parseFloat(p.pts) && !negotiationNotes[pid] && !(locked && locked.note)) {
+            alert(`⚠️ MANDATORY: Please provide an 'Auth Note' for negotiated price on: ${p.name}`);
+            return;
+        }
+    }
+
     const pids = Object.keys(cart);
     if(pids.length === 0) return alert("Please enter quantity for at least one product.");
-    
-    const currentUser = JSON.parse(localStorage.getItem('emyris_user'));
     if (!currentUser) return alert("Session expired. Please login again.");
+
+    btn.disabled = true;
+    btn.innerHTML = `⏳ PLACING ORDER...`;
 
     const orderItems = pids.map(pid => {
         const p = allProducts.find(x => x._id === pid);
@@ -529,14 +549,19 @@ async function placeOrder() {
         });
         const result = await res.json();
         if (result.success) {
-            alert(`✅ Order Placed Successfully!\nOrder No: ${result.orderNo}\nYour distributor has been notified.`);
+            alert(`✅ Order Placed Successfully! Order No: ${result.order.orderNo}`);
             cart = {};
+            askingRates = {};
+            negotiationNotes = {};
             renderExcelProducts();
-            updateFooter();
-        } else {
-            alert("Order failed: " + (result.message || "Unknown error"));
-        }
+            updateStickyTotals();
+            switchOrderTab('history');
+        } else { alert(result.message); }
     } catch (e) { alert("Order submission failed."); }
+    finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
 }
 
 async function fetchMyOrders() {
