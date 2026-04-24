@@ -110,48 +110,41 @@ async function handleRegister(e) {
 }
 
 function handleGstInput(el) {
-    const gst = el.value.toUpperCase();
-    el.value = gst;
-    const statusEl = document.getElementById('gst-status');
-    const panEl = document.getElementById('reg-pan');
-    
-    const states = {
-        "01":"Jammu & Kashmir","02":"Himachal Pradesh","03":"Punjab","04":"Chandigarh","05":"Uttarakhand",
-        "06":"Haryana","07":"Delhi","08":"Rajasthan","09":"Uttar Pradesh","10":"Bihar","11":"Sikkim",
-        "12":"Arunachal Pradesh","13":"Nagaland","14":"Manipur","15":"Mizoram","16":"Tripura",
-        "17":"Meghalaya","18":"Assam","19":"West Bengal","20":"Jharkhand","21":"Odisha","22":"Chhattisgarh",
-        "23":"Madhya Pradesh","24":"Gujarat","25":"Daman & Diu","26":"Dadra & Nagar Haveli","27":"Maharashtra",
-        "29":"Karnataka","30":"Goa","31":"Lakshadweep","32":"Kerala","33":"Tamil Nadu","34":"Puducherry",
-        "35":"Andaman & Nicobar Islands","36":"Telangana","37":"Andhra Pradesh","38":"Ladakh"
-    };
-    
-    // GST Regex: 2 digits, 5 letters, 4 digits, 1 letter, 1 digit/letter, 'Z', 1 digit/letter
-    const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-    
-    if (gst.length >= 2) {
-        const stateCode = gst.substring(0, 2);
-        const stateName = states[stateCode];
-        if (stateName) {
-            statusEl.innerHTML = `<span style="color:var(--primary); font-weight:700;">📍 STATE: ${stateName}</span>`;
-        } else {
-            statusEl.innerHTML = `<span style="color:#ef4444;">⚠️ INVALID STATE CODE</span>`;
-        }
-    }
+    try {
+        const gst = el.value.toUpperCase();
+        el.value = gst;
+        const statusEl = document.getElementById('gst-status');
+        const panEl = document.getElementById('reg-pan');
+        
+        if (!statusEl) return;
+        
+        const states = {
+            "01": "Jammu & Kashmir", "02": "Himachal Pradesh", "03": "Punjab", "04": "Chandigarh", "05": "Uttarakhand",
+            "06": "Haryana", "07": "Delhi", "08": "Rajasthan", "09": "Uttar Pradesh", "10": "Bihar",
+            "11": "Sikkim", "12": "Arunachal Pradesh", "13": "Nagaland", "14": "Manipur", "15": "Mizoram",
+            "16": "Tripura", "17": "Meghalaya", "18": "Assam", "19": "West Bengal", "20": "Jharkhand",
+            "21": "Odisha", "22": "Chhattisgarh", "23": "Madhya Pradesh", "24": "Gujarat", "27": "Maharashtra",
+            "28": "Andhra Pradesh", "29": "Karnataka", "30": "Goa", "31": "Lakshadweep", "32": "Kerala",
+            "33": "Tamil Nadu", "34": "Puducherry", "35": "Andaman & Nicobar Islands", "36": "Telangana", "37": "Andhra Pradesh"
+        };
 
-    if (gst.length === 15) {
-        if (gstRegex.test(gst)) {
-            const stateCode = gst.substring(0, 2);
-            statusEl.innerHTML = `<span style="color:var(--accent);">✅ VALID GST: ${states[stateCode] || 'Unknown State'}</span>`;
-            // Extract PAN (characters 3 to 12)
-            const pan = gst.substring(2, 12);
-            panEl.value = pan;
-            statusEl.innerHTML += ' • <span style="color:var(--primary);">PAN AUTO-FILLED</span>';
-        } else {
-            statusEl.innerHTML = '<span style="color:#ef4444;">❌ INVALID GST FORMAT</span>';
+        const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
+        if (gst.length === 15) {
+            if (gstRegex.test(gst)) {
+                const stateCode = gst.substring(0, 2);
+                statusEl.innerHTML = `<span style="color:var(--accent);">✅ VALID GST: ${states[stateCode] || 'Unknown State'}</span>`;
+                // Extract PAN (characters 3 to 12)
+                const pan = gst.substring(2, 12);
+                if (panEl) panEl.value = pan;
+                statusEl.innerHTML += ' • <span style="color:var(--primary);">PAN AUTO-FILLED</span>';
+            } else {
+                statusEl.innerHTML = '<span style="color:#ef4444;">❌ INVALID GST FORMAT</span>';
+            }
+        } else if (gst.length < 2) {
+            statusEl.innerHTML = '';
         }
-    } else if (gst.length < 2) {
-        statusEl.innerHTML = '';
-    }
+    } catch (err) { console.warn("GST Validation Error:", err); }
 }
 
 async function handleLogin(e) {
