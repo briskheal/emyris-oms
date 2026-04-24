@@ -4,6 +4,8 @@ let currentUser = null;
 let allProducts = [];
 let cart = {}; // { productId: qty }
 let manualBonuses = {}; // Track manually edited bonuses
+let currentCat = 'ALL';
+let currentSearch = '';
 let companySettings = null;
 let pendingLoginId = null; // Stores ID during PIN phase
 
@@ -194,11 +196,23 @@ async function loadSettings() {
 async function loadMasters() {
     try {
         const res = await fetch(`${API_BASE}/admin/categories`);
-        const cats = await res.json();
+        const catsMaster = await res.json();
+        
+        // Combine categories from master and existing products to ensure nothing is missed
+        const catSet = new Set(catsMaster.map(c => c.name.toUpperCase()));
+        allProducts.forEach(p => {
+            if (p.category) catSet.add(p.category.toUpperCase());
+        });
+
         const container = document.getElementById('categoryChips');
-        const uniqueCats = ['ALL', ...new Set(cats.map(c => c.name.toUpperCase()))];
-        container.innerHTML = uniqueCats.map(c => `<div class="cat-chip ${c==='ALL'?'active':''}" onclick="filterCat('${c}', this)">${c}</div>`).join('');
-    } catch (e) { console.error("Load masters failed"); }
+        if (!container) return;
+        
+        const uniqueCats = ['ALL', ...Array.from(catSet).sort()];
+        container.innerHTML = uniqueCats.map(c => `
+            <div class="cat-chip ${c === currentCat ? 'active' : ''}" 
+                onclick="filterCat('${c}', this)">${c}</div>
+        `).join('');
+    } catch (e) { console.error("Load masters failed", e); }
 }
 
 async function fetchProducts() {
@@ -211,19 +225,31 @@ async function fetchProducts() {
 function filterCat(cat, el) {
     document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
     el.classList.add('active');
-    renderExcelProducts(cat === 'ALL' ? null : cat);
+    currentCat = cat;
+    renderExcelProducts();
 }
 
 function searchProducts(query) {
-    renderExcelProducts(null, query.toLowerCase());
+    currentSearch = query.toLowerCase();
+    renderExcelProducts();
 }
 
-function renderExcelProducts(catFilter = null, searchFilter = null) {
+function renderExcelProducts() {
     const tbody = document.getElementById('excelProductBody');
+    if (!tbody) return;
+
     let filtered = allProducts;
     
-    if (catFilter) filtered = filtered.filter(p => p.category.toUpperCase() === catFilter);
-    if (searchFilter) filtered = filtered.filter(p => p.name.toLowerCase().includes(searchFilter));
+    if (currentCat !== 'ALL') {
+        filtered = filtered.filter(p => p.category && p.category.toUpperCase() === currentCat.toUpperCase());
+    }
+    
+    if (currentSearch) {
+        filtered = filtered.filter(p => 
+            (p.name && p.name.toLowerCase().includes(currentSearch)) || 
+            (p.hsn && p.hsn.includes(currentSearch))
+        );
+    }
 
     tbody.innerHTML = filtered.map(p => {
         const qty = cart[p._id] || '';
