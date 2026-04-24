@@ -445,7 +445,7 @@ function updateRate(id, val, master) {
     if (totalEl) {
         totalEl.innerText = `₹${(qty * rate).toFixed(2)}`;
     }
-    updateStickyTotals();
+    updateFooter();
 }
 
 function updateNote(id, val) {
@@ -549,6 +549,7 @@ async function placeOrder() {
     const originalHtml = btn.innerHTML;
 
     // Validate negotiation notes
+    for (const pid of Object.keys(cart)) {
         const p = allProducts.find(x => x._id === pid);
         const locked = currentUser.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
         const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : p.pts));
@@ -618,7 +619,7 @@ async function placeOrder() {
             askingRates = {};
             negotiationNotes = {};
             renderExcelProducts();
-            updateStickyTotals();
+            updateFooter();
             switchOrderTab('history');
         } else { alert(result.message); }
     } catch (e) { alert("Order submission failed."); }
