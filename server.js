@@ -248,70 +248,48 @@ const GST = mongoose.model('GST', gstSchema);
 // --- NEGOTIATION ENDPOINTS ---
 
 app.put('/api/admin/orders/:orderId/items/:itemId/negotiate', async (req, res) => {
-    const { action, customRate, note: adminNote } = req.body;
+    const { action } = req.body;
     try {
-        const order = await Order.findById(req.params.orderId).populate('items.product');
+        const order = await Order.findById(req.params.orderId);
         if (!order) return res.status(404).json({ success: false, message: "Order not found" });
 
         const item = order.items.id(req.params.itemId);
         if (!item) return res.status(404).json({ success: false, message: "Item not found" });
 
+        const { customRate } = req.body;
         const finalRate = customRate !== undefined ? Number(customRate) : (item.askingRate || item.priceUsed);
-        
-        // Define the note for locking (Admin note takes precedence over stockist note)
-        const lockNote = adminNote || `Approved for ${action.toUpperCase()} on ${new Date().toLocaleDateString('en-GB')}`;
 
         if (action === 'reject') {
             item.priceUsed = item.masterRate;
             item.askingRate = undefined;
-            item.negotiationNote = "REJECTED BY ADMIN";
         } else if (action === 'onetime') {
             item.priceUsed = finalRate;
-            item.negotiationNote = adminNote || item.negotiationNote;
         } else {
             item.priceUsed = finalRate;
-            item.negotiationNote = lockNote;
-            
             let expiry = new Date();
             if (action === 'month') expiry.setMonth(expiry.getMonth() + 1);
             if (action === 'year') expiry.setFullYear(expiry.getFullYear() + 1);
 
             await Stockist.findByIdAndUpdate(order.stockist, {
-                $pull: { negotiatedPrices: { productId: item.product._id } }
+                $pull: { negotiatedPrices: { productId: item.product } }
             });
             await Stockist.findByIdAndUpdate(order.stockist, {
                 $push: { negotiatedPrices: {
-                    productId: item.product._id,
+                    productId: item.product,
                     lockedRate: item.priceUsed,
                     expiryDate: expiry,
-                    note: lockNote
+                    note: item.negotiationNote
                 }}
             });
         }
 
-        // Recalculate Order Totals with Accurate GST
-        let newSubTotal = 0;
-        let newGstTotal = 0;
-        
-        for (const it of order.items) {
-            const lineVal = it.priceUsed * it.qty;
-            newSubTotal += lineVal;
-            
-            // Use the actual product's GST rate if available
-            const gstRate = it.product ? (it.product.gstPercent || 12) : 12;
-            newGstTotal += (lineVal * gstRate) / 100;
-        }
-
-        order.subTotal = newSubTotal;
-        order.gstAmount = newGstTotal;
-        order.grandTotal = newSubTotal + newGstTotal;
+        order.subTotal = order.items.reduce((acc, curr) => acc + (curr.priceUsed * curr.qty), 0);
+        order.gstAmount = order.subTotal * 0.12; 
+        order.grandTotal = order.subTotal + order.gstAmount;
 
         await order.save();
         res.json({ success: true, order });
-    } catch (e) { 
-        console.error("❌ Negotiation Error:", e.message);
-        res.status(500).json({ success: false, error: e.message }); 
-    }
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 // --- API ENDPOINTS ---

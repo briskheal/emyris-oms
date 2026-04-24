@@ -206,21 +206,11 @@ function logout() {
 
 // --- ORDERING SYSTEM ---
 async function initOrderSystem() {
-    // SECURITY: Reset all global state variables to prevent data leakage between sessions
-    cart = {};
-    manualBonuses = {};
-    askingRates = {};
-    negotiationNotes = {};
-    myOrdersHistory = [];
-    currentCat = 'ALL';
-    currentSearch = '';
-
     await loadSettings();
-    await fetchProducts(); 
+    await fetchProducts(); // Fetch products first so loadMasters can harvest categories
     await loadMasters();
     renderExcelProducts();
-    fetchMyOrders(); 
-    console.log('🔄 [SYSTEM] State reset for new session');
+    fetchMyOrders(); // Load history
 }
 
 async function loadSettings() {
@@ -725,11 +715,11 @@ function renderMyOrders(orders) {
 }
 
 function handleLogout() {
-    if (!confirm('Are you sure you want to log out from your secure session?')) return;
-    
     // 1. Immediate UI Feedback
     switchView('login');
 
+    if (!confirm('Are you sure you want to log out from your secure session?')) return;
+    
     // Clear Session Variables
     currentUser = null;
     cart = {};

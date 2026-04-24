@@ -266,21 +266,25 @@ function renderCharts(currentMonthOrders, totalOrders) {
     });
 
     // --- NEW ANALYTICS: PRODUCT GROUP SHARE & GST ---
-    const groupSales = {};
-    const groupGST = {};
+    const TARGET_GROUPS = ['GROUP1', 'GROUP2', 'GROUP3'];
+    const groupSales = { 'GROUP1': 0, 'GROUP2': 0, 'GROUP3': 0 };
+    const groupGST = { 'GROUP1': 0, 'GROUP2': 0, 'GROUP3': 0 };
     let totalGSTAll = 0;
 
     totalOrders.filter(o => o.status === 'approved').forEach(o => {
         o.items.forEach(item => {
             const prod = allProducts.find(p => p._id === item.product);
-            const group = (prod && prod.group) ? prod.group.toUpperCase() : 'GENERAL';
+            const rawGroup = (prod && prod.group) ? prod.group.toUpperCase().trim() : 'GENERAL';
             
-            groupSales[group] = (groupSales[group] || 0) + (item.totalValue || 0);
-            
-            const gstRate = prod ? (prod.gstPercent || 12) : 12;
-            const itemGst = ((item.totalValue || 0) * gstRate) / 100;
-            groupGST[group] = (groupGST[group] || 0) + itemGst;
-            totalGSTAll += itemGst;
+            // Strictly filter for the three requested groups
+            if (TARGET_GROUPS.includes(rawGroup)) {
+                groupSales[rawGroup] += (item.totalValue || 0);
+                
+                const gstRate = prod ? (prod.gstPercent || 12) : 12;
+                const itemGst = ((item.totalValue || 0) * gstRate) / 100;
+                groupGST[rawGroup] += itemGst;
+                totalGSTAll += itemGst;
+            }
         });
     });
 
