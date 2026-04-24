@@ -21,17 +21,28 @@ window.onload = async () => {
     }
 };
 
-function switchView(viewId) {
-    document.querySelectorAll('.container').forEach(c => c.classList.add('hidden'));
-    document.getElementById(`view-${viewId}`).classList.remove('hidden');
-    if(viewId === 'order') {
-        document.getElementById('userMenu').classList.remove('hidden');
-        document.getElementById('orderFooter').classList.remove('hidden');
+function switchView(view) {
+    const views = ['section-auth', 'view-order'];
+    const authCards = ['view-login', 'view-register', 'view-forgot', 'view-pin'];
+    
+    // Hide all
+    views.forEach(v => document.getElementById(v).classList.add('hidden'));
+    authCards.forEach(c => document.getElementById(c).classList.add('hidden'));
+    document.querySelector('.navbar').classList.add('hidden');
+    document.getElementById('marquee').classList.add('hidden');
+    const globalFooter = document.getElementById('global-footer');
+    if (globalFooter) globalFooter.classList.add('hidden');
+
+    if (view === 'order') {
+        document.getElementById('view-order').classList.remove('hidden');
+        document.querySelector('.navbar').classList.remove('hidden');
+        document.getElementById('marquee').classList.remove('hidden');
+        if (globalFooter) globalFooter.classList.remove('hidden');
         document.getElementById('stockistName').innerText = currentUser.name;
     } else {
-        document.getElementById('userMenu').classList.add('hidden');
-        document.getElementById('orderFooter').classList.add('hidden');
-        document.getElementById('marquee').classList.add('hidden');
+        // Show auth section and specific card
+        document.getElementById('section-auth').classList.remove('hidden');
+        document.getElementById(`view-${view}`).classList.remove('hidden');
     }
 }
 
@@ -202,11 +213,10 @@ async function loadSettings() {
             document.getElementById('co-email3').innerText = companySettings.emails[2] ? `✉️ ${companySettings.emails[2]}` : '';
         }
 
-        // Footer population
-        if (document.getElementById('f-co-name')) document.getElementById('f-co-name').innerText = companySettings.name || "EMYRIS BIOLIFESCIENCES";
-        if (document.getElementById('f-co-address')) document.getElementById('f-co-address').innerText = companySettings.address || "";
-        if (document.getElementById('f-co-phone')) document.getElementById('f-co-phone').innerText = `📞 ${companySettings.phones ? companySettings.phones[0] : ''}`;
-        if (document.getElementById('f-co-email')) document.getElementById('f-co-email').innerText = `✉️ ${companySettings.adminEmail || ''}`;
+        // Landing Footer population (Synchronized)
+        if (document.getElementById('land-web')) document.getElementById('land-web').innerText = `🌐 ${companySettings.websites ? companySettings.websites[0] : 'www.emyrisbio.com'}`;
+        if (document.getElementById('land-phone')) document.getElementById('land-phone').innerText = `📞 ${companySettings.phones ? companySettings.phones[0] : '+91-XXXXXXXXXX'}`;
+        if (document.getElementById('land-email')) document.getElementById('land-email').innerText = `✉️ ${companySettings.emails ? companySettings.emails[0] : 'contact@emyrisbio.com'}`;
 
         // Marquee
         if (companySettings.scrollingMessage && companySettings.scrollingMessage.text) {
