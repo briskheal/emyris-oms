@@ -13,6 +13,9 @@ let pendingLoginId = null; // Stores ID during PIN phase
 
 // --- INITIALIZATION ---
 window.onload = async () => {
+    // Load company settings immediately for landing page footer/contact
+    await loadSettings();
+
     const savedUser = localStorage.getItem('emyris_user');
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
