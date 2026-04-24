@@ -266,35 +266,40 @@ function renderCharts(currentMonthOrders, totalOrders) {
     });
 
     // --- NEW ANALYTICS: PRODUCT GROUP SHARE & GST ---
-    const TARGET_GROUPS = ['GROUP1', 'GROUP2', 'GROUP3'];
     const groupSales = { 'GROUP1': 0, 'GROUP2': 0, 'GROUP3': 0 };
-    const groupGST = { 'GROUP1': 0, 'GROUP2': 0, 'GROUP3': 0 };
+    let totalTaxableBusiness = 0;
     let totalGSTAll = 0;
 
     totalOrders.filter(o => o.status === 'approved').forEach(o => {
         o.items.forEach(item => {
             const prod = allProducts.find(p => p._id === item.product);
-            const rawGroup = (prod && prod.group) ? prod.group.toUpperCase().trim() : 'GENERAL';
+            // Normalize Group Name: Remove spaces/dashes and uppercase (e.g. "Group 1" -> "GROUP1")
+            let rawGroup = (prod && prod.group) ? prod.group.toUpperCase().replace(/[\s-]/g, '') : 'GENERAL';
             
-            // Strictly filter for the three requested groups
-            if (TARGET_GROUPS.includes(rawGroup)) {
+            // Map common variations back to standard keys
+            if (rawGroup.includes('GROUP1')) rawGroup = 'GROUP1';
+            if (rawGroup.includes('GROUP2')) rawGroup = 'GROUP2';
+            if (rawGroup.includes('GROUP3')) rawGroup = 'GROUP3';
+
+            if (groupSales.hasOwnProperty(rawGroup)) {
                 groupSales[rawGroup] += (item.totalValue || 0);
                 
                 const gstRate = prod ? (prod.gstPercent || 12) : 12;
                 const itemGst = ((item.totalValue || 0) * gstRate) / 100;
-                groupGST[rawGroup] += itemGst;
                 totalGSTAll += itemGst;
+                totalTaxableBusiness += (item.totalValue || 0);
             }
         });
     });
 
+    // Chart 1: Business Share (GROUP1, 2, 3 only)
     chartInstances.groupPie = new Chart(document.getElementById('groupPieChart'), {
         type: 'pie',
         data: {
-            labels: Object.keys(groupSales),
+            labels: ['GROUP 1', 'GROUP 2', 'GROUP 3'],
             datasets: [{
-                data: Object.values(groupSales),
-                backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6'],
+                data: [groupSales.GROUP1, groupSales.GROUP2, groupSales.GROUP3],
+                backgroundColor: ['#6366f1', '#10b981', '#f59e0b'],
                 borderWidth: 2,
                 borderColor: 'rgba(15, 23, 42, 0.5)'
             }]
@@ -306,15 +311,15 @@ function renderCharts(currentMonthOrders, totalOrders) {
         }
     });
 
+    // Chart 2: GST Liability vs Total Business
     chartInstances.gstBar = new Chart(document.getElementById('gstBarChart'), {
         type: 'bar',
         data: {
-            labels: Object.keys(groupGST),
+            labels: ['Total Taxable Business', 'GST Liability'],
             datasets: [{
-                label: 'GST Amount (₹)',
-                data: Object.values(groupGST),
-                backgroundColor: 'rgba(99, 102, 241, 0.7)',
-                borderColor: '#6366f1',
+                data: [totalTaxableBusiness, totalGSTAll],
+                backgroundColor: ['rgba(99, 102, 241, 0.5)', 'rgba(245, 158, 11, 0.8)'],
+                borderColor: ['#6366f1', '#f59e0b'],
                 borderWidth: 2,
                 borderRadius: 12
             }]
