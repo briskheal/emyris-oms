@@ -59,16 +59,21 @@ async function sendOrderEmails(order, stockist) {
         await axios.post(GOOGLE_SCRIPT_URL, {
             to: recipients,
             subject: `📦 Order Received: ${order.orderNo} [${stockist.name}]`,
-            htmlBody: emailBody
+            html: emailBody
         });
 
         console.log(`✅ Bridge Email Success: ${order.orderNo}`);
     } catch (e) { console.error("❌ Bridge Email Fail:", e.message); }
 }
 
-async function sendEmail(to, subject, htmlBody) {
+async function sendEmail(to, subject, html) {
+    const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL;
+    if (!GOOGLE_SCRIPT_URL) {
+        console.warn("⚠️ No GOOGLE_SCRIPT_URL configured. Email not sent.");
+        return;
+    }
     try {
-        await axios.post(GOOGLE_SCRIPT_URL, { to, subject, htmlBody });
+        await axios.post(GOOGLE_SCRIPT_URL, { to, subject, html });
         return true;
     } catch (e) {
         console.error("❌ Email failed:", e.message);
@@ -114,8 +119,7 @@ const companySchema = new mongoose.Schema({
         text: { type: String, default: "Welcome to EMYRIS OMS Portal - Your partner in healthcare." },
         color: { type: String, default: "#6366f1" },
         speed: { type: Number, default: 30 }
-    },
-    stockistCounter: { type: Number, default: 0 }
+    }
 });
 
 // 2. Global Masters
@@ -205,6 +209,24 @@ app.post('/api/stockist/register', async (req, res) => {
 
         const newStockist = new Stockist({ name, loginId, password, address, phone, email, dlNo, gstNo, fssaiNo });
         await newStockist.save();
+
+        // Send Registration Confirmation Email
+        const welcomeEmail = `
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background-color: #f1f5f9;">
+                <div style="background-color: #ffffff; padding: 40px; border-radius: 24px; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0;">
+                    <h2 style="color: #6366f1; margin-top: 0;">Registration Received!</h2>
+                    <p>Hello <strong>${name}</strong>,</p>
+                    <p>Thank you for registering with the EMYRIS Distribution Network. Your application is currently under review.</p>
+                    <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid #e2e8f0;">
+                        <p style="margin: 0; color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase;">Your Login ID</p>
+                        <p style="margin: 5px 0 0 0; font-size: 20px; font-weight: 800; color: #6366f1;">${loginId}</p>
+                    </div>
+                    <p style="font-size: 14px; color: #64748b;">An administrator will verify your Drug License and compliance details shortly. You will receive another email once your account is activated.</p>
+                </div>
+            </div>
+        `;
+        await sendEmail(email, "📦 EMYRIS Registration Received", welcomeEmail);
+
         res.json({ success: true, message: `Registration successful! Your Auto-Generated Login ID is: ${loginId}. Please wait for Admin approval.` });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -406,25 +428,11 @@ app.delete('/api/admin/stockists-bulk/all', async (req, res) => {
 app.put('/api/admin/stockists/:id/approve', async (req, res) => {
     try {
         const sid = req.params.id;
-        console.log(`[ADMIN] Request to approve Stockist ID: ${sid}`);
+        console.log(`[ADMIN] Approving stockist: ${sid}`);
 
-        // 1. Get and Increment Serial Counter
-        let settings = await Company.findOne();
-        if (!settings) settings = await Company.create({});
-        settings.stockistCounter = (settings.stockistCounter || 0) + 1;
-        await settings.save();
-
-        // 2. Generate Stockist Code (EMY-SRL-DT-YEAR)
-        const now = new Date();
-        const srl = settings.stockistCounter.toString().padStart(3, '0');
-        const dt = now.getDate().toString().padStart(2, '0');
-        const year = now.getFullYear();
-        const stockistCode = `EMY-${srl}-${dt}-${year}`;
-
-        // 3. Update Stockist
+        // Update Stockist Status
         const stockist = await Stockist.findByIdAndUpdate(sid, { 
-            approved: true, 
-            stockistCode: stockistCode 
+            approved: true
         }, { new: true });
 
         if (!stockist) {
@@ -432,24 +440,30 @@ app.put('/api/admin/stockists/:id/approve', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Stockist not found' });
         }
 
-        console.log(`✅ [ADMIN] Approved: ${stockist.name} (Code: ${stockistCode})`);
+        console.log(`✅ [ADMIN] Approved: ${stockist.name}`);
 
         // 4. Send Confirmation Email
         const emailContent = `
-            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; max-width: 500px;">
-                <h2 style="color: #10b981;">Account Approved!</h2>
-                <p>Hello <strong>${stockist.name}</strong>,</p>
-                <p>Your account has been verified and approved by the EMYRIS Admin team.</p>
-                <div style="background: #f0fdf4; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid #bbf7d0; text-align: center;">
-                    <p style="margin: 0; color: #166534; font-size: 0.85rem; font-weight: 600;">YOUR OFFICIAL STOCKIST CODE</p>
-                    <div style="font-size: 1.5rem; font-weight: 800; color: #10b981; margin: 10px 0;">${stockistCode}</div>
+            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; max-width: 500px; background-color: #ffffff;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h2 style="color: #10b981; margin: 0;">Account Approved!</h2>
+                    <p style="color: #64748b; font-size: 14px;">EMYRIS BIOLIFESCIENCES</p>
                 </div>
-                <p>You can now log in to the portal using your Login ID and Password.</p>
+                
+                <p>Hello <strong>${stockist.name}</strong>,</p>
+                <p>Your account has been verified and successfully approved by the EMYRIS Admin team.</p>
+                
+                <div style="background: #f0fdf4; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid #bbf7d0; text-align: center;">
+                    <p style="margin: 0; color: #166534; font-size: 1rem; font-weight: 600;">You can now log in to the portal using your Login ID and Password.</p>
+                </div>
+                
+                <p>Access the portal here: <a href="http://localhost:4000" style="color: #6366f1; font-weight: 700; text-decoration: none;">Stockist Portal</a></p>
+                
                 <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                <p style="font-size: 0.8rem; color: #64748b;">Welcome to the EMYRIS network.</p>
+                <p style="font-size: 0.8rem; color: #64748b; text-align: center;">Welcome to the EMYRIS network. We look forward to a successful partnership.</p>
             </div>
         `;
-        await sendEmail(stockist.email, "✅ EMYRIS Account Approved - Your Stockist Code", emailContent);
+        await sendEmail(stockist.email, "✅ EMYRIS Account Approved - Portal Access Active", emailContent);
 
         res.json({ success: true, stockist });
     } catch (err) { 

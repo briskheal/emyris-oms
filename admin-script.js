@@ -345,9 +345,6 @@ async function loadSettings() {
         document.getElementById('set-phone').value = s.phones ? s.phones[0] : '';
         document.getElementById('set-address').value = s.address || '';
         document.getElementById('set-admin-email').value = s.adminEmail || '';
-        if (document.getElementById('set-stockist-counter')) {
-            document.getElementById('set-stockist-counter').value = s.stockistCounter || 0;
-        }
 
         // Footer population
         if (document.getElementById('footer-co-name')) document.getElementById('footer-co-name').innerText = s.name || 'EMYRIS OMS';
@@ -370,7 +367,6 @@ async function saveSettings(e) {
         phones: [document.getElementById('set-phone').value],
         address: document.getElementById('set-address').value,
         adminEmail: document.getElementById('set-admin-email').value,
-        stockistCounter: Number(document.getElementById('set-stockist-counter').value),
         scrollingMessage: {
             text: document.getElementById('set-msg-text').value,
             color: document.getElementById('set-msg-color').value,
@@ -410,7 +406,6 @@ function renderStockists() {
             </td>
             <td style="font-family:monospace; font-size:0.85rem;">
                 ${s.loginId}
-                ${s.stockistCode ? `<div style="color:var(--accent); font-size:0.7rem; margin-top:4px;">CODE: ${s.stockistCode}</div>` : ''}
             </td>
             <td style="font-size:0.85rem; color:var(--text-muted);">
                 ${new Date(s.registeredAt || Date.now()).toLocaleDateString('en-GB')}
