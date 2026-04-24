@@ -174,13 +174,14 @@ const stockistSchema = new mongoose.Schema({
 const orderSchema = new mongoose.Schema({
     orderNo: { type: String, unique: true },
     stockist: { type: mongoose.Schema.Types.ObjectId, ref: 'Stockist' },
+    stockistCode: String,
     items: [{
         productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
         name: String,
         qty: Number,
+        bonusQty: { type: Number, default: 0 },
         priceUsed: Number,
         mrp: Number,
-        bonusQty: Number,
         totalValue: Number
     }],
     subTotal: Number,
@@ -576,16 +577,21 @@ app.get('/api/products', async (req, res) => {
 // Orders
 app.post('/api/orders/create', async (req, res) => {
     try {
-        const { stockistId, items, subTotal, gstAmount, grandTotal } = req.body;
-        const orderNo = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
+        const { stockistId, stockistCode, items, subTotal, gstAmount, grandTotal } = req.body;
         
-        const newOrder = new Order({ 
-            orderNo, 
-            stockist: stockistId, 
-            items, 
-            subTotal, 
-            gstAmount, 
-            grandTotal 
+        // Generate Order No (EMY-ORD-YYYYMMDD-XXXX)
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const count = await Order.countDocuments();
+        const orderNo = `EMY-ORD-${dateStr}-${(count + 1).toString().padStart(4, '0')}`;
+
+        const newOrder = new Order({
+            orderNo,
+            stockist: stockistId,
+            stockistCode,
+            items,
+            subTotal,
+            gstAmount,
+            grandTotal
         });
         await newOrder.save();
 

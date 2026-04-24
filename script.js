@@ -240,20 +240,25 @@ function renderExcelProducts(catFilter = null, searchFilter = null) {
         const qty = cart[p._id] || '';
         const price = p.pts || p.ptr || 0;
         const total = qty ? (qty * price).toFixed(2) : '0.00';
+        const free = p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0;
+        
         return `
-            <tr>
+            <tr id="row-${p._id}">
                 <td>
                     <div style="font-weight: 800; color: var(--primary);">${p.name}</div>
-                    ${p.bonusScheme && p.bonusScheme.buy > 0 ? `<div class="bonus-tag" style="display:inline-block; margin-top:4px;">Scheme: ${p.bonusScheme.buy}+${p.bonusScheme.get}</div>` : ''}
+                    <div style="font-size: 0.65rem; color: var(--text-muted);">${p.category || '-'}</div>
                 </td>
-                <td style="font-family: monospace; color: var(--text-muted);">${p.hsn || '-'}</td>
+                <td style="font-family: monospace; text-align: center;">${p.hsn || '-'}</td>
                 <td style="text-align: right; font-weight: 600;">₹${p.mrp}</td>
-                <td style="text-align: right; font-weight: 700; color: var(--accent);">₹${price}</td>
+                <td style="text-align: right; color: var(--text-muted);">₹${p.ptr || '-'}</td>
+                <td style="text-align: right; font-weight: 700; color: var(--accent);">₹${p.pts || '-'}</td>
+                <td style="text-align: center;">${p.gstPercent}%</td>
                 <td style="text-align: center;">
                     <input type="number" class="qty-input" value="${qty}" min="0" 
                         oninput="updateCart('${p._id}', this.value, this)" 
-                        style="width: 100px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-weight: 700;">
+                        style="width: 80px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-weight: 700;">
                 </td>
+                <td style="text-align: center; font-weight: 700; color: #10b981;" id="bonus-${p._id}">${free > 0 ? '+' + free : '-'}</td>
                 <td style="text-align: right; font-weight: 800; font-size: 1rem;" id="total-${p._id}">₹${total}</td>
             </tr>
         `;
@@ -271,17 +276,24 @@ function updateCart(pid, qty, inputEl) {
     const rowTotal = (qty * price).toFixed(2);
     document.getElementById(`total-${pid}`).innerText = `₹${rowTotal}`;
     
-    // Highlight input if qty > 0
+    // Update Bonus
+    const free = p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0;
+    const bonusEl = document.getElementById(`bonus-${pid}`);
+    if (bonusEl) bonusEl.innerText = free > 0 ? '+' + free : '-';
+
+    // Highlight row if qty > 0
+    const row = document.getElementById(`row-${pid}`);
+    if (row) row.style.background = qty > 0 ? 'rgba(99, 102, 241, 0.05)' : 'transparent';
+    
     if (inputEl) {
         inputEl.style.borderColor = qty > 0 ? 'var(--primary)' : 'var(--border)';
-        inputEl.style.background = qty > 0 ? '#f5f3ff' : '#fff';
     }
 
     updateFooter();
 }
 
 function updateFooter() {
-    let subTotal = 0;
+    let taxableValue = 0;
     let gstTotal = 0;
     let itemCount = 0;
 
@@ -290,29 +302,42 @@ function updateFooter() {
         const qty = cart[pid];
         const price = p.pts || p.ptr || 0;
         const itemVal = qty * price;
-        const itemGst = (itemVal * (p.gstPercent || companySettings.gstRate || 12)) / 100;
+        const itemGst = (itemVal * (p.gstPercent || 12)) / 100;
         
-        subTotal += itemVal;
+        taxableValue += itemVal;
         gstTotal += itemGst;
         itemCount++;
     });
 
-    const grandTotal = subTotal + gstTotal;
+    const grandTotal = taxableValue + gstTotal;
 
-    document.getElementById('footer-item-count').innerText = itemCount;
-    document.getElementById('footer-subtotal').innerText = `₹${subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    document.getElementById('footer-gst').innerText = `₹${gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    document.getElementById('footer-total').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    // Update UI elements
+    const taxableEl = document.getElementById('footer-subtotal');
+    const gstEl = document.getElementById('footer-gst');
+    const totalEl = document.getElementById('footer-total');
+
+    if (taxableEl) taxableEl.innerText = `₹${taxableValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (gstEl) gstEl.innerText = `₹${gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (totalEl) totalEl.innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+    const footer = document.getElementById('orderFooter');
+    if (footer) {
+        if (itemCount > 0) footer.classList.remove('hidden');
+        else footer.classList.add('hidden');
+    }
 }
 
 async function placeOrder() {
     const pids = Object.keys(cart);
     if(pids.length === 0) return alert("Please enter quantity for at least one product.");
     
+    const currentUser = JSON.parse(localStorage.getItem('emyris_user'));
+    if (!currentUser) return alert("Session expired. Please login again.");
+
     const orderItems = pids.map(pid => {
         const p = allProducts.find(x => x._id === pid);
         const qty = cart[pid];
-        const free = p.bonusScheme ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0;
+        const free = p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0;
         const price = p.pts || p.ptr || 0;
         return {
             productId: pid,
@@ -326,15 +351,15 @@ async function placeOrder() {
     });
 
     const subTotal = orderItems.reduce((a, b) => a + b.totalValue, 0);
-    // Recalculate GST exactly as done in footer
     let gstAmt = 0;
     orderItems.forEach(item => {
         const p = allProducts.find(x => x._id === item.productId);
-        gstAmt += (item.totalValue * (p.gstPercent || companySettings.gstRate || 12)) / 100;
+        gstAmt += (item.totalValue * (p.gstPercent || 12)) / 100;
     });
     
     const orderData = {
         stockistId: currentUser._id,
+        stockistCode: currentUser.loginId, // Automatically fetch stockist code (EMY...)
         items: orderItems,
         subTotal,
         gstAmount: gstAmt,
@@ -349,10 +374,12 @@ async function placeOrder() {
         });
         const result = await res.json();
         if (result.success) {
-            alert(`Order Placed Successfully! Order No: ${result.orderNo}\nNotification sent to Admin.`);
+            alert(`✅ Order Placed Successfully!\nOrder No: ${result.orderNo}\nYour distributor has been notified.`);
             cart = {};
             renderExcelProducts();
             updateFooter();
+        } else {
+            alert("Order failed: " + (result.message || "Unknown error"));
         }
     } catch (e) { alert("Order submission failed."); }
 }
