@@ -599,6 +599,11 @@ async function loadSettings() {
 
 async function saveSettings(e) {
     e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `⏳ SAVING...`;
+
     const data = {
         name: document.getElementById('set-name').value,
         tollFree: document.getElementById('set-tollfree').value,
@@ -627,8 +632,12 @@ async function saveSettings(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        if (res.ok) alert("Settings updated successfully!");
+        if (res.ok) alert("✅ Settings updated successfully!");
     } catch (e) { alert("Save settings failed"); }
+    finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
 }
 
 // --- STOCKIST MANAGEMENT ---

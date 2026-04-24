@@ -42,11 +42,11 @@ function switchOrderTab(tab) {
     if (tab === 'place') {
         document.getElementById('section-place-order').classList.remove('hidden');
         document.getElementById('section-order-history').classList.add('hidden');
-        document.getElementById('orderFooter').classList.remove('hidden');
+        if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.remove('hidden');
     } else {
         document.getElementById('section-place-order').classList.add('hidden');
         document.getElementById('section-order-history').classList.remove('hidden');
-        document.getElementById('orderFooter').classList.add('hidden');
+        if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.add('hidden');
         fetchMyOrders();
     }
 }
@@ -369,8 +369,23 @@ function renderExcelProducts() {
 }
 
 function updateRate(id, val, master) {
-    askingRates[id] = parseFloat(val) || 0;
-    renderExcelProducts(); // Re-render to update warning color and totals
+    const rate = parseFloat(val) || 0;
+    askingRates[id] = rate;
+    
+    // Direct DOM update instead of full re-render
+    const input = document.querySelector(`#row-${id} .negotiation-input`);
+    const totalEl = document.getElementById(`total-${id}`);
+    const qty = cart[id] || 0;
+    
+    if (input) {
+        if (rate < master) input.classList.add('price-warning');
+        else input.classList.remove('price-warning');
+    }
+    
+    if (totalEl) {
+        totalEl.innerText = `₹${(qty * rate).toFixed(2)}`;
+    }
+    updateStickyTotals();
 }
 
 function updateNote(id, val) {
