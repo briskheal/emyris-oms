@@ -374,6 +374,41 @@
                 </div>
             </div>
 
+            </div>
+            
+            <!-- ORDER HISTORY TAB -->
+            <div id="tab-orders" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" style="margin: 0;">📜 Complete Order History</h2>
+                    <div style="display: flex; gap: 1rem;">
+                        <input type="text" id="orderHistorySearch" placeholder="Search by Stockist or Order No..." 
+                            onkeyup="filterOrderHistory(this.value)"
+                            style="width: 300px; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; color: #fff;">
+                    </div>
+                </div>
+                
+                <div class="glass-card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Order No</th>
+                                    <th>Stockist / Party Name</th>
+                                    <th>Date</th>
+                                    <th style="text-align: center;">Total Items</th>
+                                    <th style="text-align: right;">Order Value</th>
+                                    <th style="text-align: center;">Status</th>
+                                    <th style="text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orderHistoryBody">
+                                <!-- Order history rows will be rendered here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- SETTINGS TAB -->
             <div id="tab-settings" class="hidden">
                 <h2 class="section-title">⚙️ Company & Portal Configuration</h2>
@@ -537,6 +572,70 @@
     </div>
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- MODAL (Order Details) -->
+    <div id="orderDetailModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="glass-card" style="width: 900px; max-height: 90vh; overflow-y: auto; margin: 0; border: 1px solid rgba(255,255,255,0.15);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1.5rem;">
+                <div>
+                    <h3 class="section-title" id="detail-order-no" style="margin: 0;">Order #ORD-XXXXXX</h3>
+                    <p id="detail-date" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;"></p>
+                </div>
+                <div style="text-align: right;">
+                    <button class="btn btn-ghost" onclick="closeOrderModal()" style="font-size: 1.5rem; padding: 0 10px;">✕</button>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 16px;">
+                <div>
+                    <span class="stat-label" style="margin-bottom: 0.5rem;">Stockist Details</span>
+                    <div id="detail-stockist-name" style="font-weight: 800; font-size: 1.1rem; color: #fff;">-</div>
+                    <div id="detail-stockist-code" style="color: var(--accent); font-weight: 700; margin-top: 4px;">-</div>
+                </div>
+                <div style="text-align: right;">
+                    <span class="stat-label" style="margin-bottom: 0.5rem;">Status</span>
+                    <div id="detail-status" style="display: inline-block; padding: 6px 15px; border-radius: 99px; font-weight: 800; font-size: 0.8rem;">PENDING</div>
+                </div>
+            </div>
+
+            <div class="table-container" style="margin-bottom: 2rem;">
+                <table style="font-size: 0.85rem;">
+                    <thead>
+                        <tr style="background: rgba(255,255,255,0.05);">
+                            <th>Product Name</th>
+                            <th style="text-align: right;">Price (PTS)</th>
+                            <th style="text-align: center;">Qty</th>
+                            <th style="text-align: center;">Bonus</th>
+                            <th style="text-align: right;">Total Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detail-items-body"></tbody>
+                </table>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end;">
+                <div style="width: 300px; background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--glass-border);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: var(--text-muted);">Taxable Amount:</span>
+                        <span id="detail-subtotal" style="font-weight: 700;">₹0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--glass-border);">
+                        <span style="color: var(--text-muted);">GST Total:</span>
+                        <span id="detail-gst" style="font-weight: 700;">₹0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <span style="font-weight: 800; color: #fff;">Grand Total:</span>
+                        <span id="detail-total" style="font-size: 1.5rem; font-weight: 900; color: var(--primary);">₹0.00</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <button class="btn btn-ghost" onclick="closeOrderModal()" style="flex: 1; justify-content: center;">CLOSE</button>
+                <button class="btn btn-primary" id="detail-approve-btn" style="flex: 2; justify-content: center;">APPROVE ORDER</button>
+            </div>
+        </div>
+    </div>
+
     <script src="admin-script.js"></script>
 </body>
 </html>

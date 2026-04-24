@@ -47,6 +47,8 @@ function switchTab(tabId, el) {
 
     document.querySelectorAll('.content > div').forEach(div => div.classList.add('hidden'));
     document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+    if (tabId === 'orders') renderOrderHistory();
 }
 
 // --- DASHBOARD ---
@@ -590,4 +592,83 @@ async function deleteAllStockists() {
 function logout() {
     sessionStorage.removeItem('admin_logged');
     window.location.reload();
+}
+
+// --- ORDER HISTORY LOGIC ---
+function renderOrderHistory(filter = '') {
+    const tbody = document.getElementById('orderHistoryBody');
+    if (!tbody) return;
+    
+    let filtered = allOrders;
+    if (filter) {
+        filtered = allOrders.filter(o => 
+            o.orderNo.toLowerCase().includes(filter.toLowerCase()) || 
+            (o.stockist && o.stockist.name.toLowerCase().includes(filter.toLowerCase()))
+        );
+    }
+
+    tbody.innerHTML = filtered.map(o => `
+        <tr>
+            <td style="font-family:monospace; font-weight:700; color:var(--primary); cursor:pointer;" onclick="viewOrderDetails('${o._id}')">${o.orderNo}</td>
+            <td style="font-weight:600;">${o.stockist ? o.stockist.name : 'Unknown'}</td>
+            <td>${new Date(o.createdAt).toLocaleDateString('en-GB')}</td>
+            <td style="text-align:center;">${o.items.length}</td>
+            <td style="text-align:right; font-weight:700;">₹${o.grandTotal.toLocaleString('en-IN')}</td>
+            <td style="text-align:center;"><span class="badge ${o.status === 'approved' ? 'badge-approved' : 'badge-pending'}">${o.status.toUpperCase()}</span></td>
+            <td style="text-align:right;">
+                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewOrderDetails('${o._id}')">👁️ VIEW</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function filterOrderHistory(val) {
+    renderOrderHistory(val);
+}
+
+function viewOrderDetails(id) {
+    const o = allOrders.find(x => x._id === id);
+    if (!o) return;
+
+    document.getElementById('detail-order-no').innerText = `Order #${o.orderNo}`;
+    document.getElementById('detail-date').innerText = `Placed on ${new Date(o.createdAt).toLocaleString('en-GB')}`;
+    document.getElementById('detail-stockist-name').innerText = o.stockist ? o.stockist.name : 'Unknown';
+    document.getElementById('detail-stockist-code').innerText = o.stockistCode || 'N/A';
+    
+    const statusEl = document.getElementById('detail-status');
+    statusEl.innerText = o.status.toUpperCase();
+    statusEl.style.background = o.status === 'approved' ? '#10b981' : '#f59e0b';
+    statusEl.style.color = '#fff';
+
+    const itemsBody = document.getElementById('detail-items-body');
+    itemsBody.innerHTML = o.items.map(item => `
+        <tr>
+            <td style="font-weight:700; color:#fff;">${item.name}</td>
+            <td style="text-align:right;">₹${item.priceUsed.toFixed(2)}</td>
+            <td style="text-align:center; font-weight:700;">${item.qty}</td>
+            <td style="text-align:center; color:var(--accent); font-weight:700;">+${item.bonusQty || 0}</td>
+            <td style="text-align:right; font-weight:800; color:var(--primary);">₹${item.totalValue.toFixed(2)}</td>
+        </tr>
+    `).join('');
+
+    document.getElementById('detail-subtotal').innerText = `₹${o.subTotal.toLocaleString('en-IN')}`;
+    document.getElementById('detail-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN')}`;
+    document.getElementById('detail-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN')}`;
+
+    const approveBtn = document.getElementById('detail-approve-btn');
+    if (o.status === 'pending') {
+        approveBtn.classList.remove('hidden');
+        approveBtn.onclick = () => {
+            approveOrder(o._id);
+            closeOrderModal();
+        };
+    } else {
+        approveBtn.classList.add('hidden');
+    }
+
+    document.getElementById('orderDetailModal').classList.remove('hidden');
+}
+
+function closeOrderModal() {
+    document.getElementById('orderDetailModal').classList.add('hidden');
 }
