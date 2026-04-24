@@ -390,7 +390,7 @@ function renderExcelProducts() {
 
     tbody.innerHTML = filtered.map(p => {
         const qty = cart[p._id] || '';
-        const locked = currentUser.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
+        const locked = currentUser?.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
         
         const masterRate = p.pts || 0;
         const currentRate = askingRates[p._id] !== undefined ? askingRates[p._id] : (locked ? locked.lockedRate : masterRate);
@@ -565,6 +565,8 @@ function updateFooter() {
 }
 
 async function placeOrder() {
+    if (!currentUser) return alert("Session expired. Please login again.");
+
     const btn = document.querySelector('button[onclick="placeOrder()"]');
     if (!btn) return;
     const originalHtml = btn.innerHTML;
@@ -572,10 +574,10 @@ async function placeOrder() {
     // Validate negotiation notes
     for (const pid of Object.keys(cart)) {
         const p = allProducts.find(x => x._id === pid);
-        const locked = currentUser.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
-        const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : p.pts));
+        const locked = currentUser?.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
+        const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : (p.pts || p.ptr || 0)));
         
-        if (rate < parseFloat(p.pts) && !negotiationNotes[pid] && !(locked && locked.note)) {
+        if (rate < parseFloat(p.pts || 0) && !negotiationNotes[pid] && !(locked && locked.note)) {
             alert(`⚠️ MANDATORY: Please provide an 'Auth Note' for negotiated price on: ${p.name}`);
             return;
         }
@@ -583,7 +585,6 @@ async function placeOrder() {
 
     const pids = Object.keys(cart);
     if(pids.length === 0) return alert("Please enter quantity for at least one product.");
-    if (!currentUser) return alert("Session expired. Please login again.");
 
     btn.disabled = true;
     btn.innerHTML = `⏳ PLACING ORDER...`;
@@ -591,7 +592,7 @@ async function placeOrder() {
     const orderItems = pids.map(pid => {
         const p = allProducts.find(x => x._id === pid);
         const qty = cart[pid];
-        const locked = currentUser.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
+        const locked = currentUser?.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
         const rate = askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : p.pts);
         
         return {
@@ -608,20 +609,22 @@ async function placeOrder() {
         };
     });
 
-    const subTotal = orderItems.reduce((a, b) => a + b.totalValue, 0);
+    const subTotal = orderItems.reduce((a, b) => a + (b.totalValue || 0), 0);
     let gstAmt = 0;
     orderItems.forEach(item => {
-        const p = allProducts.find(x => x._id === item.product); // Fixed: item.product instead of item.productId
-        gstAmt += (item.totalValue * (p.gstPercent || 12)) / 100;
+        const p = allProducts.find(x => x._id === item.product);
+        if (p) {
+            gstAmt += ((item.totalValue || 0) * (p.gstPercent || 12)) / 100;
+        }
     });
     
     const orderData = {
         stockistId: currentUser._id,
         stockistCode: currentUser.loginId,
         items: orderItems,
-        subTotal,
-        gstAmount: gstAmt,
-        grandTotal: subTotal + gstAmt,
+        subTotal: Number(subTotal) || 0,
+        gstAmount: Number(gstAmt) || 0,
+        grandTotal: Number(subTotal + gstAmt) || 0,
         bonusApproval: {
             isManual: Object.keys(manualBonuses).length > 0
         }
@@ -737,6 +740,9 @@ function renderMyOrders(orders) {
 }
 
 function handleLogout() {
+    // 1. Immediate UI Feedback
+    switchView('login');
+
     if (!confirm('Are you sure you want to log out from your secure session?')) return;
     
     // Clear Session Variables
@@ -750,9 +756,6 @@ function handleLogout() {
     // Reset UI
     renderExcelProducts();
     updateFooter();
-    
-    // Redirect to Login
-    switchView('login');
     
     // Clear persistent storage
     localStorage.removeItem('emyris_user');
