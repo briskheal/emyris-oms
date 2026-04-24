@@ -396,10 +396,11 @@ function renderExcelProducts() {
         const currentRate = askingRates[p._id] !== undefined ? askingRates[p._id] : (locked ? locked.lockedRate : masterRate);
         const note = negotiationNotes[p._id] || (locked ? locked.note : '');
         
-        const total = qty ? (qty * currentRate).toFixed(2) : '0.00';
-        const free = manualBonuses[p._id] !== undefined ? manualBonuses[p._id] : (p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0);
+        const totalVal = qty ? (qty * currentRate) : 0;
+        const totalFormatted = totalVal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         
         const isWarning = currentRate < masterRate;
+        const free = manualBonuses[p._id] !== undefined ? manualBonuses[p._id] : (p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0);
 
         return `
             <tr id="row-${p._id}">
@@ -435,7 +436,7 @@ function renderExcelProducts() {
                         oninput="updateBonus('${p._id}', this.value)"
                         style="width: 70px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-weight: 700; color: #10b981;">
                 </td>
-                <td style="text-align: right;" class="total-cell" id="total-${p._id}">₹${total}</td>
+                <td style="text-align: right;" class="total-cell" id="total-${p._id}">₹${totalFormatted}</td>
             </tr>
         `;
     }).join('');
@@ -456,7 +457,8 @@ function updateRate(id, val, master) {
     }
     
     if (totalEl) {
-        totalEl.innerText = `₹${(qty * rate).toFixed(2)}`;
+        const formattedTotal = (qty * rate).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        totalEl.innerText = `₹${formattedTotal}`;
     }
     updateFooter();
 }
@@ -478,10 +480,16 @@ function updateCart(pid, qty, inputEl) {
         delete manualBonuses[pid];
     }
 
-    // Update row total immediately
-    const price = p.pts || p.ptr || 0;
-    const rowTotal = (qty * price).toFixed(2);
-    document.getElementById(`total-${pid}`).innerText = `₹${parseFloat(rowTotal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    // --- SMART PRICING LOGIC ---
+    // Use the same priority as the final order: Negotiated > Locked > Master
+    const locked = currentUser.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
+    const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : (p.pts || p.ptr || 0)));
+
+    const rowTotal = (qty * rate).toFixed(2);
+    const totalEl = document.getElementById(`total-${pid}`);
+    if (totalEl) {
+        totalEl.innerText = `₹${parseFloat(rowTotal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
     
     // Auto-calculate Bonus if not manually edited
     if (manualBonuses[pid] === undefined) {
