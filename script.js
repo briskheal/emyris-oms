@@ -198,7 +198,7 @@ async function loadSettings() {
         document.getElementById('co-name').innerText = companySettings.name || "EMYRIS BIOLIFESCIENCES";
         document.getElementById('co-address').innerText = companySettings.address || "Loading address...";
         document.getElementById('co-tollfree').innerText = companySettings.tollFree || "7993163300";
-        document.getElementById('co-phone').innerText = `WhatsApp: ${companySettings.phones ? companySettings.phones[0] : 'N/A'}`;
+        document.getElementById('co-phone').innerText = `WhatsApp: ${companySettings.phone || '+91-XXXXXXXXXX'}`;
         
         // Websites
         if (companySettings.websites) {
@@ -215,7 +215,8 @@ async function loadSettings() {
 
         // Landing Footer population (Synchronized)
         if (document.getElementById('land-web')) document.getElementById('land-web').innerText = `🌐 ${companySettings.websites ? companySettings.websites[0] : 'www.emyrisbio.com'}`;
-        if (document.getElementById('land-phone')) document.getElementById('land-phone').innerText = `📞 ${companySettings.phones ? companySettings.phones[0] : '+91-XXXXXXXXXX'}`;
+        if (document.getElementById('land-tollfree')) document.getElementById('land-tollfree').innerText = `📞 TOLL-FREE: ${companySettings.tollFree || '7993163300'}`;
+        if (document.getElementById('land-phone')) document.getElementById('land-phone').innerText = `💬 WHATSAPP: ${companySettings.phone || '+91-XXXXXXXXXX'}`;
         if (document.getElementById('land-email')) document.getElementById('land-email').innerText = `✉️ ${companySettings.emails ? companySettings.emails[0] : 'contact@emyrisbio.com'}`;
 
         // Marquee

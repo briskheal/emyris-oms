@@ -485,9 +485,13 @@
                         </div>
                         <button type="submit" class="btn btn-primary" id="loginBtn">SIGN IN TO PORTAL</button>
                     </form>
-                    <div style="margin-top: 2.5rem; text-align: center; display: flex; flex-direction: column; gap: 12px;">
-                        <button class="btn-link" onclick="switchView('register')">New Stockist? Create Partner Account</button>
-                        <button class="btn-link" onclick="switchView('forgot')" style="font-size: 0.85rem; opacity: 0.6; font-weight: 500;">Forgot Login ID or Password?</button>
+                    <div style="margin-top: 2.5rem; text-align: center; display: grid; gap: 12px;">
+                        <button class="btn-link" onclick="switchView('register')">
+                            <span>🤝</span> New Stockist? Create Partner Account
+                        </button>
+                        <button class="btn-link" onclick="switchView('forgot')" style="font-size: 0.85rem; opacity: 0.8; border: none; background: none;">
+                            <span>🔐</span> Forgot Login ID or Password?
+                        </button>
                     </div>
                 </div>
 
@@ -556,9 +560,12 @@
         
         <!-- COMPACT LANDING FOOTER (Synchronized) -->
         <div class="landing-footer">
-            <div style="display: flex; gap: 2.5rem; align-items: center;">
+            <div style="display: flex; gap: 3rem; align-items: center;">
                 <span id="land-web" style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #fff;">🌐 www.emyrisbio.com</span>
-                <span id="land-phone" style="display: flex; align-items: center; gap: 8px; color: var(--primary); font-weight: 700;">📞 +91-XXXXXXXXXX</span>
+                <div style="display: flex; gap: 2rem;">
+                    <span id="land-tollfree" style="display: flex; align-items: center; gap: 8px; color: var(--accent); font-weight: 800;">📞 TOLL-FREE: Loading...</span>
+                    <span id="land-phone" style="display: flex; align-items: center; gap: 8px; color: var(--primary); font-weight: 700;">💬 WHATSAPP: Loading...</span>
+                </div>
                 <span id="land-email" style="display: flex; align-items: center; gap: 8px; opacity: 0.8;">✉️ contact@emyrisbio.com</span>
             </div>
             <div style="font-weight: 800; color: var(--text-muted); letter-spacing: 1px; font-size: 0.75rem;">&copy; 2026 EMYRIS BIOLIFESCIENCES • ADVANCED DISTRIBUTION SYSTEM</div>
