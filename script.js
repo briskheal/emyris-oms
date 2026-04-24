@@ -33,7 +33,21 @@ function switchView(viewId) {
     }
 }
 
-// --- AUTH ---
+function switchOrderTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`btn-tab-${tab}`).classList.add('active');
+    
+    if (tab === 'place') {
+        document.getElementById('section-place-order').classList.remove('hidden');
+        document.getElementById('section-order-history').classList.add('hidden');
+        document.getElementById('orderFooter').classList.remove('hidden');
+    } else {
+        document.getElementById('section-place-order').classList.add('hidden');
+        document.getElementById('section-order-history').classList.remove('hidden');
+        document.getElementById('orderFooter').classList.add('hidden');
+        fetchMyOrders();
+    }
+}
 async function handleRegister(e) {
     e.preventDefault();
     try {
@@ -155,12 +169,11 @@ function logout() {
 
 // --- ORDERING SYSTEM ---
 async function initOrderSystem() {
-    await Promise.all([
-        loadSettings(),
-        fetchProducts(),
-        loadMasters()
-    ]);
+    await loadSettings();
+    await fetchProducts(); // Fetch products first so loadMasters can harvest categories
+    await loadMasters();
     renderExcelProducts();
+    fetchMyOrders(); // Load history
 }
 
 async function loadSettings() {
@@ -426,4 +439,67 @@ async function placeOrder() {
             alert("Order failed: " + (result.message || "Unknown error"));
         }
     } catch (e) { alert("Order submission failed."); }
+}
+
+async function fetchMyOrders() {
+    try {
+        const res = await fetch(`${API_BASE}/orders/my-orders/${currentUser._id}`);
+        const orders = await res.json();
+        renderMyOrders(orders);
+    } catch (e) { console.error("Fetch orders failed", e); }
+}
+
+function renderMyOrders(orders) {
+    const container = document.getElementById('history-container');
+    if (!container) return;
+
+    if (orders.length === 0) {
+        container.innerHTML = `<div class="glass-card" style="text-align:center; color:var(--text-muted);">No orders placed yet.</div>`;
+        return;
+    }
+
+    // Group by Month (Year-Month)
+    const grouped = {};
+    orders.forEach(o => {
+        const date = new Date(o.createdAt);
+        const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+        if (!grouped[monthYear]) grouped[monthYear] = [];
+        grouped[monthYear].push(o);
+    });
+
+    let html = '';
+    for (const [month, list] of Object.entries(grouped)) {
+        html += `
+            <div style="margin-bottom: 3rem;">
+                <h3 style="color:var(--primary); border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem; margin-bottom: 1.5rem;">${month}</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem;">
+                    ${list.map(o => `
+                        <div class="glass-card" style="padding: 1.5rem; margin-bottom: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div style="font-family: monospace; font-weight: 800; font-size: 1.1rem; color: #fff;">${o.orderNo}</div>
+                                <div style="background: ${o.status === 'approved' ? '#10b981' : '#f59e0b'}; color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;">${o.status}</div>
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Placed on ${new Date(o.createdAt).toLocaleDateString('en-GB')}</div>
+                            <div style="border-top: 1px solid var(--glass-border); padding-top: 1rem;">
+                                <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">Order Details</div>
+                                <div style="max-height: 150px; overflow-y: auto;">
+                                    ${o.items.map(i => `
+                                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+                                            <span style="color: #cbd5e1;">${i.name} (${i.qty})</span>
+                                            <span style="font-weight: 700; color: #fff;">₹${i.totalValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <div style="border-top: 1px dashed var(--glass-border); margin-top: 1rem; padding-top: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: 800; color: #fff;">GRAND TOTAL</span>
+                                    <span style="font-size: 1.25rem; font-weight: 900; color: var(--primary);">₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
 }

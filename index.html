@@ -217,6 +217,23 @@
 
         .hidden { display: none !important; }
         .bonus-tag { background: rgba(16, 185, 129, 0.1); color: var(--accent); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; border: 1px solid var(--accent-glow); }
+        
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .tab-btn.active {
+            background: var(--grad-primary);
+            color: #fff;
+            box-shadow: 0 10px 20px -5px var(--primary-glow);
+        }
     </style>
 </head>
 <body>
@@ -383,35 +400,51 @@
             </div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <div class="category-scroll" id="categoryChips" style="margin: 0;">
-                <div class="cat-chip active" onclick="filterCat('ALL', this)">ALL PRODUCTS</div>
+        <div style="display: flex; gap: 1rem; margin-bottom: 2rem; background: rgba(15,23,42,0.5); padding: 0.5rem; border-radius: 16px; border: 1px solid var(--glass-border); width: fit-content;">
+            <button class="tab-btn active" id="btn-tab-place" onclick="switchOrderTab('place')">🛒 Place Order</button>
+            <button class="tab-btn" id="btn-tab-history" onclick="switchOrderTab('history')">📜 My Order History</button>
+        </div>
+
+        <!-- PLACE ORDER SECTION -->
+        <div id="section-place-order">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <div class="category-scroll" id="categoryChips" style="margin: 0;">
+                    <div class="cat-chip active" onclick="filterCat('ALL', this)">ALL PRODUCTS</div>
+                </div>
+                <div style="position: relative; width: 300px;">
+                    <input type="text" id="productSearch" placeholder="Search product..." onkeyup="searchProducts(this.value)" style="padding: 0.75rem 1rem 0.75rem 2.5rem;">
+                    <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); opacity: 0.5;">🔍</span>
+                </div>
             </div>
-            <div style="position: relative; width: 300px;">
-                <input type="text" id="productSearch" placeholder="Search product..." onkeyup="searchProducts(this.value)" style="padding: 0.75rem 1rem 0.75rem 2.5rem;">
-                <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); opacity: 0.5;">🔍</span>
+
+            <div class="excel-container">
+                <table class="excel-table">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th style="width: 90px; text-align: center;">HSN</th>
+                            <th style="width: 90px; text-align: right;">MRP (₹)</th>
+                            <th style="width: 90px; text-align: right;">PTR (₹)</th>
+                            <th style="width: 90px; text-align: right;">PTS (₹)</th>
+                            <th style="width: 80px; text-align: center;">GST %</th>
+                            <th style="width: 120px; text-align: center;">Order Qty</th>
+                            <th style="width: 100px; text-align: center;">BONUS</th>
+                            <th style="width: 110px; text-align: right;">Total (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="excelProductBody">
+                        <!-- Products rendered as rows -->
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <div class="excel-container">
-            <table class="excel-table">
-                <thead>
-                    <tr>
-                        <th>Product Name</th>
-                        <th style="width: 90px; text-align: center;">HSN</th>
-                        <th style="width: 90px; text-align: right;">MRP (₹)</th>
-                        <th style="width: 90px; text-align: right;">PTR (₹)</th>
-                        <th style="width: 90px; text-align: right;">PTS (₹)</th>
-                        <th style="width: 80px; text-align: center;">GST %</th>
-                        <th style="width: 120px; text-align: center;">Order Qty</th>
-                        <th style="width: 100px; text-align: center;">BONUS</th>
-                        <th style="width: 110px; text-align: right;">Total (₹)</th>
-                    </tr>
-                </thead>
-                <tbody id="excelProductBody">
-                    <!-- Products rendered as rows -->
-                </tbody>
-            </table>
+        <!-- ORDER HISTORY SECTION -->
+        <div id="section-order-history" class="hidden">
+            <h2 class="section-title">📅 Month-wise Order History</h2>
+            <div id="history-container">
+                <!-- Grouped orders will appear here -->
+            </div>
         </div>
     </div>
 

@@ -617,6 +617,14 @@ app.get('/api/admin/orders', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Stockist: Get My Orders
+app.get('/api/orders/my-orders/:stockistId', async (req, res) => {
+    try {
+        const orders = await Order.find({ stockist: req.params.stockistId }).sort({ createdAt: -1 });
+        res.json(orders);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Admin: Approve Order
 app.put('/api/admin/orders/:id/approve', async (req, res) => {
     try {
