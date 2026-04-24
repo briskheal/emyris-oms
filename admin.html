@@ -314,6 +314,7 @@
                             <thead>
                                 <tr>
                                     <th>Product Name</th>
+                                    <th>Packing</th>
                                     <th>HSN</th>
                                     <th>MRP</th>
                                     <th>PTR</th>
@@ -357,7 +358,7 @@
             <!-- GLOBAL MASTERS TAB -->
             <div id="tab-masters" class="hidden">
                 <h2 class="section-title">📦 Global Master Data</h2>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
                     <!-- Category Master -->
                     <div class="glass-card">
                         <h3 class="section-title" style="font-size: 1rem;">💊 Product Categories</h3>
@@ -384,6 +385,15 @@
                             <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('gst')">ADD</button>
                         </div>
                         <div id="master-gst-list" style="max-height: 200px; overflow-y: auto;"></div>
+                    </div>
+                    <!-- Product Groups Master -->
+                    <div class="glass-card">
+                        <h3 class="section-title" style="font-size: 1rem;">🏷️ Product Groups</h3>
+                        <div class="form-group" style="display: flex; gap: 5px;">
+                            <input type="text" id="new-group-name" placeholder="Group Name">
+                            <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('groups')">ADD</button>
+                        </div>
+                        <div id="master-group-list" style="max-height: 200px; overflow-y: auto;"></div>
                     </div>
                 </div>
             </div>
@@ -493,21 +503,26 @@
                         <datalist id="hsn-list"></datalist>
                     </div>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div class="form-group">
                         <label>Category</label>
                         <input type="text" id="prod-cat" list="category-list" placeholder="Select or type new">
-                        <datalist id="category-list">
-                            <option value="TABLETS"></option>
-                            <option value="SYRUPS"></option>
-                            <option value="INJECTIONS"></option>
-                            <option value="CAPSULES"></option>
-                            <option value="SACHETS"></option>
-                        </datalist>
+                        <datalist id="category-list"></datalist>
+                    </div>
+                    <div class="form-group">
+                        <label>Product Group</label>
+                        <input type="text" id="prod-group" list="group-list" placeholder="e.g. CARDIAC">
+                        <datalist id="group-list"></datalist>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Packing</label>
+                        <input type="text" id="prod-packing" placeholder="e.g. 10x10, 1x100" required>
                     </div>
                     <div class="form-group">
                         <label>MRP (₹)</label>
-                        <input type="number" id="prod-mrp" step="0.01">
+                        <input type="number" id="prod-mrp" step="0.01" required>
                     </div>
                     <div class="form-group">
                         <label>GST %</label>

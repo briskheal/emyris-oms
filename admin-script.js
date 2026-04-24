@@ -254,14 +254,30 @@ async function loadProducts() {
     } catch (e) { console.error("Load products fail"); }
 }
 
+async function loadMasters() {
+    try {
+        const [cats, hsns, gst, groups] = await Promise.all([
+            fetch(`${API_BASE}/admin/categories`).then(r => r.json()),
+            fetch(`${API_BASE}/admin/hsns`).then(r => r.json()),
+            fetch(`${API_BASE}/admin/gst`).then(r => r.json()),
+            fetch(`${API_BASE}/admin/groups`).then(r => r.json())
+        ]);
+        window.masters = { categories: cats, hsns, gst, groups };
+        renderMasters();
+        updateDatalists();
+    } catch (e) { console.error("Load masters fail", e); }
+}
+
 function updateDatalists() {
     const cats = new Set(["TABLETS", "SYRUPS", "INJECTIONS", "CAPSULES", "SACHETS"]);
+    const groups = new Set(["GENERAL"]);
     const hsns = new Set();
     const gsts = new Set([12, 18, 5, 28]);
 
     // Add from existing products
     allProducts.forEach(p => {
         if (p.category) cats.add(p.category.toUpperCase());
+        if (p.group) groups.add(p.group.toUpperCase());
         if (p.hsn) hsns.add(p.hsn);
         if (p.gstPercent) gsts.add(p.gstPercent);
     });
@@ -269,23 +285,20 @@ function updateDatalists() {
     // Add from masters (if loaded)
     if (window.masters) {
         if (window.masters.categories) window.masters.categories.forEach(c => cats.add(c.name.toUpperCase()));
+        if (window.masters.groups) window.masters.groups.forEach(g => groups.add(g.name.toUpperCase()));
         if (window.masters.hsns) window.masters.hsns.forEach(h => hsns.add(h.code));
         if (window.masters.gst) window.masters.gst.forEach(g => gsts.add(g.rate));
     }
 
     const catList = document.getElementById('category-list');
+    const groupList = document.getElementById('group-list');
     const hsnList = document.getElementById('hsn-list');
     const gstList = document.getElementById('gst-rate-list');
 
-    if (catList) {
-        catList.innerHTML = Array.from(cats).map(c => `<option value="${c}"></option>`).join('');
-    }
-    if (hsnList) {
-        hsnList.innerHTML = Array.from(hsns).map(h => `<option value="${h}"></option>`).join('');
-    }
-    if (gstList) {
-        gstList.innerHTML = Array.from(gsts).map(g => `<option value="${g}"></option>`).join('');
-    }
+    if (catList) catList.innerHTML = Array.from(cats).map(c => `<option value="${c}"></option>`).join('');
+    if (groupList) groupList.innerHTML = Array.from(groups).map(g => `<option value="${g}"></option>`).join('');
+    if (hsnList) hsnList.innerHTML = Array.from(hsns).map(h => `<option value="${h}"></option>`).join('');
+    if (gstList) gstList.innerHTML = Array.from(gsts).map(g => `<option value="${g}"></option>`).join('');
 }
 
 function renderProducts() {
@@ -293,6 +306,7 @@ function renderProducts() {
     tbody.innerHTML = allProducts.map(p => `
         <tr>
             <td style="font-weight: 700;">${p.name}</td>
+            <td style="color:var(--text-muted); font-size:0.8rem;">${p.packing || '-'}</td>
             <td style="font-family: monospace;">${p.hsn || '-'}</td>
             <td>₹${p.mrp}</td>
             <td style="color:var(--accent); font-weight:700;">₹${p.ptr}</td>
@@ -325,6 +339,8 @@ async function saveProduct(e) {
         name: document.getElementById('prod-name').value,
         hsn: document.getElementById('prod-hsn').value,
         category: document.getElementById('prod-cat').value,
+        group: document.getElementById('prod-group').value,
+        packing: document.getElementById('prod-packing').value,
         mrp: Number(document.getElementById('prod-mrp').value),
         gstPercent: Number(document.getElementById('prod-gst').value),
         ptr: Number(document.getElementById('prod-ptr').value),
@@ -378,6 +394,8 @@ function editProduct(id) {
     document.getElementById('prod-name').value = p.name;
     document.getElementById('prod-hsn').value = p.hsn || '';
     document.getElementById('prod-cat').value = p.category;
+    document.getElementById('prod-group').value = p.group || '';
+    document.getElementById('prod-packing').value = p.packing || '';
     document.getElementById('prod-mrp').value = p.mrp;
     document.getElementById('prod-gst').value = p.gstPercent;
     document.getElementById('prod-ptr').value = p.ptr;
@@ -440,19 +458,20 @@ async function handleProductBulkUpload(input) {
 }
 
 // --- MASTERS & SETTINGS ---
-window.masters = { categories: [], hsns: [], gst: [] };
+window.masters = { categories: [], hsns: [], gst: [], groups: [] };
 
 async function loadMasters() {
     try {
-        const [cats, hsns, gst] = await Promise.all([
+        const [cats, hsns, gst, groups] = await Promise.all([
             fetch(`${API_BASE}/admin/categories`).then(r => r.json()),
             fetch(`${API_BASE}/admin/hsns`).then(r => r.json()),
-            fetch(`${API_BASE}/admin/gst`).then(r => r.json())
+            fetch(`${API_BASE}/admin/gst`).then(r => r.json()),
+            fetch(`${API_BASE}/admin/groups`).then(r => r.json())
         ]);
-        window.masters = { categories: cats, hsns: hsns, gst: gst };
+        window.masters = { categories: cats, hsns, gst, groups };
         renderMasterLists();
         updateDatalists();
-    } catch (e) { console.error("Load masters fail"); }
+    } catch (e) { console.error("Load masters fail", e); }
 }
 
 function renderMasterLists() {
@@ -467,6 +486,7 @@ function renderMasterLists() {
         `).join('');
     };
     render('master-cat-list', window.masters.categories, 'name', 'categories');
+    render('master-group-list', window.masters.groups, 'name', 'groups');
     render('master-hsn-list', window.masters.hsns, 'code', 'hsns');
     render('master-gst-list', window.masters.gst, 'rate', 'gst');
 }
@@ -476,6 +496,9 @@ async function addMaster(type) {
     let body = {};
     if (type === 'categories') {
         val = document.getElementById('new-cat-name').value;
+        body = { name: val };
+    } else if (type === 'groups') {
+        val = document.getElementById('new-group-name').value;
         body = { name: val };
     } else if (type === 'hsns') {
         val = document.getElementById('new-hsn-code').value;
@@ -494,19 +517,17 @@ async function addMaster(type) {
         });
         const result = await res.json();
         if (res.ok && result.success) {
-            let prefix = type.slice(0, -1).replace('categorie', 'cat');
-            if (type === 'gst') prefix = 'gst'; // Special case for gst
-            const inputId = `new-${prefix}-${type === 'gst' ? 'rate' : (type === 'hsns' ? 'code' : 'name')}`;
+            // Clear input
+            const inputId = type === 'categories' ? 'new-cat-name' : 
+                           type === 'groups' ? 'new-group-name' :
+                           type === 'hsns' ? 'new-hsn-code' : 'new-gst-rate';
             const input = document.getElementById(inputId);
             if (input) input.value = '';
             loadMasters();
         } else {
             alert("Action Failed: " + (result.message || result.error || "Unknown error"));
         }
-    } catch (e) { 
-        console.error("Master Error:", e);
-        alert("Operation failed. Check console for details."); 
-    }
+    } catch (e) { alert("Operation failed."); }
 }
 
 async function deleteMaster(type, id) {

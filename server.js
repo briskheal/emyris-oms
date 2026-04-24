@@ -132,6 +132,7 @@ const companySchema = new mongoose.Schema({
 
 // 2. Global Masters
 const categorySchema = new mongoose.Schema({ name: { type: String, required: true, unique: true } });
+const groupSchema = new mongoose.Schema({ name: { type: String, required: true, unique: true } });
 const hsnSchema = new mongoose.Schema({ code: { type: String, required: true, unique: true }, description: String });
 const gstSchema = new mongoose.Schema({ rate: { type: Number, required: true, unique: true } });
 
@@ -140,6 +141,8 @@ const productSchema = new mongoose.Schema({
     name: { type: String, required: true },
     hsn: String,
     category: { type: String, default: "GENERAL" },
+    group: { type: String, default: "GENERAL" },
+    packing: String,
     mrp: { type: Number, default: 0 },
     ptr: { type: Number, default: 0 }, // Price to Retailer
     pts: { type: Number, default: 0 }, // Price to Stockist
@@ -201,6 +204,7 @@ const Product = mongoose.model('Product', productSchema);
 const Stockist = mongoose.model('Stockist', stockistSchema);
 const Order = mongoose.model('Order', orderSchema);
 const Category = mongoose.model('Category', categorySchema);
+const Group = mongoose.model('Group', groupSchema);
 const HSN = mongoose.model('HSN', hsnSchema);
 const GST = mongoose.model('GST', gstSchema);
 
@@ -540,6 +544,20 @@ app.post('/api/admin/categories', async (req, res) => {
 });
 app.delete('/api/admin/categories/:id', async (req, res) => {
     await Category.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+});
+
+// Group Master
+app.get('/api/admin/groups', async (req, res) => res.json(await Group.find()));
+app.post('/api/admin/groups', async (req, res) => {
+    try {
+        const grp = new Group(req.body);
+        await grp.save();
+        res.json({ success: true, group: grp });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/admin/groups/:id', async (req, res) => {
+    await Group.findByIdAndDelete(req.params.id);
     res.json({ success: true });
 });
 
