@@ -380,7 +380,7 @@ function renderExcelProducts() {
         return `
             <tr id="row-${p._id}">
                 <td>
-                    <div style="font-weight: 800; color: var(--primary);">${p.name}</div>
+                    <div class="${isWarning ? 'price-warning' : ''}" style="font-weight: 800; color: ${isWarning ? '#f59e0b' : 'var(--primary)'};">${p.name}</div>
                     <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">${p.category || 'GENERAL'}</div>
                 </td>
                 <td style="text-align: center; font-weight: 700; color: #fff; font-size: 0.8rem;">${p.packing || '-'}</td>
