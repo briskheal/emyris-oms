@@ -253,22 +253,45 @@ app.post('/api/stockist/verify-login-pin', async (req, res) => {
 });
 
 app.post('/api/stockist/forgot-id-pw', async (req, res) => {
-    const { email } = req.body;
+    let { email } = req.body;
     try {
-        console.log(`[RECOVERY] Request for: ${email}`);
-        const user = await Stockist.findOne({ email });
-        if (!user) return res.status(404).json({ success: false, message: 'Account not found' });
+        if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
+        email = email.trim().toLowerCase();
+        
+        console.log(`[RECOVERY] Searching for: "${email}"`);
+        const user = await Stockist.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+        
+        if (!user) {
+            console.warn(`[RECOVERY] No user found for: ${email}`);
+            return res.status(404).json({ success: false, message: 'No account found with this email address.' });
+        }
 
         const emailContent = `
-            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; max-width: 500px;">
-                <h2 style="color: #6366f1;">Account Recovery</h2>
-                <p>Hello <strong>${user.name}</strong>,</p>
-                <p>Here are your account credentials as requested:</p>
-                <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid #e2e8f0;">
-                    <p style="margin: 0 0 10px 0;"><strong>Login ID:</strong> <span style="font-family: monospace; color: #6366f1;">${user.loginId}</span></p>
-                    <p style="margin: 0;"><strong>Password:</strong> <span style="font-family: monospace; color: #6366f1;">${user.password}</span></p>
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background-color: #f1f5f9; border-radius: 20px;">
+                <div style="background-color: #ffffff; padding: 40px; border-radius: 24px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="color: #6366f1; margin: 0; font-size: 24px; letter-spacing: -1px;">EMYRIS BIOLIFESCIENCES</h1>
+                        <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Secure Account Recovery</p>
+                    </div>
+                    
+                    <p style="color: #1e293b; font-size: 16px; line-height: 1.6;">Hello <strong>${user.name}</strong>,</p>
+                    <p style="color: #475569; font-size: 15px; line-height: 1.6;">We received a request to retrieve your account credentials. Please use the details below to access your portal:</p>
+                    
+                    <div style="background: #f8fafc; padding: 30px; border-radius: 16px; margin: 30px 0; border: 1px solid #e2e8f0; text-align: center;">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Login ID</label>
+                            <span style="font-family: 'Courier New', Courier, monospace; color: #6366f1; font-size: 20px; font-weight: 700;">${user.loginId}</span>
+                        </div>
+                        <div>
+                            <label style="display: block; color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Current Password</label>
+                            <span style="font-family: 'Courier New', Courier, monospace; color: #1e293b; font-size: 20px; font-weight: 700;">${user.password}</span>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <p style="font-size: 13px; color: #94a3b8;">If you did not request this, please contact support immediately.</p>
+                    </div>
                 </div>
-                <p style="font-size: 0.8rem; color: #64748b;">For security, we recommend changing your password regularly.</p>
             </div>
         `;
         
