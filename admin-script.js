@@ -1620,11 +1620,39 @@ function editPurchaseEntry(id) {
 }
 
 function setInvoiceStyle(style) {
+    // Save to hidden input
     document.getElementById('set-inv-style').value = style;
-    // Update visual selection
-    document.querySelectorAll('[onclick^="setInvoiceStyle"]').forEach(card => {
-        card.style.border = card.getAttribute('onclick').includes(style) ? '2px solid var(--primary)' : '1px solid var(--glass-border)';
+
+    const styles = ['classic', 'modern', 'compact'];
+    const colors = {
+        classic: { border: '2px solid var(--primary)', shadow: '0 0 20px rgba(99,102,241,0.3)', bg: 'rgba(99,102,241,0.05)' },
+        modern:  { border: '2px solid #10b981', shadow: '0 0 20px rgba(16,185,129,0.3)', bg: 'rgba(16,185,129,0.05)' },
+        compact: { border: '2px solid #f59e0b', shadow: '0 0 20px rgba(245,158,11,0.3)', bg: 'rgba(245,158,11,0.05)' }
+    };
+
+    styles.forEach(s => {
+        const card = document.getElementById(`specimen-${s}`);
+        const badge = document.getElementById(`check-${s}`);
+        if (!card || !badge) return;
+
+        if (s === style) {
+            // Active card
+            card.style.border = colors[s].border;
+            card.style.boxShadow = colors[s].shadow;
+            card.style.background = colors[s].bg;
+            badge.style.display = 'inline';
+        } else {
+            // Inactive card
+            card.style.border = '1px solid var(--glass-border)';
+            card.style.boxShadow = 'none';
+            card.style.background = 'transparent';
+            badge.style.display = 'none';
+        }
     });
+
+    // Show a brief confirmation
+    const labels = { classic: 'Classic Pharma', modern: 'Modern Glass', compact: 'Compact Compliance' };
+    console.log(`✅ Invoice template set to: ${labels[style] || style}`);
 }
 
 function downloadInvoicePDF(id) {
