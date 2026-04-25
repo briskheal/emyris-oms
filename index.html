@@ -366,16 +366,58 @@
             <div id="f-co-address" style="margin-top: 5px;"></div>
         </div>
     </footer>
-
-    <!-- MODAL -->
-    <div id="orderDetailModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
-        <div class="glass-card" style="width: 90%; max-width: 1000px; padding: 2.5rem;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 2rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1.5rem;">
-                <div><h3 id="detail-order-no" style="font-size: 1.5rem; color: #fff;">Invoice Details</h3><p id="detail-date" style="color: var(--text-muted); font-size: 0.85rem;"></p></div>
-                <button onclick="closeOrderModal()" style="background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer;">✕</button>
+    <!-- INVOICE DETAIL MODAL -->
+    <div id="orderDetailModal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); align-items: center; justify-content: center; z-index: 2000;">
+        <div class="glass-card" style="width: 90%; max-width: 1050px; padding: 2.5rem; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1.5rem;">
+                <div>
+                    <h3 id="detail-order-no" style="font-size: 1.5rem; color: #fff; margin: 0;">Invoice Details</h3>
+                    <p id="detail-date" style="color: var(--text-muted); font-size: 0.85rem; margin: 5px 0 0;"></p>
+                </div>
+                <button onclick="closeOrderModal()" style="background:none; border:none; color:#fff; font-size:1.8rem; cursor:pointer; line-height:1;">✕</button>
             </div>
-            <div class="excel-container" style="margin-bottom: 2rem;"><table class="excel-table"><thead><tr><th>Product Name</th><th>Requested</th><th>Approved</th><th>Qty</th><th>Bonus</th><th>Total</th></tr></thead><tbody id="detail-items-body"></tbody></table></div>
-            <div style="display: flex; justify-content: flex-end;"><div style="width: 320px; background: rgba(15, 23, 42, 0.4); padding: 1.5rem; border-radius: 20px; border: 1px solid var(--glass-border);"><div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;"><span>Taxable:</span><span id="detail-subtotal">₹0.00</span></div><div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem; margin-bottom: 0.5rem;"><span>GST:</span><span id="detail-gst">₹0.00</span></div><div style="display: flex; justify-content: space-between; font-weight: 800;"><span>TOTAL:</span><span id="detail-total" style="color: var(--primary); font-size: 1.5rem;">₹0.00</span></div></div></div>
+
+            <!-- Status + Item Count Row -->
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(99, 102, 241, 0.05); padding: 1rem 1.5rem; border-radius: 16px; border: 1px solid rgba(99,102,241,0.1); margin-bottom: 1.5rem;">
+                <div>
+                    <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Order Status</div>
+                    <div id="detail-status" style="font-weight: 900; font-size: 0.9rem; letter-spacing: 1px; margin-top: 4px;">—</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Items</div>
+                    <div id="detail-item-count" style="font-weight: 900; font-size: 1rem; color: #fff; margin-top: 4px;">0</div>
+                </div>
+            </div>
+
+            <!-- Items Table -->
+            <div class="excel-container" style="margin-bottom: 1.5rem;">
+                <table class="excel-table">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th style="text-align:right;">Rate Requested</th>
+                            <th style="text-align:right; color: var(--accent);">Rate Approved</th>
+                            <th style="text-align:center;">Qty</th>
+                            <th style="text-align:center;">Bonus</th>
+                            <th style="text-align:right;">Line Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detail-items-body"></tbody>
+                </table>
+            </div>
+
+            <!-- Totals -->
+            <div style="display: flex; justify-content: flex-end;">
+                <div style="width: 320px; background: rgba(15, 23, 42, 0.4); padding: 1.5rem; border-radius: 20px; border: 1px solid var(--glass-border);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.6rem;"><span style="color:var(--text-muted);">Taxable Value:</span><span id="detail-subtotal" style="font-weight:700;">₹0.00</span></div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.6rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--glass-border);"><span style="color:var(--text-muted);">GST Amount:</span><span id="detail-gst" style="font-weight:700;">₹0.00</span></div>
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-weight: 800; color:#fff;">GRAND TOTAL:</span><span id="detail-total" style="color: var(--primary); font-size: 1.6rem; font-weight: 900;">₹0.00</span></div>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; text-align: center;">
+                <button class="btn-primary" onclick="closeOrderModal()" style="max-width: 250px;">CLOSE</button>
+            </div>
         </div>
     </div>
 

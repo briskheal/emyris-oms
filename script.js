@@ -837,9 +837,9 @@ function viewOrderDetails(orderId) {
     document.getElementById('detail-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
     document.getElementById('detail-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-    document.getElementById('orderDetailModal').classList.remove('hidden');
+    document.getElementById('orderDetailModal').style.display = 'flex';
 }
 
 function closeOrderModal() {
-    document.getElementById('orderDetailModal').classList.add('hidden');
+    document.getElementById('orderDetailModal').style.display = 'none';
 }
