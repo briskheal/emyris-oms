@@ -1950,24 +1950,27 @@ function downloadInvoicePDF(id) {
 
     // ── ITEMS TABLE ────────────────────────────────────────────────────────────
     const cols = {
-        sl:   { x: 1,  w: 6  },
-        name: { x: 7,  w: 41 },
-        hsn:  { x: 48, w: 14 },
-        qty:  { x: 62, w: 9  },
-        bon:  { x: 71, w: 8  },
-        rate: { x: 79, w: 17 },
-        txbl: { x: 96, w: 18 },
-        gst:  { x: 114,w: 14 },
-        amt:  { x: 128,w: 19 },
+        sl:   { x: 1,  w: 5  },
+        name: { x: 6,  w: 32 },
+        hsn:  { x: 38, w: 10 },
+        batch:{ x: 48, w: 12 },
+        exp:  { x: 60, w: 8  },
+        qty:  { x: 68, w: 6  },
+        bon:  { x: 74, w: 6  },
+        mrp:  { x: 80, w: 10 },
+        rate: { x: 90, w: 11 },
+        txbl: { x: 101,w: 14 },
+        gst:  { x: 115,w: 9  },
+        amt:  { x: 124,w: 23 },
     };
 
     // Header row
     doc.setFillColor(...DARK);
     doc.rect(0, y, W, 6, 'F');
-    setFont(5, 'bold', WHITE);
-    const headers = { sl:'Sl', name:'Product / Description', hsn:'HSN', qty:'Qty', bon:'Bonus', rate:'Rate (₹)', txbl:'Taxable', gst:'GST', amt:'Amount (₹)' };
+    setFont(4.5, 'bold', WHITE);
+    const headers = { sl:'Sl', name:'Product', hsn:'HSN', batch:'Batch', exp:'Exp', qty:'Qty', bon:'Free', mrp:'MRP', rate:'Rate', txbl:'Taxable', gst:'GST', amt:'Amount' };
     Object.entries(cols).forEach(([key, c]) => {
-        const align = ['sl','qty','bon','rate','txbl','gst','amt'].includes(key) ? 'center' : 'left';
+        const align = ['sl','qty','bon','mrp','rate','txbl','gst','amt'].includes(key) ? 'center' : 'left';
         doc.text(headers[key], c.x + (align === 'center' ? c.w/2 : 1), y + 4, { align });
     });
     y += 6;
@@ -1997,14 +2000,17 @@ function downloadInvoicePDF(id) {
 
         doc.setDrawColor(230, 230, 240);
         doc.rect(0, y, W, rowH);
-        setFont(5.5, 'normal', DARK);
+        setFont(5, 'normal', DARK);
         doc.text(String(idx + 1), cols.sl.x + cols.sl.w/2, y + 4, { align: 'center' });
-        doc.text(item.name || '-', cols.name.x + 1, y + 4, { maxWidth: cols.name.w - 1 });
-        doc.text(item.hsn || '30049', cols.hsn.x + cols.hsn.w/2, y + 4, { align: 'center' });
+        doc.text((item.name || '-').substring(0,25), cols.name.x + 1, y + 4, { maxWidth: cols.name.w - 1 });
+        doc.text(item.hsn || '30049', cols.hsn.x + 1, y + 4);
+        doc.text(item.batch || 'BT-01', cols.batch.x + 1, y + 4);
+        doc.text(item.exp || '12/26', cols.exp.x + 1, y + 4);
         doc.text(String(item.qty || 0), cols.qty.x + cols.qty.w/2, y + 4, { align: 'center' });
-        setFont(5.5, 'normal', GREEN);
+        setFont(5, 'normal', GREEN);
         doc.text(String(item.bonusQty || 0), cols.bon.x + cols.bon.w/2, y + 4, { align: 'center' });
-        setFont(5.5, 'normal', DARK);
+        setFont(5, 'normal', DARK);
+        doc.text(fmt(item.mrp || 0), cols.mrp.x + cols.mrp.w - 1, y + 4, { align: 'right' });
         doc.text(fmt(item.priceUsed || 0), cols.rate.x + cols.rate.w - 1, y + 4, { align: 'right' });
         doc.text(fmt(taxable), cols.txbl.x + cols.txbl.w - 1, y + 4, { align: 'right' });
         doc.text(`${gstPct}%`, cols.gst.x + cols.gst.w/2, y + 4, { align: 'center' });
