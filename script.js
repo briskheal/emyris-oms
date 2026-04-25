@@ -690,7 +690,7 @@ async function placeOrder() {
     }
 }
 
-let myOrdersHistory = []; // Cache for history viewing
+
 
 async function fetchMyOrders() {
     try {
