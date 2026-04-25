@@ -182,7 +182,7 @@ const productSchema = new mongoose.Schema({
         get: { type: Number, default: 0 }
     },
     active: { type: Boolean, default: true }
-});
+}).index({ name: 1, category: 1, active: 1 }); // Performance index
 
 // 3. Stockist / Distributor
 const stockistSchema = new mongoose.Schema({
@@ -205,8 +205,13 @@ const stockistSchema = new mongoose.Schema({
     }],
     stockistCode: String,
     loginPin: String,
-    registeredAt: { type: Date, default: Date.now }
-});
+    registeredAt: { type: Date, default: Date.now },
+    partyType: { type: String, enum: ['STOCKIST', 'SUPPLIER'], default: 'STOCKIST' },
+    creditLimit: { type: Number, default: 0 },
+    outstandingBalance: { type: Number, default: 0 },
+    city: String,
+    state: String
+}).index({ loginId: 1, partyType: 1, name: 1 }); // Performance index
 
 // 4. Order
 const orderSchema = new mongoose.Schema({
@@ -234,6 +239,73 @@ const orderSchema = new mongoose.Schema({
         approvedAt: Date
     },
     createdAt: { type: Date, default: Date.now }
+}).index({ orderNo: 1, status: 1, createdAt: -1 });
+
+// 5. Invoice (Snapshot of Approved Order)
+const invoiceSchema = new mongoose.Schema({
+    invoiceNo: { type: String, unique: true },
+    order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
+    stockist: { type: mongoose.Schema.Types.ObjectId, ref: 'Stockist' },
+    stockistName: String,
+    stockistCode: String,
+    items: [{
+        product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+        name: String,
+        qty: Number,
+        bonusQty: { type: Number, default: 0 },
+        priceUsed: Number,
+        gstPercent: Number,
+        totalValue: Number
+    }],
+    subTotal: Number,
+    gstAmount: Number,
+    grandTotal: Number,
+    createdAt: { type: Date, default: Date.now }
+});
+
+// 6. Purchase Entry (Stock-In)
+const purchaseEntrySchema = new mongoose.Schema({
+    supplier: { type: mongoose.Schema.Types.ObjectId, ref: 'Stockist' },
+    supplierName: { type: String, required: true },
+    supplierInvoiceNo: String,
+    invoiceDate: Date,
+    items: [{
+        product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+        name: String,
+        qty: Number,
+        bonusQty: { type: Number, default: 0 },
+        purchaseRate: Number,
+        gstPercent: Number,
+        totalValue: Number
+    }],
+    subTotal: Number,
+    gstAmount: Number,
+    grandTotal: Number,
+    createdAt: { type: Date, default: Date.now }
+});
+
+// 7. Financial Notes (Credit Note / Debit Note)
+const financialNoteSchema = new mongoose.Schema({
+    noteNo: { type: String, unique: true },
+    noteType: { type: String, enum: ['CN', 'DN'], required: true },
+    party: { type: mongoose.Schema.Types.ObjectId, ref: 'Stockist', required: true },
+    partyName: String,
+    amount: { type: Number, required: true },
+    reason: { type: String, required: true }, // Price Difference, Expiry, Damage, etc.
+    description: String,
+    createdAt: { type: Date, default: Date.now }
+});
+
+// 8. Payments (Cash/Bank entries)
+const paymentSchema = new mongoose.Schema({
+    paymentNo: { type: String, unique: true },
+    party: { type: mongoose.Schema.Types.ObjectId, ref: 'Stockist', required: true },
+    partyName: String,
+    amount: { type: Number, required: true },
+    method: { type: String, enum: ['Cash', 'Bank Transfer', 'Cheque', 'UPI', 'Adjustment'], default: 'Bank Transfer' },
+    refNo: String,
+    type: { type: String, enum: ['RECEIPT', 'PAYMENT'], required: true }, // RECEIPT (In) from Stockist, PAYMENT (Out) to Supplier
+    date: { type: Date, default: Date.now }
 });
 
 const Company = mongoose.model('Company', companySchema);
@@ -244,6 +316,10 @@ const Category = mongoose.model('Category', categorySchema);
 const Group = mongoose.model('Group', groupSchema);
 const HSN = mongoose.model('HSN', hsnSchema);
 const GST = mongoose.model('GST', gstSchema);
+const Invoice = mongoose.model('Invoice', invoiceSchema);
+const PurchaseEntry = mongoose.model('PurchaseEntry', purchaseEntrySchema);
+const FinancialNote = mongoose.model('FinancialNote', financialNoteSchema);
+const Payment = mongoose.model('Payment', paymentSchema);
 
 // --- NEGOTIATION ENDPOINTS ---
 
@@ -283,12 +359,29 @@ app.put('/api/admin/orders/:orderId/items/:itemId/negotiate', async (req, res) =
             });
         }
 
-        // --- CRITICAL FIX: Update Item Total Value ---
+        // --- CRITICAL FIX: Update Item Total Value & Recalculate GST Product-wise ---
         item.totalValue = Number(item.priceUsed || 0) * Number(item.qty || 0);
 
-        order.subTotal = order.items.reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
-        order.gstAmount = order.subTotal * 0.12; 
-        order.grandTotal = order.subTotal + order.gstAmount;
+        // Fetch products for all items to get their individual GST rates
+        const productIds = order.items.map(i => i.product);
+        const products = await Product.find({ _id: { $in: productIds } });
+        const productMap = {};
+        products.forEach(p => productMap[p._id.toString()] = p);
+
+        let newSubTotal = 0;
+        let newGstAmount = 0;
+
+        order.items.forEach(i => {
+            const p = productMap[i.product.toString()];
+            const rate = p ? (p.gstPercent || 0) : 12; // Fallback to 12 if not found
+            const itemValue = i.totalValue || 0;
+            newSubTotal += itemValue;
+            newGstAmount += (itemValue * rate) / 100;
+        });
+
+        order.subTotal = newSubTotal;
+        order.gstAmount = newGstAmount;
+        order.grandTotal = newSubTotal + newGstAmount;
 
         await order.save();
         res.json({ success: true, order });
@@ -539,12 +632,33 @@ app.delete('/api/admin/products/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Admin: Get All Stockists
+// --- PARTY / STOCKIST MANAGEMENT ---
 app.get('/api/admin/stockists', async (req, res) => {
     try {
-        const stockists = await Stockist.find().sort({ registeredAt: -1 });
+        const type = req.query.type;
+        const query = type ? { partyType: type } : {};
+        const stockists = await Stockist.find(query).sort({ registeredAt: -1 });
         res.json(stockists);
     } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/stockists', async (req, res) => {
+    try {
+        const { name, loginId, password, panNo, partyType, address, phone, email, dlNo, gstNo, fssaiNo, creditLimit, outstandingBalance, city, state } = req.body;
+        const newParty = new Stockist({
+            name, loginId, password, panNo, partyType: partyType || 'STOCKIST', address, phone, email, dlNo, gstNo, fssaiNo, creditLimit, outstandingBalance, city, state,
+            approved: true
+        });
+        await newParty.save();
+        res.json({ success: true, party: newParty });
+    } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.put('/api/admin/stockists/:id', async (req, res) => {
+    try {
+        const updated = await Stockist.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        res.json({ success: true, party: updated });
+    } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 // Admin: Delete Individual Stockist
@@ -755,26 +869,38 @@ app.get('/api/orders/my-orders/:stockistId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Admin: Approve Order
+// Admin: Approve Order (with Inventory Deduction)
 app.put('/api/admin/orders/:id/approve', async (req, res) => {
     try {
         const { approvedBy } = req.body;
-        const order = await Order.findByIdAndUpdate(req.params.id, {
-            status: 'approved',
-            'bonusApproval.approvedBy': approvedBy || 'ADMIN',
-            'bonusApproval.approvedAt': new Date()
-        }, { new: true });
+        const order = await Order.findById(req.params.id);
+        
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+        if (order.status === 'approved') return res.status(400).json({ success: false, message: 'Order already approved' });
+
+        // --- INVENTORY DEDUCTION LOGIC ---
+        for (const item of order.items) {
+            const totalDeduction = (item.qty || 0) + (item.bonusQty || 0);
+            if (totalDeduction > 0) {
+                await Product.findByIdAndUpdate(item.product, {
+                    $inc: { qtyAvailable: -totalDeduction }
+                });
+                console.log(`📉 [INVENTORY] Deducted ${totalDeduction} units of ${item.name}`);
+            }
+        }
+
+        order.status = 'approved';
+        order.bonusApproval = {
+            approvedBy: approvedBy || 'ADMIN',
+            approvedAt: new Date()
+        };
+
+        await order.save();
         res.json({ success: true, order });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-// Admin: Reject Order
-app.put('/api/admin/orders/:id/reject', async (req, res) => {
-    try {
-        const order = await Order.findByIdAndUpdate(req.params.id, {
-            status: 'rejected'
-        }, { new: true });
-        res.json({ success: true, order });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        console.error("❌ Approval Error:", err.message);
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
 // Admin: Delete Order
@@ -783,6 +909,306 @@ app.delete('/api/admin/orders/:id', async (req, res) => {
         await Order.findByIdAndDelete(req.params.id);
         res.json({ success: true, message: 'Order deleted' });
     } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- INVOICE MODULE ---
+app.get('/api/admin/invoices', async (req, res) => {
+    try {
+        const invoices = await Invoice.find().populate('stockist').sort({ createdAt: -1 });
+        res.json(invoices);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.orderId).populate('stockist');
+        if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+        if (order.status !== 'approved') return res.status(400).json({ success: false, message: "Only approved orders can be invoiced" });
+
+        // Check if invoice already exists
+        const existing = await Invoice.findOne({ order: order._id });
+        if (existing) return res.json({ success: true, invoice: existing, message: "Invoice already exists" });
+
+        // Generate Invoice No (EMY-INV-YYYYMMDD-XXXX)
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const count = await Invoice.countDocuments();
+        const invoiceNo = `EMY-INV-${dateStr}-${(count + 1).toString().padStart(4, '0')}`;
+
+        // Fetch products to get GST Snapshot
+        const productIds = order.items.map(i => i.product);
+        const products = await Product.find({ _id: { $in: productIds } });
+        const productMap = {};
+        products.forEach(p => productMap[p._id.toString()] = p);
+
+        const invoiceItems = order.items.map(item => {
+            const p = productMap[item.product.toString()];
+            return {
+                product: item.product,
+                name: item.name,
+                qty: item.qty,
+                bonusQty: item.bonusQty,
+                priceUsed: item.priceUsed,
+                gstPercent: p ? (p.gstPercent || 12) : 12,
+                totalValue: item.totalValue
+            };
+        });
+
+        const newInvoice = new Invoice({
+            invoiceNo,
+            order: order._id,
+            stockist: order.stockist._id,
+            stockistName: order.stockist.name,
+            stockistCode: order.stockistCode,
+            items: invoiceItems,
+            subTotal: order.subTotal,
+            gstAmount: order.gstAmount,
+            grandTotal: order.grandTotal
+        });
+
+        await newInvoice.save();
+        
+        // Update order status to 'invoiced'
+        order.status = 'invoiced';
+        await order.save();
+
+        res.json({ success: true, invoice: newInvoice });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// --- PURCHASE ENTRY MODULE ---
+app.get('/api/admin/purchase-entries', async (req, res) => {
+    try {
+        const entries = await PurchaseEntry.find().sort({ createdAt: -1 });
+        res.json(entries);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/purchase-entries', async (req, res) => {
+    try {
+        const { supplier, supplierName, supplierInvoiceNo, invoiceDate, items, subTotal, gstAmount, grandTotal } = req.body;
+        
+        // Generate Purchase No
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const count = await PurchaseEntry.countDocuments();
+        const purchaseNo = `EMY-PUR-${dateStr}-${(count + 1).toString().padStart(4, '0')}`;
+
+        const newEntry = new PurchaseEntry({
+            purchaseNo,
+            supplier,
+            supplierName,
+            supplierInvoiceNo,
+            invoiceDate,
+            items,
+            subTotal,
+            gstAmount,
+            grandTotal
+        });
+
+        await newEntry.save();
+
+        // --- ACCOUNTING UPDATE ---
+        if (supplier) {
+            // Purchase is a Credit (increases what we owe, decreases "Outstanding" if we use Debit-Credit)
+            await Stockist.findByIdAndUpdate(supplier, { $inc: { outstandingBalance: -grandTotal } });
+        }
+        
+        // --- INVENTORY INCREMENT LOGIC ---
+        for (const item of items) {
+            const totalIncrement = (item.qty || 0) + (item.bonusQty || 0);
+            if (totalIncrement > 0) {
+                await Product.findByIdAndUpdate(item.product, {
+                    $inc: { qtyAvailable: totalIncrement }
+                });
+            }
+        }
+
+        res.json({ success: true, entry: newEntry });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// --- FINANCIAL NOTES MODULE ---
+app.get('/api/admin/financial-notes', async (req, res) => {
+    try {
+        const notes = await FinancialNote.find().populate('party').sort({ createdAt: -1 });
+        res.json(notes);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/financial-notes', async (req, res) => {
+    try {
+        const { noteType, party, amount, reason, description } = req.body;
+        
+        // Generate Note No (EMY-CN-YYYYMMDD-XXXX or EMY-DN-...)
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const count = await FinancialNote.countDocuments({ noteType });
+        const noteNo = `EMY-${noteType}-${dateStr}-${(count + 1).toString().padStart(4, '0')}`;
+
+        const partyObj = await Stockist.findById(party);
+        
+        const newNote = new FinancialNote({
+            noteNo,
+            noteType,
+            party,
+            partyName: partyObj ? partyObj.name : 'Unknown',
+            amount,
+            reason,
+            description
+        });
+
+        await newNote.save();
+
+        // Update Party's Outstanding Balance
+        // CN (Credit Note) reduces what they owe (if stockist) or reduces what we owe them (if supplier?)
+        // User said "generate file and issue the same for accounting purpose"
+        // I will update the outstanding balance for tracking
+        if (partyObj) {
+            // If Stockist (Customer): CN decreases balance, DN increases balance
+            // If Supplier (Vendor): CN increases balance (we owe them more?), DN decreases (we owe them less)
+            // Let's stick to Stockist logic for now as it's primarily an OMS
+            const adjustment = noteType === 'CN' ? -amount : amount;
+            await Stockist.findByIdAndUpdate(party, { $inc: { outstandingBalance: adjustment } });
+        }
+
+        res.json({ success: true, note: newNote });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// --- PAYMENTS & LEDGER MODULE ---
+
+app.get('/api/admin/payments', async (req, res) => {
+    try {
+        const payments = await Payment.find().populate('party').sort({ date: -1 });
+        res.json(payments);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/payments', async (req, res) => {
+    try {
+        const { party, amount, method, refNo, type, date } = req.body;
+        
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const count = await Payment.countDocuments({ type });
+        const paymentNo = `PAY-${type === 'RECEIPT' ? 'REC' : 'OUT'}-${dateStr}-${(count + 1).toString().padStart(4, '0')}`;
+
+        const partyObj = await Stockist.findById(party);
+        const newPayment = new Payment({
+            paymentNo, party, partyName: partyObj ? partyObj.name : 'Unknown',
+            amount, method, refNo, type, date: date || new Date()
+        });
+        await newPayment.save();
+
+        // Update Balance
+        if (partyObj) {
+            // Receipt from Stockist decreases what they owe (Outstanding decreases)
+            // Payment to Supplier decreases what we owe them (Negative balance moves towards zero)
+            const adjustment = type === 'RECEIPT' ? -amount : amount; 
+            await Stockist.findByIdAndUpdate(party, { $inc: { outstandingBalance: adjustment } });
+        }
+
+        res.json({ success: true, payment: newPayment });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/admin/parties/:id/ledger', async (req, res) => {
+    try {
+        const partyId = req.params.id;
+        
+        // Fetch all related transactions
+        const [invoices, purchases, notes, payments] = await Promise.all([
+            Invoice.find({ stockist: partyId }),
+            PurchaseEntry.find({ supplier: partyId }), 
+            FinancialNote.find({ party: partyId }),
+            Payment.find({ party: partyId })
+        ]);
+
+        // Standardize entries
+        const ledger = [];
+
+        invoices.forEach(i => ledger.push({
+            date: i.createdAt,
+            refNo: i.invoiceNo,
+            type: 'INVOICE',
+            description: 'Sales Invoice',
+            debit: i.grandTotal,
+            credit: 0
+        }));
+
+        purchases.forEach(p => ledger.push({
+            date: p.createdAt,
+            refNo: p.purchaseNo,
+            type: 'PURCHASE',
+            description: `Supplier Inv: ${p.supplierInvoiceNo}`,
+            debit: 0,
+            credit: p.grandTotal
+        }));
+
+        notes.forEach(n => ledger.push({
+            date: n.createdAt,
+            refNo: n.noteNo,
+            type: n.noteType === 'CN' ? 'CREDIT NOTE' : 'DEBIT NOTE',
+            description: n.reason,
+            debit: n.noteType === 'DN' ? n.amount : 0,
+            credit: n.noteType === 'CN' ? n.amount : 0
+        }));
+
+        payments.forEach(p => ledger.push({
+            date: p.date,
+            refNo: p.paymentNo,
+            type: p.type,
+            description: `${p.method} - Ref: ${p.refNo || 'N/A'}`,
+            debit: 0,
+            credit: p.amount // Payment/Receipt always credits the account (reduces debt)
+        }));
+
+        // Sort by date
+        ledger.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        res.json(ledger);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// --- REPORTING MODULE ---
+
+app.get('/api/admin/reports/gstr1', async (req, res) => {
+    try {
+        const { month, year } = req.query;
+        if (!month || !year) return res.status(400).json({ error: "Month and Year required" });
+
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0, 23, 59, 59);
+
+        const invoices = await Invoice.find({
+            createdAt: { $gte: startDate, $lte: endDate }
+        }).populate('stockist');
+
+        // GSTR-1 B2B Schema: GSTIN, Party Name, Invoice No, Date, Value, Rate, Taxable Value, IGST, CGST, SGST
+        const report = invoices.map(inv => {
+            const party = inv.stockist;
+            const taxableValue = inv.subTotal;
+            const taxRate = 12; // Default for now, or derive from items
+            
+            // In a real ERP, we'd split CGST/SGST vs IGST based on State.
+            // For now, let's provide a summary.
+            return {
+                "GSTIN of Recipient": party ? party.gstNo : "N/A",
+                "Receiver Name": inv.stockistName,
+                "Invoice Number": inv.invoiceNo,
+                "Invoice Date": new Date(inv.createdAt).toLocaleDateString('en-GB'),
+                "Invoice Value": inv.grandTotal,
+                "Place of Supply": party ? party.state : "N/A",
+                "Reverse Charge": "N",
+                "Invoice Type": "Regular",
+                "Rate": taxRate,
+                "Taxable Value": taxableValue,
+                "Integrated Tax": party && party.state !== "TELANGANA" ? inv.gstAmount : 0, // Simplified logic
+                "Central Tax": party && party.state === "TELANGANA" ? inv.gstAmount / 2 : 0,
+                "State/UT Tax": party && party.state === "TELANGANA" ? inv.gstAmount / 2 : 0,
+                "Cess": 0
+            };
+        });
+
+        res.json(report);
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.listen(PORT, () => console.log(`🚀 OMS Server running on http://localhost:${PORT}`));

@@ -729,37 +729,20 @@ function renderMyOrders(orders) {
 }
 
 function handleLogout() {
-    // 1. Immediate UI Feedback
-    switchView('login');
-
     if (!confirm('Are you sure you want to log out from your secure session?')) return;
     
     // Clear Session Variables
-   let currentUser = null;
-let allProducts = [];
-let cart = {};
-let manualBonuses = {};
-let askingRates = {};
-let negotiationNotes = {};
-let myOrdersHistory = [];
+    currentUser = null;
+    cart = {};
+    manualBonuses = {};
+    askingRates = {};
+    negotiationNotes = {};
+    myOrdersHistory = [];
 
-async function syncProfile() {
-    if (!currentUser || !currentUser._id) return;
-    try {
-        const res = await fetch(`${API_BASE}/stockist/profile/${currentUser._id}`);
-        const data = await res.json();
-        if (data.success) {
-            currentUser = data.stockist;
-            localStorage.setItem('emyris_user', JSON.stringify(currentUser));
-            console.log("🔄 [SYNC] Latest Price Locks Loaded");
-        }
-    } catch (e) { console.error("❌ Profile Sync Failed:", e.message); }
-}
-
-// --- INITIALIZATION ---
     // Reset UI
     renderExcelProducts();
     updateFooter();
+    switchView('login');
     
     // Clear persistent storage
     localStorage.removeItem('emyris_user');

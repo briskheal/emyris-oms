@@ -3,20 +3,31 @@ const API_BASE = '/api';
 let allProducts = [];
 let allStockists = [];
 let allOrders = [];
+let allInvoices = [];
+let allPurchaseEntries = [];
+let purchaseItems = []; // Temporary storage for new purchase entry
 
 // --- INITIALIZATION ---
 window.onload = async () => {
     if (sessionStorage.getItem('admin_logged') !== 'true') {
         document.getElementById('adminLoginOverlay').classList.remove('hidden');
-        return; // Wait for login
+        return;
     }
     
-    await loadProducts();
-    await loadStockists();
-    await loadOrders();
-    await loadMasters();
-    await loadSettings();
-    await refreshDashboard();
+    // Load all data sequentially to ensure dependencies are met
+    try {
+        await loadProducts();
+        await loadStockists();
+        await loadOrders();
+        await loadInvoices();
+        await loadPurchaseEntries();
+        await loadFinancialNotes();
+        await loadMasters();
+        await loadSettings();
+        await refreshDashboard();
+    } catch (e) {
+        console.error("Critical Initialization Error:", e);
+    }
 };
 
 async function handleAdminLogin(e) {
@@ -42,13 +53,27 @@ async function handleAdminLogin(e) {
 
 // --- NAVIGATION ---
 function switchTab(tabId, el) {
+    // 1. Update Sidebar UI
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-    el.classList.add('active');
+    if (el) el.classList.add('active');
 
+    // 2. Switch Content Visibility
     document.querySelectorAll('.content > div').forEach(div => div.classList.add('hidden'));
-    document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+    const targetTab = document.getElementById(`tab-${tabId}`);
+    if (targetTab) {
+        targetTab.classList.remove('hidden');
+    } else {
+        console.error(`Tab ${tabId} not found`);
+        return;
+    }
 
+    // 3. Trigger Data Renders
+    if (tabId === 'masters') renderMasterLists();
     if (tabId === 'orders') renderOrderHistory();
+    if (tabId === 'invoices') renderInvoices();
+    if (tabId === 'notes') renderFinancialNotes();
+    if (tabId === 'purchase') renderPurchaseEntries();
+    if (tabId === 'reports') refreshInventoryVal();
 }
 
 // --- DASHBOARD ---
@@ -137,6 +162,20 @@ async function loadOrders() {
         const res = await fetch(`${API_BASE}/admin/orders`);
         allOrders = await res.json();
     } catch (e) { console.error("Load orders fail"); }
+}
+
+async function loadInvoices() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/invoices`);
+        allInvoices = await res.json();
+    } catch (e) { console.error("Load invoices fail"); }
+}
+
+async function loadPurchaseEntries() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/purchase-entries`);
+        allPurchaseEntries = await res.json();
+    } catch (e) { console.error("Load purchases fail"); }
 }
 
 function renderCharts(currentMonthOrders, totalOrders) {
@@ -339,15 +378,28 @@ function renderCharts(currentMonthOrders, totalOrders) {
     if (gstDisplay) gstDisplay.innerText = `₹${totalGSTAll.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 }
 
-// --- PRODUCT MASTER ---
+// --- DATA FETCHING ---
 async function loadProducts() {
     try {
         const res = await fetch(`${API_BASE}/products`);
+        if (!res.ok) throw new Error("HTTP " + res.status);
         allProducts = await res.json();
         renderProducts();
-        updateStats();
         updateDatalists();
-    } catch (e) { console.error("Load products fail"); }
+    } catch (e) { 
+        console.error("Load products fail", e);
+        // Fallback to empty if fail
+        allProducts = [];
+    }
+}
+
+async function loadStockists(type = '') {
+    try {
+        const res = await fetch(`${API_BASE}/admin/stockists${type ? `?type=${type}` : ''}`);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        allStockists = await res.json();
+        renderStockists();
+    } catch (e) { console.error("Load parties fail", e); }
 }
 
 async function loadMasters() {
@@ -359,7 +411,7 @@ async function loadMasters() {
             fetch(`${API_BASE}/admin/groups`).then(r => r.json())
         ]);
         window.masters = { categories: cats, hsns, gst, groups };
-        renderMasters();
+        renderMasterLists();
         updateDatalists();
     } catch (e) { console.error("Load masters fail", e); }
 }
@@ -411,8 +463,8 @@ function renderProducts() {
             <td>${p.qtyAvailable}</td>
             <td><span class="badge ${p.active ? 'badge-approved' : 'badge-pending'}">${p.active ? 'Active' : 'Inactive'}</span></td>
             <td style="white-space: nowrap;">
-                <button class="btn btn-ghost" style="padding: 5px 10px;" onclick="editProduct('${p._id}')" title="Edit">✏️</button>
-                <button class="btn btn-ghost" style="padding: 5px 10px; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteProduct('${p._id}')" title="Delete">🗑️</button>
+                <button class="btn btn-ghost" style="padding: 5px 10px;" onclick="editProduct('${p._id}')" title="Edit">âœï¸</button>
+                <button class="btn btn-ghost" style="padding: 5px 10px; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteProduct('${p._id}')" title="Delete">ðŸ—‘ï¸</button>
             </td>
         </tr>
     `).join('');
@@ -577,7 +629,7 @@ function renderMasterLists() {
         el.innerHTML = list.map(item => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:5px; font-size:0.85rem;">
                 <span>${item[key]}</span>
-                <button style="background:none; border:none; color:#ef4444; cursor:pointer;" onclick="deleteMaster('${type}', '${item._id}')">✕</button>
+                <button style="background:none; border:none; color:#ef4444; cursor:pointer;" onclick="deleteMaster('${type}', '${item._id}')">✖</button>
             </div>
         `).join('');
     };
@@ -676,7 +728,7 @@ async function saveSettings(e) {
     if (!btn) return;
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `⏳ SAVING CONFIGURATION...`;
+    btn.innerHTML = `â³ SAVING CONFIGURATION...`;
 
     const data = {
         name: document.getElementById('set-name').value,
@@ -714,102 +766,95 @@ async function saveSettings(e) {
     }
 }
 
-// --- STOCKIST MANAGEMENT ---
-async function loadStockists() {
-    try {
-        const res = await fetch(`${API_BASE}/admin/stockists`);
-        allStockists = await res.json();
-        renderStockists();
-        updateStats();
-    } catch (e) { console.error("Load stockists fail"); }
-}
+// --- PARTY MASTER LOGIC ---
 
 function renderStockists() {
     const tbody = document.getElementById('stockistTableBody');
     if (!tbody) return;
+
     tbody.innerHTML = allStockists.map(s => `
         <tr>
-            <td>
-                <a href="javascript:void(0)" onclick="viewStockistDetails('${s._id}')" style="color:var(--primary); font-weight:700; text-decoration:none; border-bottom:1px dashed var(--primary);">
-                    ${s.name}
-                </a>
-            </td>
-            <td style="font-family:monospace; font-size:0.85rem;">
-                ${s.loginId}
-            </td>
-            <td style="font-size:0.85rem; color:var(--text-muted);">
-                ${new Date(s.registeredAt || Date.now()).toLocaleDateString('en-GB')}
-            </td>
-            <td><span class="badge ${s.approved ? 'badge-approved' : 'badge-pending'}">${s.approved ? 'Approved' : 'Pending'}</span></td>
-            <td style="text-align: right; white-space: nowrap;">
-                ${!s.approved ? `<button class="btn btn-primary" style="padding: 5px 12px; font-size:0.75rem; margin-right:5px;" onclick="approveStockist('${s._id}')">APPROVE</button>` : '<span style="color:var(--accent); margin-right:10px; font-size:0.8rem; font-weight:700;">✅ VERIFIED</span>'}
-                <button class="btn btn-ghost" style="padding: 5px 10px; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteStockist('${s._id}')" title="Delete Stockist">🗑️</button>
+            <td style="font-weight:600; color:#fff;">${s.name}</td>
+            <td style="font-size:0.75rem; font-weight:700; color:var(--primary);">${s.partyType || 'STOCKIST'}</td>
+            <td>${s.city || '-'}</td>
+            <td style="text-align:right; font-weight:700; color:${s.outstandingBalance > 0 ? '#ef4444' : '#10b981'};">₹${(s.outstandingBalance || 0).toLocaleString('en-IN')}</td>
+            <td><span class="badge ${s.approved ? 'badge-approved' : 'badge-pending'}">${s.approved ? 'APPROVED' : 'PENDING'}</span></td>
+            <td style="text-align:right;">
+                <button class="btn btn-ghost" style="padding:5px 10px; color:var(--primary);" onclick="viewLedger('${s._id}')">ðŸ“Š LEDGER</button>
+                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="openPartyModal('${s._id}')">âœï¸ EDIT</button>
+                <button class="btn btn-ghost" style="padding:5px 10px; color:#ef4444;" onclick="deleteStockist('${s._id}')">ðŸ—‘ï¸</button>
             </td>
         </tr>
     `).join('');
 }
 
-function viewStockistDetails(id) {
-    const s = allStockists.find(x => x._id === id);
-    if (!s) return;
+function openPartyModal(id = null) {
+    const form = document.getElementById('partyForm');
+    if (form) form.reset();
+    document.getElementById('party-id').value = '';
 
-    const content = document.getElementById('stockist-details-content');
-    const actions = document.getElementById('stockist-modal-actions');
-    
-    content.innerHTML = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-            <div>
-                <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">Drug License (DL)</label>
-                <div style="color:#fff; font-family:monospace; margin-bottom:1rem;">${s.dlNo || 'Not Provided'}</div>
-                
-                <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">GST Number</label>
-                <div style="color:#fff; font-family:monospace; margin-bottom:1rem;">${s.gstNo || 'Not Provided'}</div>
-                
-                <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">FSSAI Number</label>
-                <div style="color:#fff; font-family:monospace; margin-bottom:1rem;">${s.fssaiNo || 'Not Provided'}</div>
-                
-                <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">PAN Number</label>
-                <div style="color:#fff; font-family:monospace; margin-bottom:1rem;">${s.panNo || 'Not Provided'}</div>
-            </div>
-            <div>
-                <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">Contact Phone</label>
-                <div style="color:#fff; margin-bottom:1rem;">${s.phone || '-'}</div>
-                
-                <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">Email Address</label>
-                <div style="color:#fff; margin-bottom:1rem;">${s.email || '-'}</div>
-                
-                <label style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">Full Address</label>
-                <div style="color:#fff; font-size:0.85rem; line-height:1.4;">${s.address || 'No address provided'}</div>
-            </div>
-        </div>
-        
-        <div style="margin-top: 2rem; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 20px; padding: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h4 style="margin: 0; font-size: 0.9rem; color: var(--primary);">💼 Business Summary</h4>
-                <span class="badge badge-approved" style="font-size: 0.6rem;">REAL-TIME DATA</span>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div style="text-align: center; border-right: 1px solid var(--glass-border);">
-                    <div style="color: var(--text-muted); font-size: 0.65rem; text-transform: uppercase; margin-bottom: 5px;">Total Orders</div>
-                    <div style="font-size: 1.5rem; font-weight: 800; color: #fff;">${allOrders.filter(o => o.stockist && o.stockist._id === s._id).length}</div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="color: var(--text-muted); font-size: 0.65rem; text-transform: uppercase; margin-bottom: 5px;">Life-time Business</div>
-                    <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent);">₹${allOrders.filter(o => o.stockist && o.stockist._id === s._id).reduce((acc, curr) => acc + curr.grandTotal, 0).toLocaleString('en-IN')}</div>
-                </div>
-            </div>
-        </div>
-    `;
+    if (id) {
+        const s = allStockists.find(x => x._id === id);
+        if (s) {
+            document.getElementById('party-id').value = s._id;
+            document.getElementById('party-name').value = s.name;
+            document.getElementById('party-type').value = s.partyType || 'STOCKIST';
+            document.getElementById('party-login').value = s.loginId;
+            document.getElementById('party-pass').value = s.password;
+            document.getElementById('party-limit').value = s.creditLimit || 0;
+            document.getElementById('party-balance').value = s.outstandingBalance || 0;
+            document.getElementById('party-pan').value = s.panNo;
+            document.getElementById('party-gst').value = s.gstNo || '';
+            document.getElementById('party-dl').value = s.dlNo || '';
+            document.getElementById('party-city').value = s.city || '';
+            document.getElementById('party-state').value = s.state || '';
+            document.getElementById('party-phone').value = s.phone || '';
+            document.getElementById('party-address').value = s.address || '';
+        }
+    }
 
-    actions.innerHTML = `
-        <button class="btn btn-ghost" onclick="closeStockistModal()" style="flex:1; justify-content:center;">CLOSE</button>
-        ${!s.approved ? `
-            <button class="btn btn-primary" onclick="approveStockist('${s._id}'); closeStockistModal();" style="flex:2; justify-content:center;">APPROVE STOCKIST</button>
-        ` : ''}
-        <button class="btn btn-ghost" onclick="deleteStockist('${s._id}'); closeStockistModal();" style="color:#ef4444; border-color:rgba(239,68,68,0.2);">DELETE RECORD</button>
-    `;
+    document.getElementById('partyModal').classList.remove('hidden');
+}
 
-    document.getElementById('stockistModal').classList.remove('hidden');
+function closePartyModal() {
+    document.getElementById('partyModal').classList.add('hidden');
+}
+
+async function saveParty(e) {
+    e.preventDefault();
+    const id = document.getElementById('party-id').value;
+    const data = {
+        name: document.getElementById('party-name').value,
+        partyType: document.getElementById('party-type').value,
+        loginId: document.getElementById('party-login').value,
+        password: document.getElementById('party-pass').value,
+        creditLimit: Number(document.getElementById('party-limit').value),
+        outstandingBalance: Number(document.getElementById('party-balance').value),
+        panNo: document.getElementById('party-pan').value,
+        gstNo: document.getElementById('party-gst').value,
+        dlNo: document.getElementById('party-dl').value,
+        city: document.getElementById('party-city').value,
+        state: document.getElementById('party-state').value,
+        phone: document.getElementById('party-phone').value,
+        address: document.getElementById('party-address').value
+    };
+
+    try {
+        const url = id ? `${API_BASE}/admin/stockists/${id}` : `${API_BASE}/admin/stockists`;
+        const res = await fetch(url, {
+            method: id ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert("Party record saved!");
+            closePartyModal();
+            loadStockists(document.getElementById('party-type-filter').value);
+        } else {
+            alert("Error: " + result.message);
+        }
+    } catch (e) { alert("Save failed."); }
 }
 
 function closeStockistModal() {
@@ -886,9 +931,9 @@ function renderOrderHistory(filter = '') {
             <td>${new Date(o.createdAt).toLocaleDateString('en-GB')}</td>
             <td style="text-align:center;">${o.items.length}</td>
             <td style="text-align:right; font-weight:700;">₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-            <td style="text-align:center;"><span class="badge ${o.status === 'approved' ? 'badge-approved' : (o.status === 'rejected' ? 'badge-pending' : 'badge-pending')}" style="${o.status === 'rejected' ? 'background:#ef4444; color:#fff;' : ''}">${o.status.toUpperCase()}</span></td>
+            <td style="text-align:center;"><span class="badge ${o.status === 'approved' ? 'badge-approved' : (o.status === 'invoiced' ? 'badge-approved' : (o.status === 'rejected' ? 'badge-pending' : 'badge-pending'))}" style="${o.status === 'rejected' ? 'background:#ef4444; color:#fff;' : (o.status === 'invoiced' ? 'background:var(--accent); color:#fff;' : '')}">${o.status.toUpperCase()}</span></td>
             <td style="text-align:right;">
-                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewOrderDetails('${o._id}')">👁️ VIEW</button>
+                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewOrderDetails('${o._id}')">ðŸ‘ï¸ VIEW</button>
             </td>
         </tr>
     `).join('');
@@ -909,7 +954,7 @@ function viewOrderDetails(id) {
     
     const statusEl = document.getElementById('detail-status');
     statusEl.innerText = o.status.toUpperCase();
-    statusEl.style.background = o.status === 'approved' ? '#10b981' : (o.status === 'rejected' ? '#ef4444' : '#f59e0b');
+    statusEl.style.background = o.status === 'approved' ? '#10b981' : (o.status === 'invoiced' ? 'var(--accent)' : (o.status === 'rejected' ? '#ef4444' : '#f59e0b'));
     statusEl.style.color = '#fff';
 
     const itemsBody = document.getElementById('detail-items-body');
@@ -974,8 +1019,26 @@ function viewOrderDetails(id) {
         rejectBtn.classList.add('hidden');
     }
 
+    // Invoice Buttons logic
+    const invoiceBtn = document.getElementById('detail-invoice-btn');
+    const downloadBtn = document.getElementById('detail-download-btn');
+    const inv = allInvoices.find(i => i.order === o._id || (i.order && i.order._id === o._id));
+
+    if (o.status === 'approved') {
+        invoiceBtn.style.display = 'inline-flex';
+        invoiceBtn.onclick = () => generateInvoice(o._id);
+        downloadBtn.style.display = 'none';
+    } else if (o.status === 'invoiced') {
+        invoiceBtn.style.display = 'none';
+        downloadBtn.style.display = 'inline-flex';
+        if (inv) downloadBtn.onclick = () => downloadInvoicePDF(inv._id);
+    } else {
+        invoiceBtn.style.display = 'none';
+        downloadBtn.style.display = 'none';
+    }
+
     deleteBtn.onclick = () => {
-        if (confirm(`⚠️ CRITICAL: Are you sure you want to PERMANENTLY DELETE Order #${o.orderNo}?\n\nThis will also remove it from the Stockist's view.`)) {
+        if (confirm(`âš ï¸ CRITICAL: Are you sure you want to PERMANENTLY DELETE Order #${o.orderNo}?\n\nThis will also remove it from the Stockist's view.`)) {
             deleteOrder(o._id);
             closeOrderModal();
         }
@@ -989,7 +1052,7 @@ async function rejectOrder(id) {
         const res = await fetch(`${API_BASE}/admin/orders/${id}/reject`, { method: 'PUT' });
         const result = await res.json();
         if (result.success) {
-            alert("❌ Order rejected and marked accordingly.");
+            alert("âŒ Order rejected and marked accordingly.");
             loadOrders(); // Refresh history
         } else {
             alert("Rejection failed: " + result.message);
@@ -1002,7 +1065,7 @@ async function negotiateItem(orderId, itemId, action, btn) {
     
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `⏳`;
+    btn.innerHTML = `â³`;
 
     const customRate = document.getElementById(`rate-${orderId}-${itemId}`).value;
 
@@ -1041,7 +1104,7 @@ async function deleteOrder(id) {
         const res = await fetch(`${API_BASE}/admin/orders/${id}`, { method: 'DELETE' });
         const result = await res.json();
         if (result.success) {
-            alert("🗑️ Order deleted successfully.");
+            alert("ðŸ—‘ï¸ Order deleted successfully.");
             loadOrders(); // Refresh history
         }
     } catch (e) { alert("Delete failed."); }
@@ -1049,4 +1112,516 @@ async function deleteOrder(id) {
 
 function closeOrderModal() {
     document.getElementById('orderDetailModal').classList.add('hidden');
+}
+
+// --- LEDGER & PAYMENTS LOGIC ---
+let currentLedgerPartyId = null;
+
+async function viewLedger(id) {
+    const s = allStockists.find(x => x._id === id);
+    if (!s) return;
+
+    currentLedgerPartyId = id;
+    const nameEl = document.getElementById('ledger-party-name');
+    if(nameEl) nameEl.innerText = '📋 Ledger: ' + s.name;
+    
+    try {
+        const res = await fetch('/api/admin/parties/' + id + '/ledger');
+        const ledger = await res.json();
+        renderLedger(ledger);
+        document.getElementById('ledgerModal').classList.remove('hidden');
+    } catch (e) { alert("Failed to load ledger"); }
+}
+
+function renderLedger(ledger) {
+    const tbody = document.getElementById('ledgerTableBody');
+    if(!tbody) return;
+    let runningBalance = 0;
+
+    tbody.innerHTML = ledger.map(entry => {
+        runningBalance += (entry.debit - entry.credit);
+
+        return '<tr>' +
+                '<td>' + new Date(entry.date).toLocaleDateString('en-GB') + '</td>' +
+                '<td style="font-family:monospace; font-weight:700;">' + entry.refNo + '</td>' +
+                '<td><span class="badge" style="background:rgba(255,255,255,0.05); color:#fff;">' + entry.type + '</span></td>' +
+                '<td style="font-size:0.85rem;">' + entry.description + '</td>' +
+                '<td style="text-align:right; color:#ef4444; font-weight:700;">' + (entry.debit > 0 ? '₹' + entry.debit.toLocaleString('en-IN') : '-') + '</td>' +
+                '<td style="text-align:right; color:#10b981; font-weight:700;">' + (entry.credit > 0 ? '₹' + entry.credit.toLocaleString('en-IN') : '-') + '</td>' +
+                '<td style="text-align:right; font-weight:800; color:' + (runningBalance >= 0 ? 'var(--accent)' : '#10b981') + '">₹' + Math.abs(runningBalance).toLocaleString('en-IN') + ' ' + (runningBalance >= 0 ? 'Dr' : 'Cr') + '</td>' +
+            '</tr>';
+    }).join('');
+}
+
+function closeLedgerModal() {
+    document.getElementById('ledgerModal').classList.add('hidden');
+}
+
+function openPaymentModalFromLedger() {
+    if (!currentLedgerPartyId) return;
+    const partyInput = document.getElementById('payment-party-id');
+    if(partyInput) partyInput.value = currentLedgerPartyId;
+    
+    const form = document.getElementById('paymentForm');
+    if(form) form.reset();
+    
+    const s = allStockists.find(x => x._id === currentLedgerPartyId);
+    if (s) {
+        document.getElementById('payment-type').value = s.partyType === 'STOCKIST' ? 'RECEIPT' : 'PAYMENT';
+    }
+    
+    document.getElementById('payment-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('paymentModal').classList.remove('hidden');
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.add('hidden');
+}
+
+async function savePayment(e) {
+    e.preventDefault();
+    const data = {
+        party: document.getElementById('payment-party-id').value,
+        type: document.getElementById('payment-type').value,
+        amount: Number(document.getElementById('payment-amount').value),
+        method: document.getElementById('payment-method').value,
+        refNo: document.getElementById('payment-ref').value,
+        date: document.getElementById('payment-date').value
+    };
+
+    try {
+        const res = await fetch('/api/admin/payments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ Payment recorded and Ledger updated!");
+            closePaymentModal();
+            if (currentLedgerPartyId) viewLedger(currentLedgerPartyId);
+            loadStockists(document.getElementById('party-type-filter').value);
+        }
+    } catch (e) { alert("Payment record failed"); }
+}
+
+// --- INVOICE LOGIC ---
+function renderInvoices() {
+    const tbody = document.getElementById('invoiceTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = allInvoices.map(inv => `
+        <tr>
+            <td style="font-family:monospace; font-weight:700; color:var(--accent);">${inv.invoiceNo}</td>
+            <td style="font-weight:600;">${inv.stockistName}</td>
+            <td>${new Date(inv.createdAt).toLocaleDateString('en-GB')}</td>
+            <td style="text-align:right;">₹${inv.subTotal.toLocaleString('en-IN')}</td>
+            <td style="text-align:right;">₹${inv.gstAmount.toLocaleString('en-IN')}</td>
+            <td style="text-align:right; font-weight:800; color:var(--primary);">₹${inv.grandTotal.toLocaleString('en-IN')}</td>
+            <td style="text-align:right;">
+                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="downloadInvoicePDF('${inv._id}')">📥</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function generateInvoice(orderId) {
+    try {
+        const res = await fetch(`${API_BASE}/admin/invoices/generate/${orderId}`, { method: 'POST' });
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ Invoice Generated Successfully!");
+            await loadInvoices();
+            await loadOrders();
+            renderOrderHistory();
+            renderInvoices();
+        } else {
+            alert("Generation failed: " + result.message);
+        }
+    } catch (e) { alert("Failed to generate invoice"); }
+}
+
+// --- PURCHASE ENTRY LOGIC ---
+function renderPurchaseEntries() {
+    const tbody = document.getElementById('purchaseTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = allPurchaseEntries.map(p => `
+        <tr>
+            <td style="font-family:monospace; font-weight:700;">${p.purchaseNo}</td>
+            <td style="font-weight:600;">${p.supplierName}</td>
+            <td>${p.supplierInvoiceNo}</td>
+            <td>${new Date(p.invoiceDate).toLocaleDateString('en-GB')}</td>
+            <td style="text-align:center;">${p.items.length}</td>
+            <td style="text-align:right; font-weight:800; color:var(--primary);">₹${p.grandTotal.toLocaleString('en-IN')}</td>
+            <td style="text-align:right;">
+                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewPurchaseDetails('${p._id}')">👁️</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function openPurchaseModal() {
+    document.getElementById('purchaseForm').reset();
+    purchaseItems = [];
+    renderPurchaseItems();
+    
+    // Populate Supplier Dropdown (Only show parties of type SUPPLIER)
+    const select = document.getElementById('pur-supplier');
+    if(select) {
+        select.innerHTML = '<option value="">-- Select Supplier --</option>' + 
+            allStockists.filter(s => s.partyType === 'SUPPLIER').map(s => `<option value="${s._id}">${s.name}</option>`).join('');
+    }
+
+    // Populate Product Dropdown
+    const prodSelect = document.getElementById('pur-prod-select');
+    if(prodSelect) {
+        prodSelect.innerHTML = '<option value="">-- Select Product --</option>' + 
+            allProducts.map(p => `<option value="${p._id}">${p.name}</option>`).join('');
+    }
+
+    document.getElementById('purchaseModal').classList.remove('hidden');
+}
+
+function closePurchaseModal() {
+    document.getElementById('purchaseModal').classList.add('hidden');
+}
+
+function addPurchaseItem() {
+    const prodId = document.getElementById('pur-prod-select').value;
+    const qty = Number(document.getElementById('pur-qty').value);
+    const rate = Number(document.getElementById('pur-rate').value);
+    
+    if(!prodId || qty <= 0 || rate <= 0) return alert("Please fill item details");
+    
+    const prod = allProducts.find(p => p._id === prodId);
+    purchaseItems.push({
+        product: prodId,
+        name: prod.name,
+        qty: qty,
+        bonusQty: 0,
+        purchaseRate: rate,
+        gstPercent: prod.gstPercent || 12,
+        totalValue: qty * rate
+    });
+    
+    renderPurchaseItems();
+    // Clear inputs
+    document.getElementById('pur-qty').value = '';
+    document.getElementById('pur-rate').value = '';
+}
+
+function renderPurchaseItems() {
+    const tbody = document.getElementById('purchase-items-body');
+    if(!tbody) return;
+    
+    let subTotal = 0;
+    let gstTotal = 0;
+
+    tbody.innerHTML = purchaseItems.map((item, index) => {
+        const gst = (item.totalValue * item.gstPercent) / 100;
+        subTotal += item.totalValue;
+        gstTotal += gst;
+        
+        return `<tr>
+            <td>${item.name}</td>
+            <td>${item.qty}</td>
+            <td>₹${item.purchaseRate.toFixed(2)}</td>
+            <td>${item.gstPercent}%</td>
+            <td style="text-align:right;">₹${item.totalValue.toFixed(2)}</td>
+            <td><button type="button" onclick="purchaseItems.splice(${index},1); renderPurchaseItems();" style="color:red; background:none; border:none; cursor:pointer;">✖</button></td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('pur-subtotal').innerText = '₹' + subTotal.toLocaleString('en-IN');
+    document.getElementById('pur-gst').innerText = '₹' + gstTotal.toLocaleString('en-IN');
+    document.getElementById('pur-total').innerText = '₹' + (subTotal + gstTotal).toLocaleString('en-IN');
+}
+
+async function savePurchaseEntry(e) {
+    e.preventDefault();
+    if(!purchaseItems.length) return alert("Add at least one item");
+
+    const supplierId = document.getElementById('pur-supplier').value;
+    const supplier = allStockists.find(s => s._id === supplierId);
+
+    const data = {
+        supplier: supplierId,
+        supplierName: supplier ? supplier.name : 'Unknown',
+        supplierInvoiceNo: document.getElementById('pur-inv-no').value,
+        invoiceDate: document.getElementById('pur-inv-date').value,
+        items: purchaseItems,
+        subTotal: purchaseItems.reduce((s, i) => s + i.totalValue, 0),
+        gstAmount: purchaseItems.reduce((s, i) => s + (i.totalValue * i.gstPercent / 100), 0),
+        grandTotal: purchaseItems.reduce((s, i) => s + (i.totalValue * (1 + i.gstPercent / 100)), 0)
+    };
+
+    try {
+        const res = await fetch('/api/admin/purchase-entries', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ Purchase Entry Recorded & Stock Updated!");
+            await loadPurchaseEntries();
+            await loadProducts();
+            await loadStockists();
+            renderPurchaseEntries();
+            closePurchaseModal();
+        }
+    } catch (e) { alert("Failed to save purchase"); }
+}
+
+// --- REPORTING & COMPLIANCE LOGIC ---
+async function exportGSTR1() {
+    const month = document.getElementById('report-month').value;
+    const year = document.getElementById('report-year').value;
+    
+    try {
+        const res = await fetch('/api/admin/reports/gstr1?month=' + month + '&year=' + year);
+        const data = await res.json();
+        
+        if (!data.length) {
+            alert("No data found for selected period.");
+            return;
+        }
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "GSTR1_B2B");
+        XLSX.writeFile(wb, "GSTR1_Report_" + month + "_" + year + ".xlsx");
+    } catch (e) { alert("Report export failed"); }
+}
+
+function refreshInventoryVal() {
+    const totalVal = allProducts.reduce((sum, p) => sum + ((p.qtyAvailable || 0) * (p.pts || 0)), 0);
+    const valEl = document.getElementById('report-inventory-val');
+    if (valEl) {
+        valEl.innerText = '₹' + totalVal.toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+}
+
+// --- MISSING UTILS & RECOVERED LOGIC ---
+function updateStats() {
+    const totalStockists = allStockists.length;
+    const pendingOrders = allOrders.filter(o => o.status === 'pending').length;
+    const totalProducts = allProducts.length;
+    
+    if(document.getElementById('stat-stockists')) document.getElementById('stat-stockists').innerText = totalStockists;
+    if(document.getElementById('stat-pending')) document.getElementById('stat-pending').innerText = pendingOrders;
+    if(document.getElementById('stat-orders')) document.getElementById('stat-orders').innerText = allOrders.length;
+}
+
+// --- FINANCIAL NOTES LOGIC ---
+let allNotes = [];
+
+async function loadFinancialNotes() {
+    try {
+        const res = await fetch('/api/admin/financial-notes');
+        allNotes = await res.json();
+    } catch (e) { console.error("Load notes fail", e); }
+}
+
+function renderFinancialNotes() {
+    const tbody = document.getElementById('noteTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = allNotes.map(n => `
+        <tr>
+            <td style="font-family:monospace; font-weight:700; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">${n.noteNo}</td>
+            <td><span class="badge ${n.noteType === 'CN' ? 'badge-approved' : 'badge-pending'}">${n.noteType === 'CN' ? 'CREDIT' : 'DEBIT'}</span></td>
+            <td style="font-weight:600;">${n.partyName}</td>
+            <td>${n.reason}</td>
+            <td style="text-align:right; font-weight:800; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">₹${n.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+            <td>${new Date(n.createdAt).toLocaleDateString('en-GB')}</td>
+            <td style="text-align:right;">
+                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="downloadNotePDF('${n._id}')">📥</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function openNoteModal() {
+    const select = document.getElementById('note-party');
+    if(select) {
+        select.innerHTML = '<option value="">-- Select Party --</option>' + 
+            allStockists.map(s => `<option value="${s._id}">${s.name} (${s.partyType || 'STOCKIST'})</option>`).join('');
+    }
+    
+    const form = document.getElementById('noteForm');
+    if(form) form.reset();
+    document.getElementById('noteModal').classList.remove('hidden');
+}
+
+function closeNoteModal() {
+    document.getElementById('noteModal').classList.add('hidden');
+}
+
+async function saveFinancialNote(e) {
+    e.preventDefault();
+    const data = {
+        noteType: document.getElementById('note-type').value,
+        party: document.getElementById('note-party').value,
+        amount: Number(document.getElementById('note-amount').value),
+        reason: document.getElementById('note-reason').value,
+        description: document.getElementById('note-desc').value
+    };
+
+    try {
+        const res = await fetch('/api/admin/financial-notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ Financial Note Issued Successfully!");
+            await loadFinancialNotes();
+            await loadStockists();
+            renderFinancialNotes();
+            closeNoteModal();
+        }
+    } catch (e) { alert("Failed to issue note"); }
+}
+
+function downloadNotePDF(id) {
+    const note = allNotes.find(x => x._id === id);
+    if (!note) return;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(20);
+    doc.setTextColor(note.noteType === 'CN' ? 16 : 239, note.noteType === 'CN' ? 185 : 68, note.noteType === 'CN' ? 129 : 68);
+    doc.text(note.noteType === 'CN' ? "CREDIT NOTE" : "DEBIT NOTE", 105, 20, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text("EMYRIS BIOLIFESCIENCES", 20, 35);
+    
+    doc.text("Issued To:", 20, 50);
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.text(note.partyName || 'N/A', 20, 57);
+
+    doc.setFontSize(10);
+    doc.text("Note No: " + note.noteNo, 140, 50);
+    doc.text("Date: " + new Date(note.createdAt).toLocaleDateString('en-GB'), 140, 57);
+
+    doc.autoTable({
+        startY: 70,
+        head: [['Reason/Description', 'Adjustment Amount']],
+        body: [[
+            `${note.reason} - ${note.description || ''}`,
+            `₹ ${note.amount.toLocaleString('en-IN')}`
+        ]],
+        theme: 'grid',
+        headStyles: { fillColor: note.noteType === 'CN' ? [16, 185, 129] : [239, 68, 68] }
+    });
+
+    doc.text("This is a financial adjustment note and does not affect physical inventory.", 20, doc.lastAutoTable.finalY + 20);
+    doc.save(`Note_${note.noteNo}.pdf`);
+}
+
+// --- LEDGER RE-INTEGRATION ---
+async function viewLedger(id) {
+    const s = allStockists.find(x => x._id === id);
+    if (!s) return;
+
+    currentLedgerPartyId = id;
+    const nameEl = document.getElementById('ledger-party-name');
+    if(nameEl) nameEl.innerText = '📋 Ledger: ' + s.name;
+    
+    try {
+        const res = await fetch('/api/admin/parties/' + id + '/ledger');
+        const ledger = await res.json();
+        renderLedger(ledger);
+        document.getElementById('ledgerModal').classList.remove('hidden');
+    } catch (e) { alert("Failed to load ledger"); }
+}
+
+function renderLedger(ledger) {
+    const tbody = document.getElementById('ledgerTableBody');
+    if(!tbody) return;
+    let runningBalance = 0;
+
+    tbody.innerHTML = ledger.map(entry => {
+        runningBalance += (entry.debit - entry.credit);
+
+        return `<tr>
+                <td>${new Date(entry.date).toLocaleDateString('en-GB')}</td>
+                <td style="font-family:monospace; font-weight:700;">${entry.refNo}</td>
+                <td><span class="badge" style="background:rgba(255,255,255,0.05); color:#fff;">${entry.type}</span></td>
+                <td>${entry.description}</td>
+                <td style="text-align:right; color:#ef4444; font-weight:700;">${entry.debit > 0 ? '₹' + entry.debit.toLocaleString('en-IN') : '-'}</td>
+                <td style="text-align:right; color:#10b981; font-weight:700;">${entry.credit > 0 ? '₹' + entry.credit.toLocaleString('en-IN') : '-'}</td>
+                <td style="text-align:right; font-weight:800; color:${runningBalance >= 0 ? 'var(--accent)' : '#10b981'}">₹${Math.abs(runningBalance).toLocaleString('en-IN')} ${runningBalance >= 0 ? 'Dr' : 'Cr'}</td>
+            </tr>`;
+    }).join('');
+}
+function closeLedgerModal() {
+    document.getElementById('ledgerModal').classList.add('hidden');
+}
+
+function viewPurchaseDetails(id) {
+    const p = allPurchaseEntries.find(x => x._id === id);
+    if (!p) return;
+    alert(`Purchase Details for ${p.purchaseNo}:\nSupplier: ${p.supplierName}\nInv No: ${p.supplierInvoiceNo}\nTotal Items: ${p.items.length}\nGrand Total: ₹${p.grandTotal.toLocaleString('en-IN')}`);
+}
+
+function downloadInvoicePDF(id) {
+    const inv = allInvoices.find(x => x._id === id);
+    if (!inv) return;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Title
+    doc.setFontSize(22);
+    doc.setTextColor(99, 102, 241); // Indigo
+    doc.text("TAX INVOICE", 105, 20, { align: 'center' });
+
+    // Header Info
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text("EMYRIS BIOLIFESCIENCES", 20, 35);
+    doc.text("Invoice No: " + inv.invoiceNo, 140, 35);
+    doc.text("Date: " + new Date(inv.createdAt).toLocaleDateString('en-GB'), 140, 42);
+
+    // Bill To
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.text("BILL TO:", 20, 55);
+    doc.setFontSize(10);
+    doc.text(inv.stockistName || 'N/A', 20, 62);
+
+    // Table
+    doc.autoTable({
+        startY: 75,
+        head: [['Product Name', 'HSN', 'Qty', 'Rate', 'GST %', 'Total Value']],
+        body: inv.items.map(item => [
+            item.name,
+            item.hsn || '-',
+            item.qty,
+            item.priceUsed.toFixed(2),
+            item.gstPercent + '%',
+            item.totalValue.toFixed(2)
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [99, 102, 241] }
+    });
+
+    // Totals
+    const finalY = doc.lastAutoTable.finalY + 10;
+    doc.text(`Subtotal: ₹ ${inv.subTotal.toLocaleString('en-IN')}`, 140, finalY);
+    doc.text(`GST Total: ₹ ${inv.gstAmount.toLocaleString('en-IN')}`, 140, finalY + 7);
+    doc.setFontSize(12);
+    doc.text(`GRAND TOTAL: ₹ ${inv.grandTotal.toLocaleString('en-IN')}`, 140, finalY + 15);
+
+    doc.save(`Invoice_${inv.invoiceNo}.pdf`);
 }
