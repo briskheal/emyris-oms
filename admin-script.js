@@ -6,6 +6,7 @@ let allOrders = [];
 let allInvoices = [];
 let allPurchaseEntries = [];
 let purchaseItems = []; // Temporary storage for new purchase entry
+let companyProfile = {};
 
 // --- INITIALIZATION ---
 window.onload = async () => {
@@ -720,6 +721,8 @@ async function loadSettings() {
     try {
         const res = await fetch(`${API_BASE}/admin/settings`);
         const s = await res.json();
+        companyProfile = s || {};
+        
         document.getElementById('set-name').value = s.name || '';
         document.getElementById('set-tollfree').value = s.tollFree || '';
         
