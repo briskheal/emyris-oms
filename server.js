@@ -390,6 +390,14 @@ app.post('/api/stockist/login', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.get('/api/stockist/profile/:id', async (req, res) => {
+    try {
+        const stockist = await Stockist.findById(req.params.id);
+        if (!stockist) return res.status(404).json({ success: false, message: 'Stockist not found' });
+        res.json({ success: true, stockist });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/stockist/verify-login-pin', async (req, res) => {
     const { loginId, pin } = req.body;
     try {

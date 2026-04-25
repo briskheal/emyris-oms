@@ -10,6 +10,19 @@ let companySettings = null;
 let askingRates = {}; // Store negotiated rates
 let negotiationNotes = {}; // Store authorization details
 
+async function syncProfile() {
+    if (!currentUser || !currentUser._id) return;
+    try {
+        const res = await fetch(`${API_BASE}/stockist/profile/${currentUser._id}`);
+        const data = await res.json();
+        if (data.success) {
+            currentUser = data.stockist;
+            localStorage.setItem('emyris_user', JSON.stringify(currentUser));
+            console.log("🔄 [SYNC] Latest Price Locks Loaded");
+        }
+    } catch (e) { console.error("❌ Profile Sync Failed:", e.message); }
+}
+
 // --- INITIALIZATION ---
 window.onload = async () => {
     // Load company settings immediately for landing page footer/contact
@@ -206,6 +219,7 @@ function logout() {
 
 // --- ORDERING SYSTEM ---
 async function initOrderSystem() {
+    await syncProfile(); // CRITICAL: Get latest negotiated prices first
     await loadSettings();
     await fetchProducts(); // Fetch products first so loadMasters can harvest categories
     await loadMasters();
@@ -721,13 +735,28 @@ function handleLogout() {
     if (!confirm('Are you sure you want to log out from your secure session?')) return;
     
     // Clear Session Variables
-    currentUser = null;
-    cart = {};
-    manualBonuses = {};
-    askingRates = {};
-    negotiationNotes = {};
-    myOrdersHistory = [];
-    
+   let currentUser = null;
+let allProducts = [];
+let cart = {};
+let manualBonuses = {};
+let askingRates = {};
+let negotiationNotes = {};
+let myOrdersHistory = [];
+
+async function syncProfile() {
+    if (!currentUser || !currentUser._id) return;
+    try {
+        const res = await fetch(`${API_BASE}/stockist/profile/${currentUser._id}`);
+        const data = await res.json();
+        if (data.success) {
+            currentUser = data.stockist;
+            localStorage.setItem('emyris_user', JSON.stringify(currentUser));
+            console.log("🔄 [SYNC] Latest Price Locks Loaded");
+        }
+    } catch (e) { console.error("❌ Profile Sync Failed:", e.message); }
+}
+
+// --- INITIALIZATION ---
     // Reset UI
     renderExcelProducts();
     updateFooter();
