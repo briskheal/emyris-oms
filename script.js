@@ -9,6 +9,8 @@ let currentSearch = '';
 let companySettings = null;
 let askingRates = {}; // Store negotiated rates
 let negotiationNotes = {}; // Store authorization details
+let myOrdersHistory = []; // Store history for modal lookup
+
 
 async function syncProfile() {
     if (!currentUser || !currentUser._id) return;
@@ -103,7 +105,7 @@ function switchOrderTab(tab) {
         document.getElementById('section-place-order').classList.add('hidden');
         document.getElementById('section-order-history').classList.remove('hidden');
         if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.add('hidden');
-        fetchMyOrders();
+        fetchMyOrders(); // Load history
     }
 }
 async function handleRegister(e) {
@@ -742,7 +744,7 @@ function renderMyOrders(orders) {
                                 const timeStr = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
                                 
                                 const itemsBrief = o.items.map(i => `${i.name} (${i.qty})`).join(', ');
-                                const statusColor = o.status === 'approved' ? '#10b981' : (o.status === 'rejected' ? '#ef4444' : '#f59e0b');
+                                const statusColor = o.status === 'invoiced' ? '#6366f1' : (o.status === 'approved' ? '#10b981' : (o.status === 'rejected' ? '#ef4444' : '#f59e0b'));
                                 
                                 return `
                                     <tr onclick="viewOrderDetails('${o._id}')" style="cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">

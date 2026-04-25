@@ -326,7 +326,7 @@
 
         <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
             <button class="tab-btn active" id="btn-tab-place" onclick="switchOrderTab('place')">🛒 Place Order</button>
-            <button class="tab-btn" id="btn-tab-history" onclick="switchOrderTab('history')">📜 History</button>
+            <button class="tab-btn" id="btn-tab-history" onclick="switchOrderTab('history')">📜 Billing Details</button>
         </div>
 
         <div id="section-place-order">
@@ -370,7 +370,7 @@
     <div id="orderDetailModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
         <div class="glass-card" style="width: 90%; max-width: 1000px; padding: 2.5rem;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 2rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1.5rem;">
-                <div><h3 id="detail-order-no" style="font-size: 1.5rem; color: #fff;">Order #ORD-XXXXXX</h3><p id="detail-date" style="color: var(--text-muted); font-size: 0.85rem;"></p></div>
+                <div><h3 id="detail-order-no" style="font-size: 1.5rem; color: #fff;">Invoice Details</h3><p id="detail-date" style="color: var(--text-muted); font-size: 0.85rem;"></p></div>
                 <button onclick="closeOrderModal()" style="background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer;">✕</button>
             </div>
             <div class="excel-container" style="margin-bottom: 2rem;"><table class="excel-table"><thead><tr><th>Product Name</th><th>Requested</th><th>Approved</th><th>Qty</th><th>Bonus</th><th>Total</th></tr></thead><tbody id="detail-items-body"></tbody></table></div>
