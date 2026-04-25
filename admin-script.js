@@ -983,11 +983,32 @@ function viewOrderDetails(id) {
     const itemsBody = document.getElementById('detail-items-body');
     itemsBody.innerHTML = o.items.map(item => {
         const isNegotiated = item.askingRate && item.askingRate !== item.masterRate;
-        const rateStatusClass = isNegotiated ? 'price-warning' : '';
         
+        const p = allProducts.find(pr => pr._id === item.product) || { batches: [] };
+        let batchCellHtml = '';
+        if (o.status === 'pending') {
+            const reqQty = (item.qty || 0) + (item.bonusQty || 0);
+            const availableBatches = [...(p.batches || [])]
+                .filter(b => b.qtyAvailable > 0)
+                .sort((a, b) => new Date(a.expDate || '2099') - new Date(b.expDate || '2099'));
+
+            let defaultBatch = availableBatches.length > 0 ? availableBatches[0].batchNo : '';
+            for (let b of availableBatches) {
+                if (b.qtyAvailable >= reqQty) { defaultBatch = b.batchNo; break; }
+            }
+            let batchOptions = availableBatches.map(b => 
+                `<option value="${b.batchNo}" ${b.batchNo === defaultBatch ? 'selected' : ''}>${b.batchNo} (Exp:${b.expDate}|Qty:${b.qtyAvailable})</option>`
+            ).join('');
+            if (!batchOptions) batchOptions = `<option value="">No Stock</option>`;
+            batchCellHtml = `<select id="batch-${o._id}-${item._id}" class="batch-select" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--accent); color: var(--accent); border-radius: 4px; padding: 4px; font-size: 0.75rem;">${batchOptions}</select>`;
+        } else {
+            batchCellHtml = `<span style="font-weight: 700; color: var(--accent);">${item.batch || 'N/A'}</span>`;
+        }
+
         return `
             <tr style="transition: all 0.2s;">
                 <td style="position: sticky; left: 0; z-index: 5; background: #1e293b; font-weight: 700; color: #fff; border-right: 1px solid var(--glass-border);">${item.name}</td>
+                <td style="text-align:center;">${batchCellHtml}</td>
                 <td style="text-align:right; color:var(--text-muted); opacity: 0.8;">₹${(item.masterRate || item.priceUsed).toFixed(2)}</td>
                 <td style="text-align:right; font-weight:700; color:${isNegotiated ? '#ef4444' : '#fff'};">₹${(item.askingRate || item.priceUsed).toFixed(2)}</td>
                 <td style="text-align:center; font-style:italic; font-size:0.75rem; color: #cbd5e1;">${item.negotiationNote || '-'}</td>
@@ -1112,12 +1133,29 @@ async function negotiateItem(orderId, itemId, action, btn) {
 }
 
 async function approveOrder(id) {
+    const o = allOrders.find(x => x._id === id);
+    if (!o) return;
+
+    const batchSelections = {};
+    o.items.forEach(item => {
+        const select = document.getElementById(`batch-${o._id}-${item._id}`);
+        if (select) {
+            batchSelections[item._id] = select.value;
+        }
+    });
+
     try {
-        const res = await fetch(`${API_BASE}/admin/orders/${id}/approve`, { method: 'PUT' });
+        const res = await fetch(`${API_BASE}/admin/orders/${id}/approve`, { 
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ approvedBy: 'ADMIN', batchSelections })
+        });
         const result = await res.json();
         if (result.success) {
             alert("✅ Order approved successfully.");
             loadOrders(); // Refresh history
+        } else {
+            alert(result.message || "Approval failed.");
         }
     } catch (e) { alert("Approval failed."); }
 }

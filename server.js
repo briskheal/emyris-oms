@@ -917,13 +917,13 @@ app.get('/api/orders/my-orders/:stockistId', async (req, res) => {
 // Admin: Approve Order (with Inventory Deduction)
 app.put('/api/admin/orders/:id/approve', async (req, res) => {
     try {
-        const { approvedBy } = req.body;
+        const { approvedBy, batchSelections } = req.body;
         const order = await Order.findById(req.params.id);
         
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
         if (order.status === 'approved') return res.status(400).json({ success: false, message: 'Order already approved' });
 
-        // --- INVENTORY DEDUCTION LOGIC (FIFO BATCH ALLOCATION) ---
+        // --- INVENTORY DEDUCTION LOGIC (MANUAL + FIFO BATCH ALLOCATION) ---
         for (const item of order.items) {
             let totalDeduction = (item.qty || 0) + (item.bonusQty || 0);
             if (totalDeduction > 0) {
@@ -936,8 +936,16 @@ app.put('/api/admin/orders/:id/approve', async (req, res) => {
                     let mfgUsed = '';
                     let expUsed = '';
 
-                    // Sort batches by expiry date (FIFO) roughly
-                    product.batches.sort((a, b) => new Date(a.expDate || '2099') - new Date(b.expDate || '2099'));
+                    const preferredBatchNo = (batchSelections && batchSelections[item._id.toString()]) ? batchSelections[item._id.toString()] : null;
+
+                    // Sort batches: Preferred batch first, then by expiry date (FIFO) roughly
+                    product.batches.sort((a, b) => {
+                        if (preferredBatchNo) {
+                            if (a.batchNo === preferredBatchNo && b.batchNo !== preferredBatchNo) return -1;
+                            if (b.batchNo === preferredBatchNo && a.batchNo !== preferredBatchNo) return 1;
+                        }
+                        return new Date(a.expDate || '2099') - new Date(b.expDate || '2099');
+                    });
 
                     for (let i = 0; i < product.batches.length; i++) {
                         if (totalDeduction <= 0) break;
