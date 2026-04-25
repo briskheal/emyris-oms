@@ -48,22 +48,92 @@
         .marquee-text { display: inline-block; padding-left: 100%; animation: marquee linear infinite; }
         @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
 
-        .navbar { 
-            height: 55px; 
-            background: rgba(15, 23, 42, 0.9); 
-            backdrop-filter: blur(16px); 
-            border-bottom: 1px solid var(--glass-border); 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
-            padding: 0 5%; 
-            position: sticky; 
-            top: 0; 
-            z-index: 1000; 
-        }
-        .logo { font-weight: 800; font-size: 1.2rem; letter-spacing: -0.5px; background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .logo { font-weight: 800; font-size: 1.2rem; letter-spacing: -0.5px; background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; cursor: pointer; }
         
-        .container { max-width: 1300px; margin: 1rem auto; padding: 0 2rem; position: relative; }
+        .nav-links { display: flex; gap: 2rem; align-items: center; }
+        .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; font-weight: 700; transition: 0.3s; }
+        .nav-links a:hover { color: var(--primary); }
+        .nav-cta { background: var(--grad-primary); color: #fff; padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 0.8rem; font-weight: 800; text-decoration: none; box-shadow: 0 10px 20px -5px var(--primary-glow); transition: 0.3s; }
+        .nav-cta:hover { transform: translateY(-2px); box-shadow: 0 15px 30px -5px var(--primary-glow); }
+
+        .container { max-width: 1300px; margin: 0 auto; padding: 0 2rem; position: relative; }
+
+        /* --- NEW SCROLLING LANDING --- */
+        .landing-wrapper { 
+            background: #0b0f1a; 
+            position: relative; z-index: 100;
+            overflow-x: hidden;
+        }
+        
+        .hero-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 100px 0;
+            text-align: center;
+        }
+        .hero-image-bg {
+            position: absolute; inset: 0;
+            background: url('pharma_distribution_hero_v2_1777126997158.png') no-repeat center center;
+            background-size: cover;
+            filter: brightness(0.2) saturate(0.8);
+            z-index: -1;
+        }
+        .hero-glow {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 80%; height: 80%; background: radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%);
+            z-index: -1;
+        }
+
+        .section-padding { padding: 8rem 0; }
+        .section-title-alt { font-size: 3rem; font-weight: 900; text-align: center; margin-bottom: 4rem; letter-spacing: -2px; }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        .feature-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--glass-border);
+            padding: 3rem 2rem;
+            border-radius: 32px;
+            transition: 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            text-align: center;
+        }
+        .feature-card:hover {
+            background: rgba(255,255,255,0.05);
+            transform: translateY(-10px);
+            border-color: var(--primary);
+            box-shadow: 0 30px 60px -15px rgba(0,0,0,0.5);
+        }
+        .card-icon { font-size: 2.5rem; margin-bottom: 1.5rem; display: block; }
+        .card-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 1rem; color: #fff; }
+        .card-desc { font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; }
+
+        .stats-bar {
+            background: rgba(99, 102, 241, 0.05);
+            border-top: 1px solid var(--glass-border);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 3rem 0;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+        .stat-item { text-align: center; }
+        .stat-num { font-size: 2.5rem; font-weight: 900; color: #fff; display: block; }
+        .stat-label { font-size: 0.75rem; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 2px; }
+
+        .auth-portal-section {
+            background: radial-gradient(circle at top right, #1e293b, #0b0f1a);
+            padding: 8rem 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
         /* --- PREMIUM LANDING OVERHAUL --- */
         .landing-wrapper { 
@@ -408,45 +478,91 @@
 
     <!-- LANDING PORTAL WRAPPER -->
     <div id="section-auth" class="landing-wrapper">
-        <div class="landing-content">
-            <!-- Left Side: Corporate Hero & Value Proposition -->
-            <div class="landing-hero">
-                <div class="hero-bg"></div>
-                <div class="hero-overlay"></div>
-                <div class="hero-text">
-                    <div class="hero-badge">OFFICIAL PARTNER PORTAL</div>
-                    <h1 style="font-size: 3.8rem; line-height: 1.1; margin: 1.5rem 0; font-weight: 900; letter-spacing: -2.5px;">Transforming <br><span style="background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Healthcare</span> <br>Distribution.</h1>
-                    <p style="font-size: 1.15rem; opacity: 0.7; max-width: 550px; margin-bottom: 4rem; line-height: 1.7; font-weight: 500;">Access the EMYRIS Order Management System. A modern, transparent, and high-performance gateway built exclusively for professional stockists.</p>
-                    
-                    <div class="feature-list">
-                        <div class="feature-item">
-                            <div class="feature-icon">⚡</div>
-                            <div>
-                                <strong>Smart Price Negotiation</strong>
-                                <p>Propose custom rates and secure persistent price locks with automated admin approval workflows.</p>
-                            </div>
-                        </div>
-                        <div class="feature-item">
-                            <div class="feature-icon">📦</div>
-                            <div>
-                                <strong>High-Speed Bulk Ordering</strong>
-                                <p>Next-gen excel-style data grid optimized for fast order entry without repetitive screen reloads.</p>
-                            </div>
-                        </div>
-                        <div class="feature-item">
-                            <div class="feature-icon">🔒</div>
-                            <div>
-                                <strong>Enterprise Grade Security</strong>
-                                <p>Fully encrypted document storage for your Drug License, GST, and PAN compliance verification.</p>
-                            </div>
-                        </div>
-                    </div>
+        <!-- TOP NAV -->
+        <nav class="navbar" style="position: fixed; top: 0; width: 100%; height: 75px; background: rgba(11, 15, 26, 0.7); backdrop-filter: blur(20px);">
+            <div class="container" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div class="logo">EMYRIS OMS</div>
+                <div class="nav-links">
+                    <a href="#features">FEATURES</a>
+                    <a href="#stats">BENEFITS</a>
+                    <a href="#support">SUPPORT</a>
+                    <a href="#portal" class="nav-cta">PORTAL LOGIN</a>
                 </div>
             </div>
+        </nav>
 
-            <!-- Right Side: Interaction Gateway -->
-            <div class="landing-auth">
-                <!-- LOGIN CARD -->
+        <!-- HERO SECTION -->
+        <section class="hero-section">
+            <div class="hero-image-bg"></div>
+            <div class="hero-glow"></div>
+            <div class="container">
+                <div class="hero-badge">ADVANCED PHARMA ECOSYSTEM</div>
+                <h1 style="font-size: 5rem; line-height: 1; font-weight: 900; letter-spacing: -4px; margin-bottom: 2rem;">
+                    Empowering the Future of <br>
+                    <span style="background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Medical Distribution</span>
+                </h1>
+                <p style="font-size: 1.4rem; color: var(--text-muted); max-width: 800px; margin: 0 auto 3rem; line-height: 1.6; font-weight: 500;">
+                    A unified, glassmorphic platform designed for high-performance stockists and distributors. 
+                    Real-time compliance, intelligent pricing, and rapid order execution.
+                </p>
+                <div style="display: flex; gap: 1.5rem; justify-content: center;">
+                    <a href="#portal" class="btn-primary" style="width: auto; padding: 1.2rem 3rem;">ENTER PARTNER PORTAL</a>
+                    <a href="#features" class="btn" style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #fff; padding: 1.2rem 3rem; border-radius: 14px; font-weight: 800; font-size: 1rem; text-decoration: none;">LEARN MORE</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- STATS BAR -->
+        <section id="stats" class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-num">1200+</span>
+                <span class="stat-label">SKUs ACTIVE</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-num">100%</span>
+                <span class="stat-label">GST COMPLIANT</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-num">24/7</span>
+                <span class="stat-label">PARTNER SUPPORT</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-num">0.5s</span>
+                <span class="stat-label">ORDER LATENCY</span>
+            </div>
+        </section>
+
+        <!-- FEATURES SECTION -->
+        <section id="features" class="section-padding container">
+            <h2 class="section-title-alt">Engineered for <span style="color: var(--primary);">Excellence</span></h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <span class="card-icon">⚡</span>
+                    <h3 class="card-title">Live Negotiations</h3>
+                    <p class="card-desc">Propose custom rates directly on the grid and lock-in prices for future orders automatically.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="card-icon">📄</span>
+                    <h3 class="card-title">Smart Compliance</h3>
+                    <p class="card-desc">Automated validation of DL, GST, and FSSAI credentials with high-fidelity document generation.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="card-icon">💹</span>
+                    <h3 class="card-title">Real-time Analytics</h3>
+                    <p class="card-desc">Track purchase trends, outstanding balances, and order fulfillment states in one unified view.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="card-icon">🚀</span>
+                    <h3 class="card-title">Next-Gen UX</h3>
+                    <p class="card-desc">Optimized for speed. No page reloads. Excel-style bulk entry for ultra-fast operations.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- PORTAL ACCESS SECTION -->
+        <section id="portal" class="auth-portal-section">
+            <div class="container" style="display: flex; align-items: center; justify-content: center; width: 100%;">
+                <!-- LOGIN CARD (Existing) -->
                 <div id="view-login" class="auth-card">
                     <h2 class="auth-title">Welcome Back</h2>
                     <p class="auth-subtitle">Secure gateway to your distribution dashboard</p>
@@ -471,7 +587,7 @@
                     </div>
                 </div>
 
-                <!-- REGISTER CARD -->
+                <!-- REGISTER CARD (Existing) -->
                 <div id="view-register" class="auth-card hidden" style="max-width: 650px;">
                     <h2 class="auth-title">Partner Registration</h2>
                     <p class="auth-subtitle">Join the EMYRIS professional distribution network</p>
@@ -504,7 +620,7 @@
                     </div>
                 </div>
 
-                <!-- FORGOT CARD -->
+                <!-- FORGOT CARD (Existing) -->
                 <div id="view-forgot" class="auth-card hidden">
                     <h2 class="auth-title">Account Recovery</h2>
                     <p class="auth-subtitle">Verify your email to receive credentials</p>
@@ -520,7 +636,7 @@
                     </div>
                 </div>
 
-                <!-- PIN CARD -->
+                <!-- PIN CARD (Existing) -->
                 <div id="view-pin" class="auth-card hidden">
                     <h2 class="auth-title">Verify Entry</h2>
                     <p class="auth-subtitle">A secure 6-digit PIN has been sent to your email</p>
@@ -536,20 +652,26 @@
                     </div>
                 </div>
             </div>
-        </div>
-        
+        </section>
+
         <!-- COMPACT LANDING FOOTER (Synchronized) -->
-        <div class="landing-footer">
-            <div style="display: flex; gap: 3rem; align-items: center;">
-                <span id="land-web" style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #fff;">🌐 www.emyrisbio.com</span>
-                <div style="display: flex; gap: 2rem;">
-                    <span id="land-tollfree" style="display: flex; align-items: center; gap: 8px; color: var(--accent); font-weight: 800;">📞 TOLL-FREE: 7993163300</span>
-                    <span id="land-phone" style="display: flex; align-items: center; gap: 8px; color: var(--primary); font-weight: 700;">💬 WHATSAPP: +91-XXXXXXXXXX</span>
+        <div id="support" class="landing-footer" style="flex-direction: column; height: auto; padding: 4rem 5%; gap: 2rem;">
+            <div style="display: flex; justify-content: space-between; width: 100%; border-bottom: 1px solid var(--glass-border); padding-bottom: 2rem;">
+                <div style="max-width: 400px;">
+                    <div class="logo" style="font-size: 1.8rem; margin-bottom: 1rem;">EMYRIS OMS</div>
+                    <p style="font-size: 0.9rem; line-height: 1.6; opacity: 0.6;">Leading the way in pharmaceutical distribution technology. Our portal provides a seamless bridge between stockists and the global supply chain.</p>
                 </div>
-                <span id="land-email" style="display: flex; align-items: center; gap: 8px; opacity: 0.8;">✉️ contact@emyrisbio.com</span>
+                <div style="text-align: right; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <span id="land-web" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-weight: 700; color: #fff;">🌐 www.emyrisbio.com</span>
+                    <span id="land-tollfree" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; color: var(--accent); font-weight: 800;">📞 TOLL-FREE: 7993163300</span>
+                    <span id="land-phone" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; color: var(--primary); font-weight: 700;">💬 WHATSAPP: +91-XXXXXXXXXX</span>
+                    <span id="land-email" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; opacity: 0.8;">✉️ contact@emyrisbio.com</span>
+                </div>
             </div>
-            <div id="land-address" style="margin-top: 1rem; font-size: 0.75rem; opacity: 0.7; font-weight: 500;">Corporate Office: EMYRIS BIOLIFESCIENCES</div>
-            <div style="margin-top: 0.5rem; font-weight: 800; color: var(--text-muted); letter-spacing: 1px; font-size: 0.65rem;">&copy; 2026 EMYRIS BIOLIFESCIENCES • ADVANCED DISTRIBUTION SYSTEM</div>
+            <div style="text-align: center; width: 100%;">
+                <div id="land-address" style="font-size: 0.8rem; opacity: 0.5; margin-bottom: 1rem;">Corporate Office: EMYRIS BIOLIFESCIENCES PVT. LTD.</div>
+                <div style="font-weight: 800; color: var(--text-muted); letter-spacing: 2px; font-size: 0.65rem;">&copy; 2026 EMYRIS BIOLIFESCIENCES • ADVANCED DISTRIBUTION SYSTEM</div>
+            </div>
         </div>
     </div>
 
