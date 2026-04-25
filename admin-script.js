@@ -2045,6 +2045,11 @@ function downloadInvoicePDF(id) {
     const grandTotal = taxableTotal + gstTotal;
     const totalsStartY = y; // Anchor below the last product row's faint line
 
+    // Determine if it's IGST or CGST/SGST based on Stockist State
+    const sState = (stkObj.state || '').toLowerCase().trim();
+    const isLocal = sState === '' || sState.includes('telengana') || sState.includes('telangana') || sState === 'ts' || sState === 'tg';
+    const isIGST = !isLocal;
+
     // Left: GST Summary
     const gstSummaryX = 0;
     setFont(5.5, 'bold', PRIMARY);
@@ -2055,8 +2060,12 @@ function downloadInvoicePDF(id) {
     setFont(5, 'bold', PRIMARY);
     doc.text('GST Rate', gstSummaryX + 2, y + 3.5);
     doc.text('Taxable', gstSummaryX + 20, y + 3.5);
-    doc.text('CGST', gstSummaryX + 38, y + 3.5);
-    doc.text('SGST', gstSummaryX + 52, y + 3.5);
+    if (isIGST) {
+        doc.text('IGST', gstSummaryX + 45, y + 3.5);
+    } else {
+        doc.text('CGST', gstSummaryX + 38, y + 3.5);
+        doc.text('SGST', gstSummaryX + 52, y + 3.5);
+    }
     doc.text('Total GST', gstSummaryX + 64, y + 3.5);
     y += 5;
     Object.entries(gstBreakdown).forEach(([rate, vals]) => {
@@ -2064,8 +2073,12 @@ function downloadInvoicePDF(id) {
         const fv = v => v.toLocaleString('en-IN', { minimumFractionDigits: 2 });
         doc.text(`${rate}%`, gstSummaryX + 2, y + 3.5);
         doc.text(fv(vals.taxable), gstSummaryX + 20, y + 3.5);
-        doc.text(fv(vals.cgst), gstSummaryX + 38, y + 3.5);
-        doc.text(fv(vals.sgst), gstSummaryX + 52, y + 3.5);
+        if (isIGST) {
+            doc.text(fv(vals.cgst + vals.sgst), gstSummaryX + 45, y + 3.5);
+        } else {
+            doc.text(fv(vals.cgst), gstSummaryX + 38, y + 3.5);
+            doc.text(fv(vals.sgst), gstSummaryX + 52, y + 3.5);
+        }
         doc.text(fv(vals.cgst + vals.sgst), gstSummaryX + 64, y + 3.5);
         y += 4.5;
     });
