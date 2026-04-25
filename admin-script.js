@@ -1273,6 +1273,10 @@ function addPurchaseItem() {
     const prodId = document.getElementById('pur-prod-select').value;
     const qty = Number(document.getElementById('pur-qty').value);
     const rate = Number(document.getElementById('pur-rate').value);
+    const batch = document.getElementById('pur-batch').value;
+    const mfg = document.getElementById('pur-mfg').value;
+    const exp = document.getElementById('pur-exp').value;
+    const gstPct = Number(document.getElementById('pur-gst-pct').value);
     
     if(!prodId || qty <= 0 || rate <= 0) return alert("Please fill item details");
     
@@ -1283,14 +1287,19 @@ function addPurchaseItem() {
         qty: qty,
         bonusQty: 0,
         purchaseRate: rate,
-        gstPercent: prod.gstPercent || 12,
+        batch: batch || 'N/A',
+        mfgDate: mfg || 'N/A',
+        expDate: exp || 'N/A',
+        gstPercent: gstPct || 12,
         totalValue: qty * rate
     });
     
     renderPurchaseItems();
-    // Clear inputs
+    // Clear line inputs
     document.getElementById('pur-qty').value = '';
-    document.getElementById('pur-rate').value = '';
+    document.getElementById('pur-batch').value = '';
+    document.getElementById('pur-mfg').value = '';
+    document.getElementById('pur-exp').value = '';
 }
 
 function renderPurchaseItems() {
@@ -1306,17 +1315,22 @@ function renderPurchaseItems() {
         gstTotal += gst;
         
         return `<tr>
-            <td>${item.name}</td>
-            <td>${item.qty}</td>
-            <td>₹${item.purchaseRate.toFixed(2)}</td>
-            <td>${item.gstPercent}%</td>
-            <td style="text-align:right;">₹${item.totalValue.toFixed(2)}</td>
+            <td>
+                <strong>${item.name}</strong><br>
+                <small style="color:var(--text-muted)">HSN: ${item.hsn || '-'}</small>
+            </td>
+            <td>${item.batch}</td>
+            <td>${item.expDate}</td>
+            <td style="text-align:center;">${item.qty}</td>
+            <td style="text-align:right;">₹${item.purchaseRate.toFixed(2)}</td>
+            <td style="text-align:center;">${item.gstPercent}%</td>
+            <td style="text-align:right; font-weight:700;">₹${(item.totalValue + gst).toFixed(2)}</td>
             <td><button type="button" onclick="purchaseItems.splice(${index},1); renderPurchaseItems();" style="color:red; background:none; border:none; cursor:pointer;">✖</button></td>
         </tr>`;
     }).join('');
 
     document.getElementById('pur-subtotal').innerText = '₹' + subTotal.toLocaleString('en-IN');
-    document.getElementById('pur-gst').innerText = '₹' + gstTotal.toLocaleString('en-IN');
+    document.getElementById('pur-gst-total').innerText = '₹' + gstTotal.toLocaleString('en-IN');
     document.getElementById('pur-total').innerText = '₹' + (subTotal + gstTotal).toLocaleString('en-IN');
 }
 
@@ -1332,6 +1346,11 @@ async function savePurchaseEntry(e) {
         supplierName: supplier ? supplier.name : 'Unknown',
         supplierInvoiceNo: document.getElementById('pur-inv-no').value,
         invoiceDate: document.getElementById('pur-inv-date').value,
+        lrNo: document.getElementById('pur-lr-no').value,
+        lrDate: document.getElementById('pur-lr-date').value,
+        transport: document.getElementById('pur-transport').value,
+        paymentMode: document.getElementById('pur-payment-type').value,
+        remarks: document.getElementById('pur-remarks').value,
         items: purchaseItems,
         subTotal: purchaseItems.reduce((s, i) => s + i.totalValue, 0),
         gstAmount: purchaseItems.reduce((s, i) => s + (i.totalValue * i.gstPercent / 100), 0),
@@ -1560,50 +1579,277 @@ function downloadInvoicePDF(id) {
     const inv = allInvoices.find(x => x._id === id);
     if (!inv) return;
 
+    // Helper: Number to Words conversion for Indian Currency
+    function numberToWords(num) {
+        const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+        const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+        const g = ['', 'Thousand', 'Lakh', 'Crore'];
+
+        const makeGroup = (n) => {
+            let s = '';
+            if (n >= 100) {
+                s += a[Math.floor(n / 100)] + 'Hundred ';
+                n %= 100;
+            }
+            if (n >= 20) {
+                s += b[Math.floor(n / 10)] + ' ';
+                n %= 10;
+            }
+            if (n > 0) s += a[n];
+            return s;
+        };
+
+        if (num === 0) return 'Zero';
+        let ns = num.toString().split('.');
+        let integer = parseInt(ns[0]);
+        let fraction = ns[1] ? parseInt(ns[1]) : 0;
+        
+        let out = '';
+        let i = 0;
+        while (integer > 0) {
+            let group;
+            if (i === 0) { group = integer % 1000; integer = Math.floor(integer / 1000); }
+            else { group = integer % 100; integer = Math.floor(integer / 100); }
+            
+            if (group > 0) out = makeGroup(group) + (g[i] ? g[i] + ' ' : '') + out;
+            i++;
+        }
+        
+        let final = 'Rupees ' + out.trim();
+        if (fraction > 0) final += ' and ' + fraction + '/100 Paise';
+        return final + ' Only';
+    }
+
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    const doc = new jsPDF('p', 'mm', 'a4');
 
-    // Title
+    // Header Area
     doc.setFontSize(22);
-    doc.setTextColor(99, 102, 241); // Indigo
-    doc.text("TAX INVOICE", 105, 20, { align: 'center' });
+    doc.setTextColor(40, 44, 52);
+    doc.text("TAX INVOICE", 105, 15, { align: 'center' });
+    
+    // Logo placeholder (Left)
+    doc.setDrawColor(200);
+    doc.rect(15, 10, 40, 20); 
+    doc.setFontSize(8);
+    doc.text("LOGO", 35, 20, { align: 'center' });
 
-    // Header Info
+    // Company Details (Right)
     doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text("EMYRIS BIOLIFESCIENCES", 20, 35);
-    doc.text("Invoice No: " + inv.invoiceNo, 140, 35);
-    doc.text("Date: " + new Date(inv.createdAt).toLocaleDateString('en-GB'), 140, 42);
+    doc.setFont("helvetica", "bold");
+    doc.text("EMYRIS BIOLIFESCIENCES PVT. LTD.", 140, 15);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text("Sumadhura Pragati Chambers, Park Ln, Secunderabd,", 140, 20);
+    doc.text("Hyderabad, Telangana - 500003", 140, 24);
+    doc.text(`DL No: TS/SEC/2023-44281, 44282`, 140, 28);
+    doc.text(`GSTIN: 36AABCE1234F1Z5`, 140, 32);
+    doc.text(`FSSAI: 13623011000123`, 140, 36);
 
-    // Bill To
-    doc.setFontSize(12);
-    doc.setTextColor(0);
-    doc.text("BILL TO:", 20, 55);
-    doc.setFontSize(10);
-    doc.text(inv.stockistName || 'N/A', 20, 62);
+    doc.line(15, 40, 195, 40); // Divider
+
+    // Invoice Meta
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Invoice No: ${inv.invoiceNo}`, 15, 48);
+    doc.text(`Date: ${new Date(inv.createdAt).toLocaleDateString('en-GB')}`, 15, 53);
+    
+    // Party Details
+    const party = allStockists.find(s => s.name === inv.stockistName) || {};
+    doc.text("BILL TO:", 110, 48);
+    doc.setFont("helvetica", "normal");
+    doc.text(inv.stockistName || 'N/A', 110, 53);
+    doc.text(party.address || '', 110, 58, { maxWidth: 80 });
+    doc.text(`GST: ${party.gst || 'N/A'} | DL: ${party.dl || 'N/A'}`, 110, 68);
 
     // Table
     doc.autoTable({
         startY: 75,
-        head: [['Product Name', 'HSN', 'Qty', 'Rate', 'GST %', 'Total Value']],
-        body: inv.items.map(item => [
-            item.name,
+        head: [['S.No', 'Product Description', 'HSN', 'Batch', 'Exp', 'MRP', 'Qty', 'Unit', 'Price/Unit', 'Taxable', 'GST%', 'Amount']],
+        body: inv.items.map((item, idx) => [
+            idx + 1,
+            { content: `${item.name}\n(Mfg: ${item.manufacturer || 'EMYRIS'})`, styles: { fontSize: 7 } },
             item.hsn || '-',
+            item.batch || 'B2401',
+            item.exp || '12/25',
+            `₹${(item.mrp || 0).toFixed(2)}`,
             item.qty,
+            'NOS',
             item.priceUsed.toFixed(2),
+            item.totalValue.toFixed(2),
             item.gstPercent + '%',
-            item.totalValue.toFixed(2)
+            (item.totalValue * (1 + item.gstPercent/100)).toFixed(2)
         ]),
         theme: 'grid',
-        headStyles: { fillColor: [99, 102, 241] }
+        headStyles: { fillColor: [40, 44, 52], fontSize: 7, halign: 'center' },
+        columnStyles: {
+            0: { cellWidth: 10 },
+            1: { cellWidth: 40 },
+            9: { halign: 'right' },
+            11: { halign: 'right' }
+        },
+        margin: { left: 15, right: 15 }
     });
 
-    // Totals
+    // Summary Footer
     const finalY = doc.lastAutoTable.finalY + 10;
-    doc.text(`Subtotal: ₹ ${inv.subTotal.toLocaleString('en-IN')}`, 140, finalY);
-    doc.text(`GST Total: ₹ ${inv.gstAmount.toLocaleString('en-IN')}`, 140, finalY + 7);
-    doc.setFontSize(12);
-    doc.text(`GRAND TOTAL: ₹ ${inv.grandTotal.toLocaleString('en-IN')}`, 140, finalY + 15);
+    doc.setFont("helvetica", "bold");
+    doc.text("Amount in Words:", 15, finalY);
+    doc.setFont("helvetica", "normal");
+    doc.text(numberToWords(inv.grandTotal), 15, finalY + 5);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("TAX SUMMARY", 130, finalY);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(`Taxable Amount: ₹${inv.subTotal.toLocaleString('en-IN')}`, 130, finalY + 5);
+    doc.text(`CGST (Total): ₹${(inv.gstAmount/2).toLocaleString('en-IN')}`, 130, finalY + 9);
+    doc.text(`SGST (Total): ₹${(inv.gstAmount/2).toLocaleString('en-IN')}`, 130, finalY + 13);
+    
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text(`NET PAYABLE: ₹${inv.grandTotal.toLocaleString('en-IN')}`, 130, finalY + 22);
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "italic");
+    doc.text("Terms: 1. Goods once sold will not be taken back. 2. Subject to Hyderabad Jurisdiction.", 15, 280);
 
     doc.save(`Invoice_${inv.invoiceNo}.pdf`);
+}
+
+// --- PURCHASE ENTRY ENHANCEMENTS ---
+function updateSupplierDetailsDisplay(id) {
+    const s = allStockists.find(x => x._id === id);
+    const box = document.getElementById('supplier-compliance-box');
+    if (!box) return;
+    if (!s) { box.innerHTML = 'Select a supplier to view compliance data.'; return; }
+    
+    box.innerHTML = `
+        <strong>Address:</strong> ${s.address || 'N/A'}<br>
+        <strong>DL:</strong> ${s.dl || 'N/A'} | <strong>GST:</strong> ${s.gst || 'N/A'}<br>
+        <strong>PAN:</strong> ${s.pan || 'N/A'} | <strong>FSSAI:</strong> ${s.fssai || 'N/A'}<br>
+        <strong>Phone:</strong> ${s.phone || 'N/A'}
+    `;
+}
+
+function updateProductEntryMeta(id) {
+    const p = allProducts.find(x => x._id === id);
+    if (!p) return;
+    document.getElementById('pur-rate').value = p.pts || 0;
+    document.getElementById('pur-gst-pct').value = p.gst || 12;
+}
+
+// --- REPORT GENERATION ENGINE ---
+function generateReport(type) {
+    let reportData = [];
+    let filename = "";
+
+    switch(type) {
+        case 'sales-summary':
+            filename = "Sales_Summary_Report";
+            reportData = allInvoices.map(inv => ({
+                "Invoice No": inv.invoiceNo,
+                "Date": new Date(inv.createdAt).toLocaleDateString('en-GB'),
+                "Party Name": inv.stockistName,
+                "Items": inv.items.length,
+                "Taxable Value": inv.subTotal,
+                "GST Amount": inv.gstAmount,
+                "Grand Total": inv.grandTotal
+            }));
+            break;
+
+        case 'party-sales':
+            filename = "Party_Wise_Sales_Analysis";
+            // Group invoices by party
+            const partyMap = {};
+            allInvoices.forEach(inv => {
+                if(!partyMap[inv.stockistName]) partyMap[inv.stockistName] = { Name: inv.stockistName, TotalOrders: 0, TotalRevenue: 0, TotalGST: 0 };
+                partyMap[inv.stockistName].TotalOrders++;
+                partyMap[inv.stockistName].TotalRevenue += inv.grandTotal;
+                partyMap[inv.stockistName].TotalGST += inv.gstAmount;
+            });
+            reportData = Object.values(partyMap);
+            break;
+
+        case 'product-sales':
+            filename = "Product_Movement_Report";
+            const prodMap = {};
+            allInvoices.forEach(inv => {
+                inv.items.forEach(item => {
+                    if(!prodMap[item.name]) prodMap[item.name] = { Name: item.name, QtySold: 0, Revenue: 0 };
+                    prodMap[item.name].QtySold += item.qty;
+                    prodMap[item.name].Revenue += item.totalValue;
+                });
+            });
+            reportData = Object.values(prodMap).sort((a,b) => b.QtySold - a.QtySold);
+            break;
+
+        case 'purchase-register':
+            filename = "Purchase_Register";
+            reportData = allPurchaseEntries.map(p => ({
+                "Pur No": p.purchaseNo,
+                "Supplier": p.supplierName,
+                "Inv No": p.supplierInvoiceNo,
+                "Date": new Date(p.invoiceDate).toLocaleDateString('en-GB'),
+                "Items": p.items.length,
+                "Total Value": p.grandTotal
+            }));
+            break;
+
+        case 'outstanding-summary':
+            filename = "Party_Outstanding_Summary";
+            reportData = allStockists
+                .filter(s => s.outstandingBalance !== 0)
+                .map(s => ({
+                    "Party Name": s.name,
+                    "City": s.city || '-',
+                    "Type": s.partyType || 'STOCKIST',
+                    "Outstanding Balance": s.outstandingBalance
+                }));
+            break;
+
+        case 'inventory-val':
+            filename = "Inventory_Valuation_Report";
+            reportData = allProducts.map(p => ({
+                "Product Name": p.name,
+                "Packing": p.packing,
+                "Current Stock": p.stock,
+                "PTS Rate": p.pts,
+                "Total Value (PTS)": (p.stock * p.pts)
+            }));
+            break;
+
+        case 'low-stock':
+            filename = "Shortage_Reorder_List";
+            reportData = allProducts
+                .filter(p => p.stock <= 10) // Threshold of 10
+                .map(p => ({
+                    "Product Name": p.name,
+                    "Packing": p.packing,
+                    "Current Stock": p.stock,
+                    "Status": p.stock === 0 ? "OUT OF STOCK" : "LOW STOCK"
+                }));
+            break;
+
+        case 'gstr-1':
+            return exportGSTR1(); // Use existing function
+
+        default:
+            alert("Report logic for '" + type + "' is under development.");
+            return;
+    }
+
+    if(reportData.length === 0) {
+        alert("No data available for this report.");
+        return;
+    }
+
+    downloadExcel(reportData, filename);
+}
+
+function downloadExcel(data, filename) {
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Report");
+    XLSX.writeFile(wb, `${filename}_${new Date().toISOString().split('T')[0]}.xlsx`);
 }

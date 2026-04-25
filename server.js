@@ -251,6 +251,11 @@ const invoiceSchema = new mongoose.Schema({
     items: [{
         product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
         name: String,
+        manufacturer: String,
+        hsn: String,
+        batch: String,
+        exp: String,
+        mrp: Number,
         qty: Number,
         bonusQty: { type: Number, default: 0 },
         priceUsed: Number,
@@ -260,18 +265,28 @@ const invoiceSchema = new mongoose.Schema({
     subTotal: Number,
     gstAmount: Number,
     grandTotal: Number,
+    amountInWords: String,
     createdAt: { type: Date, default: Date.now }
 });
 
 // 6. Purchase Entry (Stock-In)
 const purchaseEntrySchema = new mongoose.Schema({
+    purchaseNo: { type: String, unique: true },
     supplier: { type: mongoose.Schema.Types.ObjectId, ref: 'Stockist' },
     supplierName: { type: String, required: true },
     supplierInvoiceNo: String,
     invoiceDate: Date,
+    lrNo: String,
+    lrDate: Date,
+    transport: String,
+    paymentMode: { type: String, enum: ['CASH', 'CREDIT'], default: 'CREDIT' },
+    remarks: String,
     items: [{
         product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
         name: String,
+        batch: String,
+        mfgDate: String,
+        expDate: String,
         qty: Number,
         bonusQty: { type: Number, default: 0 },
         purchaseRate: Number,
@@ -985,7 +1000,11 @@ app.get('/api/admin/purchase-entries', async (req, res) => {
 
 app.post('/api/admin/purchase-entries', async (req, res) => {
     try {
-        const { supplier, supplierName, supplierInvoiceNo, invoiceDate, items, subTotal, gstAmount, grandTotal } = req.body;
+        const { 
+            supplier, supplierName, supplierInvoiceNo, invoiceDate, 
+            lrNo, lrDate, transport, paymentMode, remarks,
+            items, subTotal, gstAmount, grandTotal 
+        } = req.body;
         
         // Generate Purchase No
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -998,6 +1017,11 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
             supplierName,
             supplierInvoiceNo,
             invoiceDate,
+            lrNo,
+            lrDate,
+            transport,
+            paymentMode,
+            remarks,
             items,
             subTotal,
             gstAmount,
