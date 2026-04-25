@@ -41,30 +41,49 @@ window.onload = async () => {
 
 function switchView(view) {
     const views = ['section-auth', 'view-order'];
-    const authCards = ['view-login', 'view-register', 'view-forgot', 'view-pin'];
+    const authCards = ['view-auth-combined', 'view-login', 'view-register', 'view-forgot', 'view-pin', 'view-reg-success'];
     
     // Hide all
-    views.forEach(v => document.getElementById(v).classList.add('hidden'));
-    authCards.forEach(c => document.getElementById(c).classList.add('hidden'));
-    document.querySelector('.navbar').classList.add('hidden');
-    document.getElementById('marquee').classList.add('hidden');
+    views.forEach(v => {
+        const el = document.getElementById(v);
+        if (el) el.classList.add('hidden');
+    });
+    authCards.forEach(c => {
+        const el = document.getElementById(c);
+        if (el) el.classList.add('hidden');
+    });
+
+    const navbar = document.querySelector('.navbar');
+    if (navbar) navbar.classList.add('hidden');
+
+    const marquee = document.getElementById('marquee');
+    if (marquee) marquee.classList.add('hidden');
+
     const globalFooter = document.getElementById('global-footer');
     if (globalFooter) globalFooter.classList.add('hidden');
 
     if (view === 'order') {
         document.getElementById('view-order').classList.remove('hidden');
-        document.querySelector('.navbar').classList.remove('hidden');
+        if (navbar) navbar.classList.remove('hidden');
         const userMenu = document.getElementById('userMenu');
         if (userMenu) userMenu.classList.remove('hidden');
-        document.getElementById('marquee').classList.remove('hidden');
+        if (marquee) marquee.classList.remove('hidden');
         if (globalFooter) globalFooter.classList.remove('hidden');
         document.getElementById('stockistName').innerText = currentUser.name;
     } else {
-        // Show auth section and specific card
+        // Show auth section
         document.getElementById('section-auth').classList.remove('hidden');
         const userMenu = document.getElementById('userMenu');
         if (userMenu) userMenu.classList.add('hidden');
-        document.getElementById(`view-${view}`).classList.remove('hidden');
+
+        if (view === 'login' || view === 'register') {
+            document.getElementById('view-auth-combined').classList.remove('hidden');
+            // Smooth scroll to portal if needed
+            document.getElementById('portal').scrollIntoView({ behavior: 'smooth' });
+        } else {
+            const card = document.getElementById(`view-${view}`);
+            if (card) card.classList.remove('hidden');
+        }
     }
 }
 
@@ -114,8 +133,18 @@ async function handleRegister(e) {
         
         const result = await res.json();
         if (result.success) {
-            alert(result.message);
-            switchView('login');
+            // Show registration success card with credentials and summary
+            document.getElementById('success-login-id').innerText = result.loginId;
+            document.getElementById('success-password').innerText = result.password;
+            
+            // Populate Summary
+            document.getElementById('summary-name').innerText = data.name;
+            document.getElementById('summary-email').innerText = data.email;
+            document.getElementById('summary-gst').innerText = data.gstNo;
+            document.getElementById('summary-dl').innerText = data.dlNo;
+            document.getElementById('summary-address').innerText = data.address;
+            
+            switchView('reg-success');
         } else {
             alert(result.message || "Registration failed. Please check your details.");
         }

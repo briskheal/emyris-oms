@@ -35,10 +35,10 @@
             backdrop-filter: blur(10px); 
             border-bottom: 1px solid var(--glass-border);
             color: #fff; 
-            padding: 8px 0; 
+            padding: 6px 0; 
             font-weight: 700; 
-            font-size: 0.75rem; 
-            letter-spacing: 0.5px;
+            font-size: 0.65rem; 
+            letter-spacing: 1px;
             text-transform: uppercase;
             overflow: hidden; 
             white-space: nowrap; 
@@ -360,13 +360,13 @@
         .category-scroll::-webkit-scrollbar { display: none; }
         
         .cat-chip { 
-            padding: 12px 24px; 
+            padding: 10px 20px; 
             background: rgba(255, 255, 255, 0.05); 
             border: 1px solid var(--glass-border); 
             border-radius: 50px; 
             color: var(--text-muted); 
             font-weight: 700; 
-            font-size: 0.8rem; 
+            font-size: 0.75rem; 
             white-space: nowrap; 
             cursor: pointer; 
             transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -478,15 +478,14 @@
 
     <!-- LANDING PORTAL WRAPPER -->
     <div id="section-auth" class="landing-wrapper">
-        <!-- TOP NAV -->
-        <nav class="navbar" style="position: fixed; top: 0; width: 100%; height: 75px; background: rgba(11, 15, 26, 0.7); backdrop-filter: blur(20px);">
-            <div class="container" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                <div class="logo">EMYRIS OMS</div>
+        <!-- TOP NAV (Updated) -->
+        <nav class="navbar" style="position: fixed; top: 0; width: 100%; height: 75px; background: rgba(11, 15, 26, 0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border);">
+            <div class="container" style="display: flex; justify-content: flex-end; align-items: center; width: 100%;">
                 <div class="nav-links">
                     <a href="#features">FEATURES</a>
                     <a href="#stats">BENEFITS</a>
                     <a href="#support">SUPPORT</a>
-                    <a href="#portal" class="nav-cta">PORTAL LOGIN</a>
+                    <a href="#portal" class="nav-cta">GET STARTED</a>
                 </div>
             </div>
         </nav>
@@ -497,17 +496,17 @@
             <div class="hero-glow"></div>
             <div class="container">
                 <div class="hero-badge">ADVANCED PHARMA ECOSYSTEM</div>
-                <h1 style="font-size: 5rem; line-height: 1; font-weight: 900; letter-spacing: -4px; margin-bottom: 2rem;">
+                <h1 style="font-size: 2.2rem; line-height: 1.2; font-weight: 800; letter-spacing: -1px; margin-bottom: 1.5rem;">
                     Empowering the Future of <br>
                     <span style="background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Medical Distribution</span>
                 </h1>
-                <p style="font-size: 1.4rem; color: var(--text-muted); max-width: 800px; margin: 0 auto 3rem; line-height: 1.6; font-weight: 500;">
+                <p style="font-size: 1.1rem; color: var(--text-muted); max-width: 700px; margin: 0 auto 2.5rem; line-height: 1.5; font-weight: 500;">
                     A unified, glassmorphic platform designed for high-performance stockists and distributors. 
                     Real-time compliance, intelligent pricing, and rapid order execution.
                 </p>
-                <div style="display: flex; gap: 1.5rem; justify-content: center;">
-                    <a href="#portal" class="btn-primary" style="width: auto; padding: 1.2rem 3rem;">ENTER PARTNER PORTAL</a>
-                    <a href="#features" class="btn" style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #fff; padding: 1.2rem 3rem; border-radius: 14px; font-weight: 800; font-size: 1rem; text-decoration: none;">LEARN MORE</a>
+                <div style="display: flex; gap: 1rem; justify-content: center;">
+                    <a href="#portal" class="btn-primary" style="width: auto; padding: 0.8rem 2rem; font-size: 0.85rem; text-decoration: none;">GET STARTED</a>
+                    <a href="#features" class="btn" style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #fff; padding: 0.8rem 2rem; border-radius: 14px; font-weight: 800; font-size: 0.85rem; text-decoration: none;">EXPLORE FEATURES</a>
                 </div>
             </div>
         </section>
@@ -561,66 +560,106 @@
 
         <!-- PORTAL ACCESS SECTION -->
         <section id="portal" class="auth-portal-section">
-            <div class="container" style="display: flex; align-items: center; justify-content: center; width: 100%;">
-                <!-- LOGIN CARD (Existing) -->
-                <div id="view-login" class="auth-card">
-                    <h2 class="auth-title">Welcome Back</h2>
-                    <p class="auth-subtitle">Secure gateway to your distribution dashboard</p>
-                    <form onsubmit="handleLogin(event)">
-                        <div class="form-group">
-                            <label>Login ID</label>
-                            <input type="text" id="login-id" placeholder="e.g. EMY123456" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Secret Password</label>
-                            <input type="password" id="login-pass" placeholder="••••••••" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary" id="loginBtn">SIGN IN TO PORTAL</button>
-                    </form>
-                    <div class="auth-footer-links">
-                        <a class="auth-link" onclick="switchView('register')">
-                            <span>🤝</span> New Stockist? <strong>Create Partner Account</strong>
-                        </a>
-                        <a class="auth-link" onclick="switchView('forgot')" style="opacity: 0.6; font-size: 0.8rem;">
-                            <span>🔐</span> Forgot Login ID or Password?
-                        </a>
-                    </div>
-                </div>
-
-                <!-- REGISTER CARD (Existing) -->
-                <div id="view-register" class="auth-card hidden" style="max-width: 650px;">
-                    <h2 class="auth-title">Partner Registration</h2>
-                    <p class="auth-subtitle">Join the EMYRIS professional distribution network</p>
-                    <form onsubmit="handleRegister(event)">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                            <div class="form-group"><label>Firm Name</label><input type="text" id="reg-name" placeholder="ABC PHARMA" required style="text-transform: uppercase;"></div>
-                            <div class="form-group"><label>Official Email</label><input type="email" id="reg-email" placeholder="contact@firm.com" required style="text-transform: none;"></div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                            <div class="form-group"><label>Contact Number</label><input type="tel" id="reg-phone" placeholder="98XXXXXXXX" required></div>
-                            <div class="form-group"><label>Access Password</label><input type="password" id="reg-pass" placeholder="••••••••" required></div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.5rem;">
+            <div class="container" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+                
+                <div id="view-auth-combined" style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 2.5rem; width: 100%; max-width: 1200px;">
+                    <!-- LOGIN CARD -->
+                    <div id="view-login" class="auth-card" style="margin: 0; max-width: none;">
+                        <h2 class="auth-title" style="font-size: 1.8rem;">Welcome Back</h2>
+                        <p class="auth-subtitle" style="font-size: 0.9rem; margin-bottom: 2rem;">Secure gateway to your dashboard</p>
+                        <form onsubmit="handleLogin(event)">
                             <div class="form-group">
-                                <label>GSTIN</label>
-                                <input type="text" id="reg-gst" placeholder="22AAAAA0000A1Z5" required maxlength="15" oninput="handleGstInput(this)">
-                                <div id="gst-status" style="font-size: 0.7rem; margin-top: 5px;"></div>
+                                <label>Login ID</label>
+                                <input type="text" id="login-id" placeholder="e.g. EMY123456" required>
                             </div>
-                            <div class="form-group"><label>PAN Number</label><input type="text" id="reg-pan" placeholder="ABCDE1234F" required maxlength="10"></div>
+                            <div class="form-group">
+                                <label>Secret Password</label>
+                                <input type="password" id="login-pass" placeholder="••••••••" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="loginBtn">SIGN IN TO PORTAL</button>
+                        </form>
+                        <div class="auth-footer-links">
+                            <a class="auth-link" onclick="switchView('forgot')" style="opacity: 0.6; font-size: 0.8rem;">
+                                <span>🔐</span> Forgot Login ID or Password?
+                            </a>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                            <div class="form-group"><label>Drug License (DL)</label><input type="text" id="reg-dl" placeholder="DL-12345" required></div>
-                            <div class="form-group"><label>FSSAI Number</label><input type="text" id="reg-fssai" placeholder="14-digit FSSAI No." required></div>
-                        </div>
-                        <div class="form-group"><label>Registered Billing Address</label><input type="text" id="reg-address" placeholder="Shop No, Street, City, State" required></div>
-                        <button type="submit" class="btn btn-primary" id="regBtn">SUBMIT REGISTRATION</button>
-                    </form>
-                    <div style="margin-top: 1.5rem; text-align: center;">
-                        <button class="btn-link" onclick="switchView('login')">Already a Partner? Sign In</button>
+                    </div>
+
+                    <!-- REGISTER CARD -->
+                    <div id="view-register" class="auth-card" style="margin: 0; max-width: none; padding: 2.5rem;">
+                        <h2 class="auth-title" style="font-size: 1.8rem;">Partner Registration</h2>
+                        <p class="auth-subtitle" style="font-size: 0.9rem; margin-bottom: 2rem;">Join the EMYRIS professional distribution network</p>
+                        <form onsubmit="handleRegister(event)">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group"><label style="font-size: 0.65rem;">Firm Name</label><input type="text" id="reg-name" placeholder="ABC PHARMA" required style="padding: 0.8rem; font-size: 0.9rem; text-transform: uppercase;"></div>
+                                <div class="form-group"><label style="font-size: 0.65rem;">Official Email</label><input type="email" id="reg-email" placeholder="contact@firm.com" required style="padding: 0.8rem; font-size: 0.9rem; text-transform: none;"></div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group"><label style="font-size: 0.65rem;">Contact Number</label><input type="tel" id="reg-phone" placeholder="98XXXXXXXX" required style="padding: 0.8rem; font-size: 0.9rem;"></div>
+                                <div class="form-group"><label style="font-size: 0.65rem;">Access Password</label><input type="password" id="reg-pass" placeholder="••••••••" required style="padding: 0.8rem; font-size: 0.9rem;"></div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label style="font-size: 0.65rem;">GSTIN</label>
+                                    <input type="text" id="reg-gst" placeholder="22AAAAA0000A1Z5" required maxlength="15" oninput="handleGstInput(this)" style="padding: 0.8rem; font-size: 0.9rem;">
+                                    <div id="gst-status" style="font-size: 0.65rem; margin-top: 5px;"></div>
+                                </div>
+                                <div class="form-group"><label style="font-size: 0.65rem;">PAN Number</label><input type="text" id="reg-pan" placeholder="ABCDE1234F" required maxlength="10" style="padding: 0.8rem; font-size: 0.9rem;"></div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group"><label style="font-size: 0.65rem;">Drug License (DL)</label><input type="text" id="reg-dl" placeholder="DL-12345" required style="padding: 0.8rem; font-size: 0.9rem;"></div>
+                                <div class="form-group"><label style="font-size: 0.65rem;">FSSAI Number</label><input type="text" id="reg-fssai" placeholder="14-digit FSSAI No." required style="padding: 0.8rem; font-size: 0.9rem;"></div>
+                            </div>
+                            <div class="form-group"><label style="font-size: 0.65rem;">Registered Billing Address</label><input type="text" id="reg-address" placeholder="Shop No, Street, City, State" required style="padding: 0.8rem; font-size: 0.9rem;"></div>
+                            <button type="submit" class="btn btn-primary" id="regBtn" style="padding: 1rem;">SUBMIT REGISTRATION</button>
+                        </form>
                     </div>
                 </div>
 
-                <!-- FORGOT CARD (Existing) -->
+                <!-- REGISTRATION SUCCESS (SQUARE BOX) -->
+                <div id="view-reg-success" class="auth-card hidden" style="max-width: 600px; text-align: center; border: 2px solid var(--accent); background: rgba(16, 185, 129, 0.1);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+                    <h2 class="auth-title" style="color: var(--accent); font-size: 1.5rem;">Registration Successful</h2>
+                    <p class="auth-subtitle" style="font-size: 0.85rem;">Your application has been received. Please save these details.</p>
+                    
+                    <div id="reg-summary-box" style="background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); margin: 1.5rem 0; text-align: left; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.8rem;">
+                        <div style="grid-column: span 2; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                            <label style="color: var(--primary); font-size: 0.65rem; font-weight: 800; text-transform: uppercase;">Portal Credentials</label>
+                            <div style="display: flex; gap: 2rem; margin-top: 5px;">
+                                <div>ID: <strong id="success-login-id" style="color: #fff; font-size: 1.1rem;">-</strong></div>
+                                <div>PW: <strong id="success-password" style="color: #fff; font-size: 1.1rem;">-</strong></div>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="opacity: 0.5; font-size: 0.65rem; text-transform: uppercase;">Firm Name</label>
+                            <div id="summary-name" style="color: #fff; font-weight: 600;">-</div>
+                        </div>
+                        <div>
+                            <label style="opacity: 0.5; font-size: 0.65rem; text-transform: uppercase;">Email</label>
+                            <div id="summary-email" style="color: #fff; font-weight: 600;">-</div>
+                        </div>
+                        <div>
+                            <label style="opacity: 0.5; font-size: 0.65rem; text-transform: uppercase;">GSTIN</label>
+                            <div id="summary-gst" style="color: #fff; font-weight: 600;">-</div>
+                        </div>
+                        <div>
+                            <label style="opacity: 0.5; font-size: 0.65rem; text-transform: uppercase;">DL No.</label>
+                            <div id="summary-dl" style="color: #fff; font-weight: 600;">-</div>
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <label style="opacity: 0.5; font-size: 0.65rem; text-transform: uppercase;">Address</label>
+                            <div id="summary-address" style="color: #fff; font-weight: 600; font-size: 0.75rem;">-</div>
+                        </div>
+                    </div>
+                    
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.4;">
+                        Our administration team will verify your Drug License and compliance data. You will be notified via email once your account is activated.
+                    </p>
+                    
+                    <button class="btn btn-primary" onclick="window.location.reload()" style="padding: 0.8rem;">FINISH & GO BACK</button>
+                </div>
+
+                <!-- FORGOT CARD -->
                 <div id="view-forgot" class="auth-card hidden">
                     <h2 class="auth-title">Account Recovery</h2>
                     <p class="auth-subtitle">Verify your email to receive credentials</p>
@@ -636,7 +675,7 @@
                     </div>
                 </div>
 
-                <!-- PIN CARD (Existing) -->
+                <!-- PIN CARD -->
                 <div id="view-pin" class="auth-card hidden">
                     <h2 class="auth-title">Verify Entry</h2>
                     <p class="auth-subtitle">A secure 6-digit PIN has been sent to your email</p>
@@ -654,23 +693,32 @@
             </div>
         </section>
 
-        <!-- COMPACT LANDING FOOTER (Synchronized) -->
-        <div id="support" class="landing-footer" style="flex-direction: column; height: auto; padding: 4rem 5%; gap: 2rem;">
-            <div style="display: flex; justify-content: space-between; width: 100%; border-bottom: 1px solid var(--glass-border); padding-bottom: 2rem;">
-                <div style="max-width: 400px;">
-                    <div class="logo" style="font-size: 1.8rem; margin-bottom: 1rem;">EMYRIS OMS</div>
-                    <p style="font-size: 0.9rem; line-height: 1.6; opacity: 0.6;">Leading the way in pharmaceutical distribution technology. Our portal provides a seamless bridge between stockists and the global supply chain.</p>
+        <!-- COMPACT LANDING FOOTER (Updated with more details) -->
+        <div id="support" class="landing-footer" style="flex-direction: column; height: auto; padding: 3rem 5%; gap: 2rem; border-top: 1px solid var(--glass-border);">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3rem; width: 100%;">
+                <div style="text-align: left;">
+                    <div class="logo" style="font-size: 1.6rem; margin-bottom: 1rem;">EMYRIS OMS</div>
+                    <p style="font-size: 0.85rem; opacity: 0.7; line-height: 1.6;">Empowering the pharmaceutical ecosystem with state-of-the-art distribution technology and real-time compliance management.</p>
                 </div>
-                <div style="text-align: right; display: flex; flex-direction: column; gap: 0.5rem;">
-                    <span id="land-web" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-weight: 700; color: #fff;">🌐 www.emyrisbio.com</span>
-                    <span id="land-tollfree" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; color: var(--accent); font-weight: 800;">📞 TOLL-FREE: 7993163300</span>
-                    <span id="land-phone" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; color: var(--primary); font-weight: 700;">💬 WHATSAPP: +91-XXXXXXXXXX</span>
-                    <span id="land-email" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; opacity: 0.8;">✉️ contact@emyrisbio.com</span>
+                <div style="text-align: left;">
+                    <h4 style="color: #fff; margin-bottom: 1rem; font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">Contact Channels</h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.85rem; opacity: 0.8;">
+                        <span id="land-web">🌐 www.emyrisbio.com</span>
+                        <span id="land-tollfree">📞 TOLL-FREE: 7993163300</span>
+                        <span id="land-email">✉️ contact@emyrisbio.com</span>
+                        <span id="land-phone">💬 WHATSAPP: +91-XXXXXXXXXX</span>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <h4 style="color: #fff; margin-bottom: 1rem; font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">Corporate HQ</h4>
+                    <div id="land-address" style="font-size: 0.85rem; opacity: 0.6; line-height: 1.6;">
+                        Corporate Office:<br>
+                        EMYRIS BIOLIFESCIENCES PVT. LTD.
+                    </div>
                 </div>
             </div>
-            <div style="text-align: center; width: 100%;">
-                <div id="land-address" style="font-size: 0.8rem; opacity: 0.5; margin-bottom: 1rem;">Corporate Office: EMYRIS BIOLIFESCIENCES PVT. LTD.</div>
-                <div style="font-weight: 800; color: var(--text-muted); letter-spacing: 2px; font-size: 0.65rem;">&copy; 2026 EMYRIS BIOLIFESCIENCES • ADVANCED DISTRIBUTION SYSTEM</div>
+            <div style="text-align: center; width: 100%; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem; font-size: 0.75rem; opacity: 0.4;">
+                &copy; 2026 EMYRIS BIOLIFESCIENCES. All rights reserved. • ISO 9001:2015 Certified
             </div>
         </div>
     </div>

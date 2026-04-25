@@ -474,7 +474,12 @@ app.post('/api/stockist/register', async (req, res) => {
         console.log(`📧 Sending admin notification to: emyrisbio@gmail.com`);
         await sendEmail("emyrisbio@gmail.com", "🔔 New Stockist Registration: " + name, adminNotifyEmail);
 
-        res.json({ success: true, message: `Registration successful! Please wait for Admin approval. Your ID will be sent to ${email} once approved.` });
+        res.json({ 
+            success: true, 
+            message: `Registration successful! Please wait for Admin approval.`,
+            loginId: loginId,
+            password: password
+        });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
