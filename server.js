@@ -191,6 +191,15 @@ const productSchema = new mongoose.Schema({
         buy: { type: Number, default: 0 },
         get: { type: Number, default: 0 }
     },
+    batches: [{
+        batchNo: { type: String, required: true },
+        mfgDate: { type: String },
+        expDate: { type: String },
+        mrp: { type: Number, default: 0 },
+        pts: { type: Number, default: 0 },
+        ptr: { type: Number, default: 0 },
+        qtyAvailable: { type: Number, default: 0 }
+    }],
     active: { type: Boolean, default: true }
 }).index({ name: 1, category: 1, active: 1 }); // Performance index
 
@@ -231,6 +240,10 @@ const orderSchema = new mongoose.Schema({
     items: [{
         product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
         name: String,
+        manufacturer: String,
+        batch: String,
+        mfgDate: String,
+        expDate: String,
         qty: Number,
         bonusQty: { type: Number, default: 0 },
         priceUsed: Number,
@@ -264,10 +277,11 @@ const invoiceSchema = new mongoose.Schema({
         manufacturer: String,
         hsn: String,
         batch: String,
-        exp: String,
-        mrp: Number,
+        mfgDate: String,
+        expDate: String,
         qty: Number,
         bonusQty: { type: Number, default: 0 },
+        mrp: Number,
         priceUsed: Number,
         gstPercent: Number,
         totalValue: Number
@@ -909,14 +923,50 @@ app.put('/api/admin/orders/:id/approve', async (req, res) => {
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
         if (order.status === 'approved') return res.status(400).json({ success: false, message: 'Order already approved' });
 
-        // --- INVENTORY DEDUCTION LOGIC ---
+        // --- INVENTORY DEDUCTION LOGIC (FIFO BATCH ALLOCATION) ---
         for (const item of order.items) {
-            const totalDeduction = (item.qty || 0) + (item.bonusQty || 0);
+            let totalDeduction = (item.qty || 0) + (item.bonusQty || 0);
             if (totalDeduction > 0) {
-                await Product.findByIdAndUpdate(item.product, {
-                    $inc: { qtyAvailable: -totalDeduction }
-                });
-                console.log(`📉 [INVENTORY] Deducted ${totalDeduction} units of ${item.name}`);
+                const product = await Product.findById(item.product);
+                if (product) {
+                    // Update overall stock
+                    product.qtyAvailable -= totalDeduction;
+                    
+                    let batchUsed = 'DEFAULT';
+                    let mfgUsed = '';
+                    let expUsed = '';
+
+                    // Sort batches by expiry date (FIFO) roughly
+                    product.batches.sort((a, b) => new Date(a.expDate || '2099') - new Date(b.expDate || '2099'));
+
+                    for (let i = 0; i < product.batches.length; i++) {
+                        if (totalDeduction <= 0) break;
+                        let b = product.batches[i];
+                        if (b.qtyAvailable > 0) {
+                            if (batchUsed === 'DEFAULT') {
+                                batchUsed = b.batchNo;
+                                mfgUsed = b.mfgDate;
+                                expUsed = b.expDate;
+                            }
+                            
+                            if (b.qtyAvailable >= totalDeduction) {
+                                b.qtyAvailable -= totalDeduction;
+                                totalDeduction = 0;
+                            } else {
+                                totalDeduction -= b.qtyAvailable;
+                                b.qtyAvailable = 0;
+                            }
+                        }
+                    }
+
+                    // Save allocated batch into order so invoice prints it
+                    item.batch = batchUsed;
+                    item.mfgDate = mfgUsed;
+                    item.expDate = expUsed;
+
+                    await product.save();
+                    console.log(`📉 [INVENTORY] Deducted items from batch ${batchUsed} for ${item.name}`);
+                }
             }
         }
 
@@ -976,8 +1026,14 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
             return {
                 product: item.product,
                 name: item.name,
+                manufacturer: p ? p.manufacturer : '',
+                hsn: p ? p.hsn : '',
+                batch: item.batch || 'DEFAULT',
+                mfgDate: item.mfgDate || '',
+                expDate: item.expDate || '',
                 qty: item.qty,
                 bonusQty: item.bonusQty,
+                mrp: p ? p.mrp : 0,
                 priceUsed: item.priceUsed,
                 gstPercent: p ? (p.gstPercent || 12) : 12,
                 totalValue: item.totalValue
@@ -1052,13 +1108,33 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
             await Stockist.findByIdAndUpdate(supplier, { $inc: { outstandingBalance: -grandTotal } });
         }
         
-        // --- INVENTORY INCREMENT LOGIC ---
+        // --- INVENTORY INCREMENT LOGIC (WITH BATCHES) ---
         for (const item of items) {
             const totalIncrement = (item.qty || 0) + (item.bonusQty || 0);
             if (totalIncrement > 0) {
-                await Product.findByIdAndUpdate(item.product, {
-                    $inc: { qtyAvailable: totalIncrement }
-                });
+                const product = await Product.findById(item.product);
+                if (product) {
+                    // 1. Update overall stock
+                    product.qtyAvailable += totalIncrement;
+                    
+                    // 2. Process Batch
+                    const targetBatchNo = item.batch || 'DEFAULT';
+                    const batchIndex = product.batches.findIndex(b => b.batchNo === targetBatchNo);
+                    if (batchIndex > -1) {
+                        product.batches[batchIndex].qtyAvailable += totalIncrement;
+                    } else {
+                        product.batches.push({
+                            batchNo: targetBatchNo,
+                            mfgDate: item.mfgDate,
+                            expDate: item.expDate,
+                            qtyAvailable: totalIncrement,
+                            ptr: item.purchaseRate || product.ptr || 0,
+                            mrp: product.mrp || 0,
+                            pts: product.pts || 0
+                        });
+                    }
+                    await product.save();
+                }
             }
         }
 
