@@ -814,6 +814,29 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- SPECIMEN INVOICE STYLE -->
+                        <div class="glass-card" style="padding: 2rem; border-top: 4px solid var(--primary); margin-top: 2rem;">
+                            <h3 class="section-title">📄 Specimen Invoice Section</h3>
+                            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;">Select the GST-approved layout style for your tax invoices.</p>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
+                                <div class="glass-card" style="padding: 1rem; cursor: pointer; border: 2px solid var(--primary);" onclick="setInvoiceStyle('classic')">
+                                    <h4 style="margin: 0; font-size: 0.9rem;">Classic Pharma</h4>
+                                    <p style="font-size: 0.7rem; color: var(--text-muted);">Standard vertical layout with separate Mfg Name.</p>
+                                </div>
+                                <div class="glass-card" style="padding: 1rem; cursor: pointer; border: 1px solid var(--glass-border);" onclick="setInvoiceStyle('modern')">
+                                    <h4 style="margin: 0; font-size: 0.9rem;">Modern Glass</h4>
+                                    <p style="font-size: 0.7rem; color: var(--text-muted);">Sleek, horizontal layout with bold headings.</p>
+                                </div>
+                                <div class="glass-card" style="padding: 1rem; cursor: pointer; border: 1px solid var(--glass-border);" onclick="setInvoiceStyle('compact')">
+                                    <h4 style="margin: 0; font-size: 0.9rem;">Compact Compliance</h4>
+                                    <p style="font-size: 0.7rem; color: var(--text-muted);">Maximum data density for long invoices.</p>
+                                </div>
+                            </div>
+                            <input type="hidden" id="set-inv-style" value="classic">
+                        </div>
+
                     </div>
                 </form>
             </div>
@@ -1206,6 +1229,7 @@
             </div>
             
             <form id="purchaseForm" onsubmit="savePurchaseEntry(event)">
+                <input type="hidden" id="pur-id">
                 <!-- SUPPLIER & HEADER INFO -->
                 <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 16px;">
                     <div class="form-group">

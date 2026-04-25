@@ -156,7 +156,8 @@ const companySchema = new mongoose.Schema({
         text: { type: String, default: "Welcome to EMYRIS OMS Portal - Your partner in healthcare." },
         color: { type: String, default: "#6366f1" },
         speed: { type: Number, default: 30 }
-    }
+    },
+    invoiceStyle: { type: String, default: 'classic' }
 });
 
 // 2. Global Masters
@@ -1047,6 +1048,61 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
         }
 
         res.json({ success: true, entry: newEntry });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.put('/api/admin/purchase-entries/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { 
+            supplier, supplierName, supplierInvoiceNo, invoiceDate, 
+            lrNo, lrDate, transport, paymentMode, remarks,
+            items, subTotal, gstAmount, grandTotal 
+        } = req.body;
+
+        const oldEntry = await PurchaseEntry.findById(id);
+        if(!oldEntry) return res.status(404).json({ success: false, message: 'Record not found' });
+
+        // 1. Reverse old inventory
+        for(const item of oldEntry.items) {
+            const totalDecrement = (item.qty || 0) + (item.bonusQty || 0);
+            await Product.findByIdAndUpdate(item.product, { $inc: { qtyAvailable: -totalDecrement } });
+        }
+
+        // 2. Reverse old accounting
+        if(oldEntry.supplier) {
+            await Stockist.findByIdAndUpdate(oldEntry.supplier, { $inc: { outstandingBalance: oldEntry.grandTotal } });
+        }
+
+        // 3. Update entry fields (except purchaseNo)
+        oldEntry.supplier = supplier;
+        oldEntry.supplierName = supplierName;
+        oldEntry.supplierInvoiceNo = supplierInvoiceNo;
+        oldEntry.invoiceDate = invoiceDate;
+        oldEntry.lrNo = lrNo;
+        oldEntry.lrDate = lrDate;
+        oldEntry.transport = transport;
+        oldEntry.paymentMode = paymentMode;
+        oldEntry.remarks = remarks;
+        oldEntry.items = items;
+        oldEntry.subTotal = subTotal;
+        oldEntry.gstAmount = gstAmount;
+        oldEntry.grandTotal = grandTotal;
+        
+        await oldEntry.save();
+
+        // 4. Apply new inventory
+        for(const item of items) {
+            const totalIncrement = (item.qty || 0) + (item.bonusQty || 0);
+            await Product.findByIdAndUpdate(item.product, { $inc: { qtyAvailable: totalIncrement } });
+        }
+
+        // 5. Apply new accounting
+        if(supplier) {
+            await Stockist.findByIdAndUpdate(supplier, { $inc: { outstandingBalance: -grandTotal } });
+        }
+
+        res.json({ success: true, message: 'Purchase entry updated successfully' });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 

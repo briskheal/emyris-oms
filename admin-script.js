@@ -493,8 +493,8 @@ function renderProducts() {
             <td>${p.qtyAvailable}</td>
             <td><span class="badge ${p.active ? 'badge-approved' : 'badge-pending'}">${p.active ? 'Active' : 'Inactive'}</span></td>
             <td style="white-space: nowrap;">
-                <button class="btn btn-ghost" style="padding: 5px 10px;" onclick="editProduct('${p._id}')" title="Edit">âœï¸</button>
-                <button class="btn btn-ghost" style="padding: 5px 10px; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteProduct('${p._id}')" title="Delete">ðŸ—‘ï¸</button>
+                <button class="btn btn-ghost" style="padding: 5px 10px;" onclick="editProduct('${p._id}')" title="Edit">📝</button>
+                <button class="btn btn-ghost" style="padding: 5px 10px; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteProduct('${p._id}')" title="Delete">🗑️</button>
             </td>
         </tr>
     `).join('');
@@ -747,7 +747,8 @@ async function loadSettings() {
         if (s.scrollingMessage) {
             document.getElementById('set-msg-text').value = s.scrollingMessage.text || '';
             document.getElementById('set-msg-color').value = s.scrollingMessage.color || '#6366f1';
-            document.getElementById('set-msg-speed').value = s.scrollingMessage.speed || 30;
+            document.getElementById('set-inv-style').value = s.invoiceStyle || 'classic';
+            setInvoiceStyle(s.invoiceStyle || 'classic');
         }
     } catch (e) { console.error("Load settings fail"); }
 }
@@ -758,7 +759,7 @@ async function saveSettings(e) {
     if (!btn) return;
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `â³ SAVING CONFIGURATION...`;
+    btn.innerHTML = `⏳ SAVING CONFIGURATION...`;
 
     const data = {
         name: document.getElementById('set-name').value,
@@ -779,7 +780,8 @@ async function saveSettings(e) {
             text: document.getElementById('set-msg-text').value,
             color: document.getElementById('set-msg-color').value,
             speed: Number(document.getElementById('set-msg-speed').value)
-        }
+        },
+        invoiceStyle: document.getElementById('set-inv-style').value
     };
 
     try {
@@ -809,12 +811,12 @@ function renderStockists(list = null) {
             <td style="font-weight:600; color:#fff;">${s.name}</td>
             <td style="font-size:0.75rem; font-weight:700; color:var(--primary);">${s.partyType || 'STOCKIST'}</td>
             <td>${s.city || '-'}</td>
-            <td style="text-align:right; font-weight:700; color:${s.outstandingBalance > 0 ? '#ef4444' : '#10b981'};">₹${(s.outstandingBalance || 0).toLocaleString('en-IN')}</td>
+            <td style="text-align:right; font-weight:700; color:${(s.outstandingBalance || 0) < 0 ? '#ef4444' : '#10b981'};">₹${(s.outstandingBalance || 0).toLocaleString('en-IN')}</td>
             <td><span class="badge ${s.approved ? 'badge-approved' : 'badge-pending'}">${s.approved ? 'APPROVED' : 'PENDING'}</span></td>
             <td style="text-align:right;">
-                <button class="btn btn-ghost" style="padding:5px 10px; color:var(--primary); font-size: 0.7rem; font-weight: 800;" onclick="viewLedger('${s._id}')">📊 LEDGER</button>
-                <button class="btn btn-ghost" style="padding:5px 10px; font-size: 0.7rem; font-weight: 800;" onclick="openPartyModal('${s._id}')">📝 EDIT</button>
-                <button class="btn btn-ghost" style="padding:5px 10px; color:#ef4444;" onclick="deleteStockist('${s._id}')">🗑️</button>
+                <button class="btn btn-ghost" style="padding:5px 10px; color:var(--primary); font-size: 0.7rem; font-weight: 800;" onclick="viewLedger('${s._id}')">LEDGER</button>
+                <button class="btn btn-ghost" style="padding:5px 10px; font-size: 0.7rem; font-weight: 800;" onclick="openPartyModal('${s._id}')">EDIT</button>
+                <button class="btn btn-ghost" style="padding:5px 10px; color:#ef4444;" onclick="deleteStockist('${s._id}')">DELETE</button>
             </td>
         </tr>
     `).join('');
@@ -915,7 +917,7 @@ function renderOrderHistory(filter = '') {
             <td style="text-align:right; font-weight:700;">₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
             <td style="text-align:center;"><span class="badge ${o.status === 'approved' ? 'badge-approved' : (o.status === 'invoiced' ? 'badge-approved' : (o.status === 'rejected' ? 'badge-pending' : 'badge-pending'))}" style="${o.status === 'rejected' ? 'background:#ef4444; color:#fff;' : (o.status === 'invoiced' ? 'background:var(--accent); color:#fff;' : '')}">${o.status.toUpperCase()}</span></td>
             <td style="text-align:right;">
-                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewOrderDetails('${o._id}')">ðŸ‘ï¸ VIEW</button>
+                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewOrderDetails('${o._id}')">👁️ VIEW</button>
             </td>
         </tr>
     `).join('');
@@ -1086,7 +1088,7 @@ async function deleteOrder(id) {
         const res = await fetch(`${API_BASE}/admin/orders/${id}`, { method: 'DELETE' });
         const result = await res.json();
         if (result.success) {
-            alert("ðŸ—‘ï¸ Order deleted successfully.");
+            alert("🗑️ Order deleted successfully.");
             loadOrders(); // Refresh history
         }
     } catch (e) { alert("Delete failed."); }
@@ -1236,8 +1238,9 @@ function renderPurchaseEntries() {
             <td>${new Date(p.invoiceDate).toLocaleDateString('en-GB')}</td>
             <td style="text-align:center;">${p.items.length}</td>
             <td style="text-align:right; font-weight:800; color:var(--primary);">₹${p.grandTotal.toLocaleString('en-IN')}</td>
-            <td style="text-align:right;">
-                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewPurchaseDetails('${p._id}')">👁️</button>
+            <td style="text-align:right; white-space:nowrap;">
+                <button class="btn btn-ghost" style="padding:5px 8px; font-size:1rem;" onclick="viewPurchaseDetails('${p._id}')" title="View">🔍</button>
+                <button class="btn btn-ghost" style="padding:5px 8px; font-size:1rem; color:var(--primary);" onclick="editPurchaseEntry('${p._id}')" title="Edit">✏️</button>
             </td>
         </tr>
     `).join('');
@@ -1245,6 +1248,7 @@ function renderPurchaseEntries() {
 
 function openPurchaseModal() {
     document.getElementById('purchaseForm').reset();
+    document.getElementById('pur-id').value = ''; // Reset ID
     purchaseItems = [];
     renderPurchaseItems();
     
@@ -1357,9 +1361,13 @@ async function savePurchaseEntry(e) {
         grandTotal: purchaseItems.reduce((s, i) => s + (i.totalValue * (1 + i.gstPercent / 100)), 0)
     };
 
+    const purId = document.getElementById('pur-id').value;
+    const method = purId ? 'PUT' : 'POST';
+    const url = purId ? `/api/admin/purchase-entries/${purId}` : '/api/admin/purchase-entries';
+
     try {
-        const res = await fetch('/api/admin/purchase-entries', {
-            method: 'POST',
+        const res = await fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
@@ -1572,7 +1580,51 @@ function renderLedger(ledger) {
 function viewPurchaseDetails(id) {
     const p = allPurchaseEntries.find(x => x._id === id);
     if (!p) return;
-    alert(`Purchase Details for ${p.purchaseNo}:\nSupplier: ${p.supplierName}\nInv No: ${p.supplierInvoiceNo}\nTotal Items: ${p.items.length}\nGrand Total: ₹${p.grandTotal.toLocaleString('en-IN')}`);
+    
+    let itemSummary = p.items.map(i => `${i.name} [Batch: ${i.batch || 'N/A'}] - Qty: ${i.qty}`).join('\n');
+    alert(`🛒 PURCHASE RECORD: ${p.purchaseNo}\n----------------------------------\nSupplier: ${p.supplierName}\nInv No: ${p.supplierInvoiceNo}\nDate: ${new Date(p.invoiceDate).toLocaleDateString('en-GB')}\nLR No: ${p.lrNo || 'N/A'}\n\nITEMS:\n${itemSummary}\n----------------------------------\nGrand Total: ₹${p.grandTotal.toLocaleString('en-IN')}`);
+}
+
+function editPurchaseEntry(id) {
+    const p = allPurchaseEntries.find(x => x._id === id);
+    if (!p) return;
+
+    openPurchaseModal();
+    document.getElementById('pur-id').value = p._id; // Set ID
+    // Fill Header
+    document.getElementById('pur-supplier').value = p.supplier;
+    document.getElementById('pur-inv-no').value = p.supplierInvoiceNo;
+    document.getElementById('pur-inv-date').value = p.invoiceDate ? p.invoiceDate.split('T')[0] : '';
+    document.getElementById('pur-lr-no').value = p.lrNo || '';
+    document.getElementById('pur-lr-date').value = p.lrDate ? p.lrDate.split('T')[0] : '';
+    document.getElementById('pur-payment-type').value = p.paymentMode || 'CREDIT';
+    document.getElementById('pur-transport').value = p.transport || '';
+    document.getElementById('pur-remarks').value = p.remarks || '';
+    
+    // Fill Items
+    purchaseItems = p.items.map(i => ({
+        product: i.product,
+        name: i.name,
+        qty: i.qty,
+        bonusQty: i.bonusQty || 0,
+        purchaseRate: i.purchaseRate,
+        batch: i.batch || 'N/A',
+        mfgDate: i.mfgDate || 'N/A',
+        expDate: i.expDate || 'N/A',
+        gstPercent: i.gstPercent || 12,
+        totalValue: i.totalValue
+    }));
+    
+    renderPurchaseItems();
+    updateSupplierDetailsDisplay(p.supplier);
+}
+
+function setInvoiceStyle(style) {
+    document.getElementById('set-inv-style').value = style;
+    // Update visual selection
+    document.querySelectorAll('[onclick^="setInvoiceStyle"]').forEach(card => {
+        card.style.border = card.getAttribute('onclick').includes(style) ? '2px solid var(--primary)' : '1px solid var(--glass-border)';
+    });
 }
 
 function downloadInvoicePDF(id) {
@@ -1622,31 +1674,42 @@ function downloadInvoicePDF(id) {
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4');
+    const style = companyProfile.invoiceStyle || 'classic';
 
-    // Header Area
-    doc.setFontSize(22);
-    doc.setTextColor(40, 44, 52);
-    doc.text("TAX INVOICE", 105, 15, { align: 'center' });
-    
-    // Logo placeholder (Left)
-    doc.setDrawColor(200);
-    doc.rect(15, 10, 40, 20); 
-    doc.setFontSize(8);
-    doc.text("LOGO", 35, 20, { align: 'center' });
+    if (style === 'modern') {
+        // MODERN STYLE
+        doc.setFillColor(99, 102, 241); // Primary color
+        doc.rect(0, 0, 210, 40, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(24);
+        doc.text("TAX INVOICE", 105, 20, { align: 'center' });
+        doc.setFontSize(10);
+        doc.text(`${companyProfile.name || 'EMYRIS BIOLIFESCIENCES'}`, 105, 30, { align: 'center' });
+        doc.setTextColor(40, 44, 52);
+    } else {
+        // CLASSIC / COMPACT HEADER
+        doc.setFontSize(style === 'compact' ? 18 : 22);
+        doc.setTextColor(40, 44, 52);
+        doc.text("TAX INVOICE", 105, 15, { align: 'center' });
+        
+        doc.setDrawColor(200);
+        doc.rect(15, 10, 40, 20); 
+        doc.setFontSize(8);
+        doc.text("LOGO", 35, 20, { align: 'center' });
 
-    // Company Details (Right)
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text("EMYRIS BIOLIFESCIENCES PVT. LTD.", 140, 15);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.text("Sumadhura Pragati Chambers, Park Ln, Secunderabd,", 140, 20);
-    doc.text("Hyderabad, Telangana - 500003", 140, 24);
-    doc.text(`DL No: TS/SEC/2023-44281, 44282`, 140, 28);
-    doc.text(`GSTIN: 36AABCE1234F1Z5`, 140, 32);
-    doc.text(`FSSAI: 13623011000123`, 140, 36);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text(companyProfile.name || "EMYRIS BIOLIFESCIENCES PVT. LTD.", 140, 15);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.text(companyProfile.address || "Sumadhura Pragati Chambers, Park Ln, Secunderabd,", 140, 20);
+        doc.text("Hyderabad, Telangana - 500003", 140, 24);
+        doc.text(`DL No: TS/SEC/2023-44281, 44282`, 140, 28);
+        doc.text(`GSTIN: 36AABCE1234F1Z5`, 140, 32);
+        doc.text(`FSSAI: 13623011000123`, 140, 36);
+    }
 
-    doc.line(15, 40, 195, 40); // Divider
+    doc.line(15, 40, 195, 40);
 
     // Invoice Meta
     doc.setFontSize(9);
@@ -1654,7 +1717,6 @@ function downloadInvoicePDF(id) {
     doc.text(`Invoice No: ${inv.invoiceNo}`, 15, 48);
     doc.text(`Date: ${new Date(inv.createdAt).toLocaleDateString('en-GB')}`, 15, 53);
     
-    // Party Details
     const party = allStockists.find(s => s.name === inv.stockistName) || {};
     doc.text("BILL TO:", 110, 48);
     doc.setFont("helvetica", "normal");
@@ -1662,13 +1724,12 @@ function downloadInvoicePDF(id) {
     doc.text(party.address || '', 110, 58, { maxWidth: 80 });
     doc.text(`GST: ${party.gst || 'N/A'} | DL: ${party.dl || 'N/A'}`, 110, 68);
 
-    // Table
     doc.autoTable({
         startY: 75,
         head: [['S.No', 'Product Description', 'HSN', 'Batch', 'Exp', 'MRP', 'Qty', 'Unit', 'Price/Unit', 'Taxable', 'GST%', 'Amount']],
         body: inv.items.map((item, idx) => [
             idx + 1,
-            { content: `${item.name}\n(Mfg: ${item.manufacturer || 'EMYRIS'})`, styles: { fontSize: 7 } },
+            { content: `${item.name}\n(Mfg: ${item.manufacturer || 'EMYRIS'})`, styles: { fontSize: style === 'compact' ? 6 : 7 } },
             item.hsn || '-',
             item.batch || 'B2401',
             item.exp || '12/25',
@@ -1680,8 +1741,9 @@ function downloadInvoicePDF(id) {
             item.gstPercent + '%',
             (item.totalValue * (1 + item.gstPercent/100)).toFixed(2)
         ]),
-        theme: 'grid',
-        headStyles: { fillColor: [40, 44, 52], fontSize: 7, halign: 'center' },
+        theme: style === 'modern' ? 'striped' : 'grid',
+        headStyles: { fillColor: style === 'modern' ? [99, 102, 241] : [40, 44, 52], fontSize: style === 'compact' ? 6 : 7, halign: 'center' },
+        styles: { fontSize: style === 'compact' ? 6 : 7, cellPadding: style === 'compact' ? 1 : 2 },
         columnStyles: {
             0: { cellWidth: 10 },
             1: { cellWidth: 40 },
