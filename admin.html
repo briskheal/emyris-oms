@@ -76,9 +76,15 @@
             width: 280px; 
             background: var(--sidebar-bg); 
             border-right: 1px solid var(--glass-border); 
-            padding: 2.5rem 1.5rem; 
+            padding: 1.5rem 1rem; 
             height: calc(100vh - 75px);
+            position: sticky;
+            top: 75px;
+            overflow-y: auto;
+            z-index: 100;
         }
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
         .content { flex: 1; padding: 1.5rem 2rem; position: relative; overflow-x: hidden; }
 
         .nav-item { 
@@ -271,7 +277,19 @@
             <div class="nav-item" onclick="switchTab('masters', this)"><span>📦</span> Global Masters</div>
             <div class="nav-item" onclick="switchTab('orders', this)"><span>📦</span> Order History</div>
             <div class="nav-item" onclick="switchTab('invoices', this)"><span>🧾</span> Accounting & Invoices</div>
-            <div class="nav-item" onclick="switchTab('notes', this)"><span>📝</span> Financial Notes (CN/DN)</div>
+            
+            <div style="margin-bottom: 0.5rem;">
+                <div class="nav-item" onclick="toggleSubmenu('sub-notes', this)">
+                    <span>📝</span> Financial Notes <i style="margin-left: auto; font-size: 0.7rem; opacity: 0.5;">▼</i>
+                </div>
+                <div id="sub-notes" class="hidden" style="padding-left: 2.5rem; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Exp/Brk/Damg CN')">Exp/Brk/Damg CN</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Price Diff DN')">Price Diff DN</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Brk/Dmg/Loss DN')">Brk/Dmg/Loss DN</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Price Diff CN')">Price Diff CN</div>
+                </div>
+            </div>
+
             <div class="nav-item" onclick="switchTab('purchase', this)"><span>🛒</span> Purchase Entry</div>
             <div class="nav-item" onclick="switchTab('reports', this)"><span>📊</span> Reports & Compliance</div>
             <div class="nav-item" onclick="switchTab('settings', this)"><span>⚙️</span> Company Settings</div>
@@ -305,13 +323,13 @@
                             <h3 class="section-title" style="margin: 0; font-size: 1.1rem;">📈 Sales Performance (This Month)</h3>
                             <div id="mom-badge" style="padding: 4px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 800;">-</div>
                         </div>
-                        <div style="height: 350px;">
+                        <div style="height: 220px;">
                             <canvas id="salesChart"></canvas>
                         </div>
                     </div>
                     <div class="glass-card" style="padding: 2rem;">
                         <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 1.5rem;">🎯 Top 5 Best Sellers</h3>
-                        <div style="height: 350px;">
+                        <div style="height: 220px;">
                             <canvas id="topProductsChart"></canvas>
                         </div>
                     </div>
@@ -320,13 +338,13 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
                     <div class="glass-card" style="padding: 2rem;">
                         <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 1.5rem;">🤝 Leading Stockists</h3>
-                        <div style="height: 300px;">
+                        <div style="height: 220px;">
                             <canvas id="topStockistsChart"></canvas>
                         </div>
                     </div>
                     <div class="glass-card" style="padding: 2rem;">
                         <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 1.5rem;">📦 Order Fulfillment</h3>
-                        <div style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                        <div style="height: 220px; display: flex; align-items: center; justify-content: center;">
                             <canvas id="orderStatusChart"></canvas>
                         </div>
                     </div>
@@ -336,7 +354,7 @@
                 <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 2rem; margin-top: 2rem;">
                     <div class="glass-card" style="padding: 2.5rem; display: flex; flex-direction: column; align-items: center;">
                         <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 2rem; width: 100%; text-align: center;">💊 Product Group Share</h3>
-                        <div style="flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: center; height: 320px;">
+                        <div style="flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: center; height: 220px;">
                             <canvas id="groupPieChart"></canvas>
                         </div>
                         <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Revenue Share by Group</div>
@@ -346,7 +364,7 @@
                             <h3 class="section-title" style="margin: 0; font-size: 1.1rem;">💰 GST Liability (Per Group)</h3>
                             <div id="total-gst-display" style="color: var(--primary); font-weight: 900; background: rgba(99, 102, 241, 0.1); padding: 5px 12px; border-radius: 8px; font-size: 0.9rem; border: 1px solid rgba(99, 102, 241, 0.2);">₹0.00</div>
                         </div>
-                        <div style="height: 320px;">
+                        <div style="height: 220px;">
                             <canvas id="gstBarChart"></canvas>
                         </div>
                     </div>
@@ -393,13 +411,18 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                     <h2 class="section-title" style="margin: 0;">🤝 Party Master (Stockists & Suppliers)</h2>
                     <div style="display: flex; gap: 0.75rem;">
-                        <select id="party-type-filter" onchange="loadStockists(this.value)" style="width: 180px; padding: 0.5rem;">
+                        <div style="position: relative; width: 250px;">
+                            <input type="text" id="stockistSearch" placeholder="Search by name/city..." onkeyup="filterStockists(this.value)" style="padding: 0.6rem 1rem 0.6rem 2.5rem;">
+                            <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); opacity: 0.5;">🔍</span>
+                        </div>
+                        <button class="btn btn-ghost" onclick="clearStockistSearch()">Clear</button>
+                        <select id="party-type-filter" onchange="loadStockists(this.value)" style="width: 150px; padding: 0.5rem;">
                             <option value="">All Parties</option>
                             <option value="STOCKIST">Stockists Only</option>
                             <option value="SUPPLIER">Suppliers Only</option>
                         </select>
                         <button class="btn btn-primary" onclick="openPartyModal()">+ Create Party</button>
-                        <button class="btn btn-ghost" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteAllStockists()">🗑️ MASTER DELETE ALL</button>
+                        <button class="btn btn-ghost" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteAllStockists()">🗑️ DELETE ALL</button>
                     </div>
                 </div>
                 <div class="glass-card">
@@ -593,9 +616,6 @@
                 </div>
             </div>
 
-                </div>
-            </div>
-
             <!-- REPORTS TAB -->
             <div id="tab-reports" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
@@ -639,6 +659,27 @@
                         
                         <div style="font-size: 2rem; font-weight: 800; color: #fff;" id="report-inventory-val">₹0.00</div>
                         <button class="btn btn-ghost" style="margin-top: 1rem;" onclick="refreshInventoryVal()">🔄 REFRESH STATS</button>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 2rem;">
+                    <!-- Pending Approvals Card -->
+                    <div class="glass-card" style="padding: 1.5rem; border-left: 4px solid #f59e0b;">
+                        <h4 style="margin: 0; font-size: 0.9rem;">⏳ Pending Compliances</h4>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.5rem 0;">Stockists with expired/missing DL/GST documents.</p>
+                        <button class="btn btn-ghost" style="width: 100%; font-size: 0.7rem; padding: 8px;" onclick="switchTab('stockists')">VIEW DELINQUENTS</button>
+                    </div>
+                    <!-- Sales Analysis Card -->
+                    <div class="glass-card" style="padding: 1.5rem; border-left: 4px solid var(--primary);">
+                        <h4 style="margin: 0; font-size: 0.9rem;">📈 Party-wise Sales Report</h4>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.5rem 0;">Detailed breakdown of sales by individual stockists.</p>
+                        <button class="btn btn-ghost" style="width: 100%; font-size: 0.7rem; padding: 8px;">GENERATE REPORT</button>
+                    </div>
+                    <!-- Outstanding Card -->
+                    <div class="glass-card" style="padding: 1.5rem; border-left: 4px solid #ef4444;">
+                        <h4 style="margin: 0; font-size: 0.9rem;">⚠️ Ageing Outstanding</h4>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.5rem 0;">Track unpaid invoices beyond 30/60/90 days.</p>
+                        <button class="btn btn-ghost" style="width: 100%; font-size: 0.7rem; padding: 8px;">CHECK AGEING</button>
                     </div>
                 </div>
             </div>
@@ -739,6 +780,20 @@
                     </div>
                 </form>
             </div>
+
+            <!-- GLOBAL FOOTER INSIDE CONTENT -->
+            <footer style="background: rgba(15, 23, 42, 0.3); border-top: 1px solid var(--glass-border); padding: 2rem; margin-top: 4rem; color: #94a3b8; font-size: 0.85rem; border-radius: 24px 24px 0 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div>
+                        <strong id="footer-co-name" style="color: #fff; font-size: 1rem; display: block; margin-bottom: 5px;">EMYRIS OMS</strong>
+                        <p id="footer-co-address" style="margin: 0; font-size: 0.75rem; max-width: 400px;">Loading company details...</p>
+                    </div>
+                    <div style="text-align: right; opacity: 0.8;">
+                        <p id="footer-co-web" style="margin: 0; font-weight: 700; color: var(--primary);">www.emyrisbio.com</p>
+                        <p style="margin: 5px 0 0 0; font-size: 0.7rem;">© 2026 Emyris Bio. All Rights Reserved.</p>
+                    </div>
+                </div>
+            </footer>
         </main>
     </div>
 
@@ -823,19 +878,6 @@
         </div>
     </div>
 
-    <!-- GLOBAL FOOTER -->
-    <footer style="background: rgba(15, 23, 42, 0.9); border-top: 1px solid var(--glass-border); padding: 2rem 4%; margin-top: 2rem; color: #94a3b8; font-size: 0.85rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <strong id="footer-co-name" style="color: #fff; font-size: 1rem; display: block; margin-bottom: 5px;">EMYRIS OMS</strong>
-                <p id="footer-co-address">Loading company details...</p>
-            </div>
-            <div style="text-align: right;">
-                <p>OMS Portal v2.0 | &copy; 2026</p>
-                <p id="footer-co-web">www.emyrisbio.com</p>
-            </div>
-        </div>
-    </footer>
 
     <!-- MODAL (Party Create/Edit) -->
     <div id="partyModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; z-index: 2000;">

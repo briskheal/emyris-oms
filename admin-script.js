@@ -52,7 +52,7 @@ async function handleAdminLogin(e) {
 }
 
 // --- NAVIGATION ---
-function switchTab(tabId, el) {
+function switchTab(tabId, el, subType = null) {
     // 1. Update Sidebar UI
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
     if (el) el.classList.add('active');
@@ -71,9 +71,39 @@ function switchTab(tabId, el) {
     if (tabId === 'masters') renderMasterLists();
     if (tabId === 'orders') renderOrderHistory();
     if (tabId === 'invoices') renderInvoices();
-    if (tabId === 'notes') renderFinancialNotes();
+    if (tabId === 'notes') {
+        renderFinancialNotes();
+        if (subType) {
+            // If a specific sub-type was requested (e.g. from sub-menu)
+            const typeFilter = document.getElementById('note-type-filter');
+            if (typeFilter) {
+                typeFilter.value = subType;
+                filterNotes(subType);
+            }
+        }
+    }
     if (tabId === 'purchase') renderPurchaseEntries();
     if (tabId === 'reports') refreshInventoryVal();
+}
+
+function toggleSubmenu(id, el) {
+    const submenu = document.getElementById(id);
+    if (!submenu) return;
+    
+    const isHidden = submenu.classList.contains('hidden');
+    
+    // Close other submenus if any
+    document.querySelectorAll('[id^="sub-"]').forEach(sub => {
+        if (sub.id !== id) sub.classList.add('hidden');
+    });
+
+    if (isHidden) {
+        submenu.classList.remove('hidden');
+        if (el) el.classList.add('active');
+    } else {
+        submenu.classList.add('hidden');
+        if (el) el.classList.remove('active');
+    }
 }
 
 // --- DASHBOARD ---
@@ -768,11 +798,13 @@ async function saveSettings(e) {
 
 // --- PARTY MASTER LOGIC ---
 
-function renderStockists() {
+function renderStockists(list = null) {
     const tbody = document.getElementById('stockistTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = allStockists.map(s => `
+    const data = list || allStockists;
+
+    tbody.innerHTML = data.map(s => `
         <tr>
             <td style="font-weight:600; color:#fff;">${s.name}</td>
             <td style="font-size:0.75rem; font-weight:700; color:var(--primary);">${s.partyType || 'STOCKIST'}</td>
@@ -780,81 +812,31 @@ function renderStockists() {
             <td style="text-align:right; font-weight:700; color:${s.outstandingBalance > 0 ? '#ef4444' : '#10b981'};">₹${(s.outstandingBalance || 0).toLocaleString('en-IN')}</td>
             <td><span class="badge ${s.approved ? 'badge-approved' : 'badge-pending'}">${s.approved ? 'APPROVED' : 'PENDING'}</span></td>
             <td style="text-align:right;">
-                <button class="btn btn-ghost" style="padding:5px 10px; color:var(--primary);" onclick="viewLedger('${s._id}')">ðŸ“Š LEDGER</button>
-                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="openPartyModal('${s._id}')">âœï¸ EDIT</button>
-                <button class="btn btn-ghost" style="padding:5px 10px; color:#ef4444;" onclick="deleteStockist('${s._id}')">ðŸ—‘ï¸</button>
+                <button class="btn btn-ghost" style="padding:5px 10px; color:var(--primary); font-size: 0.7rem; font-weight: 800;" onclick="viewLedger('${s._id}')">📊 LEDGER</button>
+                <button class="btn btn-ghost" style="padding:5px 10px; font-size: 0.7rem; font-weight: 800;" onclick="openPartyModal('${s._id}')">📝 EDIT</button>
+                <button class="btn btn-ghost" style="padding:5px 10px; color:#ef4444;" onclick="deleteStockist('${s._id}')">🗑️</button>
             </td>
         </tr>
     `).join('');
 }
 
-function openPartyModal(id = null) {
-    const form = document.getElementById('partyForm');
-    if (form) form.reset();
-    document.getElementById('party-id').value = '';
-
-    if (id) {
-        const s = allStockists.find(x => x._id === id);
-        if (s) {
-            document.getElementById('party-id').value = s._id;
-            document.getElementById('party-name').value = s.name;
-            document.getElementById('party-type').value = s.partyType || 'STOCKIST';
-            document.getElementById('party-login').value = s.loginId;
-            document.getElementById('party-pass').value = s.password;
-            document.getElementById('party-limit').value = s.creditLimit || 0;
-            document.getElementById('party-balance').value = s.outstandingBalance || 0;
-            document.getElementById('party-pan').value = s.panNo;
-            document.getElementById('party-gst').value = s.gstNo || '';
-            document.getElementById('party-dl').value = s.dlNo || '';
-            document.getElementById('party-city').value = s.city || '';
-            document.getElementById('party-state').value = s.state || '';
-            document.getElementById('party-phone').value = s.phone || '';
-            document.getElementById('party-address').value = s.address || '';
-        }
+function filterStockists(query) {
+    const q = query.toLowerCase().trim();
+    if (!q) {
+        renderStockists(allStockists);
+        return;
     }
-
-    document.getElementById('partyModal').classList.remove('hidden');
+    const filtered = allStockists.filter(s => 
+        s.name.toLowerCase().includes(q) || 
+        (s.city && s.city.toLowerCase().includes(q)) ||
+        (s.loginId && s.loginId.toLowerCase().includes(q))
+    );
+    renderStockists(filtered);
 }
 
-function closePartyModal() {
-    document.getElementById('partyModal').classList.add('hidden');
-}
-
-async function saveParty(e) {
-    e.preventDefault();
-    const id = document.getElementById('party-id').value;
-    const data = {
-        name: document.getElementById('party-name').value,
-        partyType: document.getElementById('party-type').value,
-        loginId: document.getElementById('party-login').value,
-        password: document.getElementById('party-pass').value,
-        creditLimit: Number(document.getElementById('party-limit').value),
-        outstandingBalance: Number(document.getElementById('party-balance').value),
-        panNo: document.getElementById('party-pan').value,
-        gstNo: document.getElementById('party-gst').value,
-        dlNo: document.getElementById('party-dl').value,
-        city: document.getElementById('party-city').value,
-        state: document.getElementById('party-state').value,
-        phone: document.getElementById('party-phone').value,
-        address: document.getElementById('party-address').value
-    };
-
-    try {
-        const url = id ? `${API_BASE}/admin/stockists/${id}` : `${API_BASE}/admin/stockists`;
-        const res = await fetch(url, {
-            method: id ? 'PUT' : 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        const result = await res.json();
-        if (result.success) {
-            alert("Party record saved!");
-            closePartyModal();
-            loadStockists(document.getElementById('party-type-filter').value);
-        } else {
-            alert("Error: " + result.message);
-        }
-    } catch (e) { alert("Save failed."); }
+function clearStockistSearch() {
+    document.getElementById('stockistSearch').value = '';
+    renderStockists(allStockists);
 }
 
 function closeStockistModal() {

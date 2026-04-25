@@ -33,6 +33,9 @@ window.onload = async () => {
         currentUser = JSON.parse(savedUser);
         switchView('order');
         initOrderSystem();
+    } else {
+        // Explicitly ensure we are on login view if no session found
+        switchView('login');
     }
 };
 
@@ -51,12 +54,16 @@ function switchView(view) {
     if (view === 'order') {
         document.getElementById('view-order').classList.remove('hidden');
         document.querySelector('.navbar').classList.remove('hidden');
+        const userMenu = document.getElementById('userMenu');
+        if (userMenu) userMenu.classList.remove('hidden');
         document.getElementById('marquee').classList.remove('hidden');
         if (globalFooter) globalFooter.classList.remove('hidden');
         document.getElementById('stockistName').innerText = currentUser.name;
     } else {
         // Show auth section and specific card
         document.getElementById('section-auth').classList.remove('hidden');
+        const userMenu = document.getElementById('userMenu');
+        if (userMenu) userMenu.classList.add('hidden');
         document.getElementById(`view-${view}`).classList.remove('hidden');
     }
 }
@@ -267,6 +274,12 @@ async function loadSettings() {
         safeSet('land-phone', `💬 WHATSAPP: ${mainPhone}`);
         safeSet('land-email', `✉️ ${email}`);
         safeSet('land-address', companySettings.address || "Corporate Office: EMYRIS BIOLIFESCIENCES");
+
+        // Global Footer population (New)
+        safeSet('f-co-web', web);
+        safeSet('f-co-phone', mainPhone);
+        safeSet('f-co-email', email);
+        safeSet('f-co-address', companySettings.address || "Corporate Office: EMYRIS BIOLIFESCIENCES");
 
         // Marquee
         if (companySettings.scrollingMessage && companySettings.scrollingMessage.text) {
