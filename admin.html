@@ -821,6 +821,28 @@
                             </div>
                         </div>
 
+                        <!-- Card 5.5: Bank & Terms -->
+                        <div class="glass-card" style="grid-column: span 2; padding: 1.5rem; background: rgba(34, 197, 94, 0.05); border: 1px solid rgba(34, 197, 94, 0.2);">
+                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: #22c55e;">🏦 Bank Details & Invoice Terms</h3>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                                <div class="form-group">
+                                    <label>Bank Details (Prints on Invoice)</label>
+                                    <textarea id="set-bank-details" rows="3" placeholder="Bank Name: HDFC Bank&#10;A/C No: 123456789012&#10;IFSC Code: HDFC0001234" style="font-family: monospace;"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Terms & Conditions (Prints on Invoice)</label>
+                                    <textarea id="set-terms" rows="3" placeholder="1. Goods once sold will not be taken back.&#10;2. Subject to local jurisdiction." style="font-family: monospace;"></textarea>
+                                </div>
+                                <div class="form-group" style="grid-column: span 2;">
+                                    <label>Digital Signature (Optional)</label>
+                                    <input type="file" id="set-signature" accept="image/png, image/jpeg" onchange="convertSignatureToBase64(this)">
+                                    <input type="hidden" id="set-signature-b64">
+                                    <div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px;">Upload a clear PNG/JPG of the authorized signature to be automatically printed on invoices.</div>
+                                    <img id="sig-preview" src="" style="max-height: 40px; margin-top: 10px; display: none; border: 1px dashed var(--glass-border); padding: 2px;">
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Card 6: Portal Experience -->
                         <div class="glass-card" style="grid-column: span 2; padding: 1.5rem;">
                             <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: #ec4899;">📢 Portal Announcement Bar</h3>

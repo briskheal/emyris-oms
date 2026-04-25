@@ -157,6 +157,9 @@ const companySchema = new mongoose.Schema({
     panNo:   { type: String, default: "" },
     dlNo:    { type: String, default: "" },
     fssaiNo: { type: String, default: "" },
+    bankDetails: { type: String, default: "Bank Name: HDFC Bank\nA/C No: 123456789012\nIFSC Code: HDFC0001234" },
+    termsConditions: { type: String, default: "1. Goods once sold will not be taken back.\n2. Interest @ 24% p.a. will be charged if payment is delayed." },
+    signatureImage: { type: String, default: "" },
     scrollingMessage: {
         text:  { type: String, default: "Welcome to EMYRIS OMS Portal - Your partner in healthcare." },
         color: { type: String, default: "#6366f1" },

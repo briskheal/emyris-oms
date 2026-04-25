@@ -750,6 +750,17 @@ async function loadSettings() {
         document.getElementById('set-pan-no').value = s.panNo || '';
         document.getElementById('set-dl-no').value = s.dlNo || '';
         document.getElementById('set-fssai-no').value = s.fssaiNo || '';
+        
+        // Bank & Terms & Signature
+        document.getElementById('set-bank-details').value = s.bankDetails || '';
+        document.getElementById('set-terms').value = s.termsConditions || '';
+        document.getElementById('set-signature-b64').value = s.signatureImage || '';
+        if (s.signatureImage) {
+            document.getElementById('sig-preview').src = s.signatureImage;
+            document.getElementById('sig-preview').style.display = 'block';
+        } else {
+            document.getElementById('sig-preview').style.display = 'none';
+        }
 
         // Footer population (handled by script.js in stockist, but here for completeness)
         if (document.getElementById('footer-co-name')) document.getElementById('footer-co-name').innerText = s.name || 'EMYRIS OMS';
@@ -795,7 +806,10 @@ async function saveSettings(e) {
         gstNo:   document.getElementById('set-gst-no').value.toUpperCase(),
         panNo:   document.getElementById('set-pan-no').value.toUpperCase(),
         dlNo:    document.getElementById('set-dl-no').value,
-        fssaiNo: document.getElementById('set-fssai-no').value
+        fssaiNo: document.getElementById('set-fssai-no').value,
+        bankDetails: document.getElementById('set-bank-details').value,
+        termsConditions: document.getElementById('set-terms').value,
+        signatureImage: document.getElementById('set-signature-b64').value
     };
 
     try {
@@ -811,8 +825,19 @@ async function saveSettings(e) {
         btn.innerHTML = originalHtml;
     }
 }
-
 // --- PARTY MASTER LOGIC ---
+
+function convertSignatureToBase64(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('set-signature-b64').value = e.target.result;
+            document.getElementById('sig-preview').src = e.target.result;
+            document.getElementById('sig-preview').style.display = 'block';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
 
 function renderStockists(list = null) {
     const tbody = document.getElementById('stockistTableBody');
@@ -2104,27 +2129,40 @@ function downloadInvoicePDF(id) {
     setFont(7, 'bold', WHITE); doc.text('GRAND TOTAL', totX + 2, tY + 5.5);
     doc.text(fmt2(Math.round(grandTotal)), W - 2, tY + 5.5, { align: 'right' });
     tY += 8;
+    
+    // Amount in Words in bracket below Grand Total
+    setFont(5, 'italic', MUTED);
+    doc.text(`(Rupees ${numToWords(Math.round(grandTotal))} Only)`, W - 2, tY + 4, { align: 'right' });
+    tY += 8;
 
-    y = Math.max(finalGstY, tY) + 4;
+    y = Math.max(finalGstY, tY) + 2;
 
-    // ── AMOUNT IN WORDS ────────────────────────────────────────────────────────
-    doc.setFillColor(240, 253, 250);
-    doc.rect(0, y, W, 7, 'F');
-    setFont(5.5, 'bold', GREEN); doc.text('Amount in Words:', 3, y + 4.5);
-    setFont(5.5, 'italic', DARK);
-    doc.text(numToWords(Math.round(grandTotal)), 33, y + 4.5, { maxWidth: W - 35 });
-    y += 9;
+    // ── TERMS, BANK & SIGNATURE ────────────────────────────────────────────────
+    const sigY = y;
 
-    // ── TERMS & SIGNATURE ─────────────────────────────────────────────────────
-    setFont(5, 'normal', MUTED);
-    doc.text('Terms: Goods once sold will not be taken back. Subject to ' + (stkObj.state || 'Hyderabad') + ' jurisdiction.', 3, y + 4);
-    doc.text('Reverse Charge Applicable: NO', 3, y + 7.5);
+    // Left side: Bank Details
+    setFont(5.5, 'bold', DARK); doc.text('Bank Details:', 3, y + 4);
+    setFont(5, 'normal', MUTED); 
+    const bDetails = co.bankDetails ? co.bankDetails.split('\n') : ['Bank Name: HDFC Bank', 'A/C No: 123456789012', 'IFSC Code: HDFC0001234'];
+    bDetails.forEach((line, i) => doc.text(line, 3, y + 8 + (i * 3.5)));
 
-    // Signature block (right)
-    setFont(5.5, 'bold', PRIMARY); doc.text(`For ${coName}`, W - 3, y + 4, { align: 'right' });
-    doc.setDrawColor(...MUTED);
-    doc.line(W - 45, y + 16, W - 3, y + 16);
-    setFont(5, 'normal', MUTED); doc.text('Authorised Signatory', W - 3, y + 19, { align: 'right' });
+    // Left side: Terms (below bank details)
+    const termsY = y + 8 + (bDetails.length * 3.5) + 3;
+    setFont(5.5, 'bold', DARK); doc.text('Terms & Conditions:', 3, termsY);
+    setFont(4.5, 'normal', MUTED);
+    const tConds = co.termsConditions ? co.termsConditions.split('\n') : ['1. Goods once sold will not be taken back.', '2. Subject to local jurisdiction.'];
+    tConds.forEach((line, i) => doc.text(line, 3, termsY + 3.5 + (i * 3)));
+
+    // Right side: Signature block
+    setFont(5.5, 'bold', PRIMARY); doc.text(`For ${coName}`, W - 3, sigY + 4, { align: 'right' });
+    
+    if (co.signatureImage) {
+        doc.addImage(co.signatureImage, 'PNG', W - 35, sigY + 6, 30, 12);
+    } else {
+        doc.setDrawColor(...MUTED);
+        doc.line(W - 40, sigY + 18, W - 3, sigY + 18);
+    }
+    setFont(5, 'normal', MUTED); doc.text('Authorised Signatory', W - 3, sigY + 22, { align: 'right' });
 
     // ── FOOTER ────────────────────────────────────────────────────────────────
     y += 22;
