@@ -174,6 +174,7 @@ const gstSchema = new mongoose.Schema({ rate: { type: Number, required: true, un
 // 2. Product Master
 const productSchema = new mongoose.Schema({
     name: { type: String, required: true },
+    manufacturer: { type: String, default: "" },
     hsn: String,
     category: { type: String, default: "GENERAL" },
     group: { type: String, default: "GENERAL" },
@@ -290,6 +291,7 @@ const purchaseEntrySchema = new mongoose.Schema({
     items: [{
         product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
         name: String,
+        manufacturer: String,
         batch: String,
         mfgDate: String,
         expDate: String,

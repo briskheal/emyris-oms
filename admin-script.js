@@ -516,6 +516,7 @@ async function saveProduct(e) {
     const id = document.getElementById('prod-id').value;
     const data = {
         name: document.getElementById('prod-name').value,
+        manufacturer: document.getElementById('prod-manufacturer').value || '',
         hsn: document.getElementById('prod-hsn').value,
         category: document.getElementById('prod-cat').value,
         group: document.getElementById('prod-group').value,
@@ -571,6 +572,7 @@ function editProduct(id) {
     if (!p) return;
     document.getElementById('prod-id').value = p._id;
     document.getElementById('prod-name').value = p.name;
+    document.getElementById('prod-manufacturer').value = p.manufacturer || '';
     document.getElementById('prod-hsn').value = p.hsn || '';
     document.getElementById('prod-cat').value = p.category;
     document.getElementById('prod-group').value = p.group || '';
@@ -1289,6 +1291,7 @@ function addPurchaseItem() {
     const prodId = document.getElementById('pur-prod-select').value;
     const qty = Number(document.getElementById('pur-qty').value);
     const rate = Number(document.getElementById('pur-rate').value);
+    const manfName = document.getElementById('pur-manf-name').value;
     const batch = document.getElementById('pur-batch').value;
     const mfg = document.getElementById('pur-mfg').value;
     const exp = document.getElementById('pur-exp').value;
@@ -1300,6 +1303,7 @@ function addPurchaseItem() {
     purchaseItems.push({
         product: prodId,
         name: prod.name,
+        manufacturer: manfName || prod.manufacturer || 'N/A',
         qty: qty,
         bonusQty: 0,
         purchaseRate: rate,
@@ -1313,6 +1317,7 @@ function addPurchaseItem() {
     renderPurchaseItems();
     // Clear line inputs
     document.getElementById('pur-qty').value = '';
+    document.getElementById('pur-manf-name').value = '';
     document.getElementById('pur-batch').value = '';
     document.getElementById('pur-mfg').value = '';
     document.getElementById('pur-exp').value = '';
@@ -1333,7 +1338,7 @@ function renderPurchaseItems() {
         return `<tr>
             <td>
                 <strong>${item.name}</strong><br>
-                <small style="color:var(--text-muted)">HSN: ${item.hsn || '-'}</small>
+                <small style="color:var(--text-muted)">Mfg: ${item.manufacturer || '-'} | HSN: ${item.hsn || '-'}</small>
             </td>
             <td>${item.batch}</td>
             <td>${item.expDate}</td>
@@ -1984,7 +1989,7 @@ function downloadInvoicePDF(id) {
 
     inv.items.forEach((item, idx) => {
         const isEven = idx % 2 === 0;
-        const rowH = 6;
+        const rowH = 6.5; // compact enough but fits 2 lines
         if (isEven) { doc.setFillColor(248, 250, 252); doc.rect(0, y, W, rowH, 'F'); }
 
         const taxable  = (item.priceUsed || 0) * (item.qty || 0);
@@ -2005,7 +2010,14 @@ function downloadInvoicePDF(id) {
         doc.rect(0, y, W, rowH);
         setFont(5, 'normal', DARK);
         doc.text(String(idx + 1), cols.sl.x + cols.sl.w/2, y + 4, { align: 'center' });
-        doc.text((item.name || '-').substring(0,25), cols.name.x + 1, y + 4, { maxWidth: cols.name.w - 1 });
+        
+        // Product Name (top line)
+        doc.text((item.name || '-').substring(0,25), cols.name.x + 1, y + 3);
+        // Manufacturer Name (bottom line, smaller)
+        setFont(3.5, 'normal', MUTED);
+        doc.text((item.manufacturer || '').substring(0,30), cols.name.x + 1, y + 5.5);
+        
+        setFont(5, 'normal', DARK);
         doc.text(item.hsn || '30049', cols.hsn.x + 1, y + 4);
         doc.text(item.batch || 'BT-01', cols.batch.x + 1, y + 4);
         doc.text(item.exp || '12/26', cols.exp.x + 1, y + 4);
@@ -2058,8 +2070,8 @@ function downloadInvoicePDF(id) {
     });
 
     // Right: Grand Total Box
-    const totX = W - 60;
-    const fmt2 = n => '₹ ' + n.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    const totX = W - 65; // SHIFTED LEFT from W-60 to W-65 to give more breathing room
+    const fmt2 = n => 'Rs. ' + n.toLocaleString('en-IN', { minimumFractionDigits: 2 });
     const totRows = [
         ['Taxable Value', taxableTotal],
         ['Total GST',     gstTotal],
@@ -2131,7 +2143,8 @@ function updateProductEntryMeta(id) {
     const p = allProducts.find(x => x._id === id);
     if (!p) return;
     document.getElementById('pur-rate').value = p.pts || 0;
-    document.getElementById('pur-gst-pct').value = p.gst || 12;
+    document.getElementById('pur-gst-pct').value = p.gstPercent || p.gst || 12;
+    document.getElementById('pur-manf-name').value = p.manufacturer || '';
 }
 
 // --- REPORT GENERATION ENGINE ---
