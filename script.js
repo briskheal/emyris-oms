@@ -800,14 +800,18 @@ function handleLogout() {
 
 function viewOrderDetails(orderId) {
     const o = myOrdersHistory.find(x => x._id === orderId);
-    if (!o) return;
-
-    document.getElementById('detail-order-no').innerText = `Order #${o.orderNo}`;
+    if (!o) {
+        console.error("❌ Order not found in history:", orderId);
+        return;
+    }
+    console.log("📂 Opening Order/Invoice Details:", orderId, o);
+    
+    document.getElementById('detail-order-no').innerText = o.status === 'invoiced' ? `Invoice Details (${o.orderNo})` : `Order Details (${o.orderNo})`;
     document.getElementById('detail-date').innerText = `Placed on ${new Date(o.createdAt).toLocaleString('en-GB')}`;
     
     const statusEl = document.getElementById('detail-status');
     statusEl.innerText = o.status.toUpperCase();
-    statusEl.style.color = o.status === 'approved' ? '#10b981' : (o.status === 'rejected' ? '#ef4444' : '#f59e0b');
+    statusEl.style.color = o.status === 'invoiced' ? '#6366f1' : (o.status === 'approved' ? '#10b981' : (o.status === 'rejected' ? '#ef4444' : '#f59e0b'));
 
     document.getElementById('detail-item-count').innerText = `${o.items.length} Items`;
 
