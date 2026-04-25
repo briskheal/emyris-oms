@@ -793,7 +793,35 @@
                             </div>
                         </div>
 
-                        <!-- Card 5: Portal Experience -->
+                        <!-- Card 5: Legal Details -->
+                        <div class="glass-card" style="grid-column: span 2; padding: 1.5rem; border-top: 4px solid #ef4444;">
+                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: #ef4444;">⚖️ Legal &amp; Compliance Details</h3>
+                            <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 1.5rem;">These details are mandatory on all tax invoices as per GST law, Drugs &amp; Cosmetics Act, and FSSAI regulations.</p>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label>GSTIN (Company)</label>
+                                    <input type="text" id="set-gst-no" placeholder="36AABCE1234F1Z5" maxlength="15" style="text-transform:uppercase; font-family:monospace; letter-spacing:1px;">
+                                    <div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px;">15-digit GST Identification Number</div>
+                                </div>
+                                <div class="form-group">
+                                    <label>PAN Number</label>
+                                    <input type="text" id="set-pan-no" placeholder="AABCE1234F" maxlength="10" style="text-transform:uppercase; font-family:monospace; letter-spacing:1px;">
+                                    <div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px;">10-character Permanent Account Number</div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Drug License Number(s)</label>
+                                    <input type="text" id="set-dl-no" placeholder="TG-HYD-12345, TG-HYD-12346">
+                                    <div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px;">Enter both DL-20 &amp; DL-21 if applicable</div>
+                                </div>
+                                <div class="form-group">
+                                    <label>FSSAI License No.</label>
+                                    <input type="text" id="set-fssai-no" placeholder="20724024000450" maxlength="14" style="font-family:monospace; letter-spacing:1px;">
+                                    <div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px;">Required if dealing in nutraceuticals</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 6: Portal Experience -->
                         <div class="glass-card" style="grid-column: span 2; padding: 1.5rem;">
                             <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: #ec4899;">📢 Portal Announcement Bar</h3>
                             <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1.5rem; align-items: end;">

@@ -740,6 +740,12 @@ async function loadSettings() {
         document.getElementById('set-address').value = s.address || '';
         document.getElementById('set-admin-email').value = s.adminEmail || '';
 
+        // Legal Details
+        document.getElementById('set-gst-no').value = s.gstNo || '';
+        document.getElementById('set-pan-no').value = s.panNo || '';
+        document.getElementById('set-dl-no').value = s.dlNo || '';
+        document.getElementById('set-fssai-no').value = s.fssaiNo || '';
+
         // Footer population (handled by script.js in stockist, but here for completeness)
         if (document.getElementById('footer-co-name')) document.getElementById('footer-co-name').innerText = s.name || 'EMYRIS OMS';
         if (document.getElementById('footer-co-address')) document.getElementById('footer-co-address').innerText = s.address || '';
@@ -747,9 +753,8 @@ async function loadSettings() {
         if (s.scrollingMessage) {
             document.getElementById('set-msg-text').value = s.scrollingMessage.text || '';
             document.getElementById('set-msg-color').value = s.scrollingMessage.color || '#6366f1';
-            document.getElementById('set-inv-style').value = s.invoiceStyle || 'classic';
-            setInvoiceStyle(s.invoiceStyle || 'classic');
         }
+        setInvoiceStyle(s.invoiceStyle || 'classic');
     } catch (e) { console.error("Load settings fail"); }
 }
 
@@ -781,7 +786,11 @@ async function saveSettings(e) {
             color: document.getElementById('set-msg-color').value,
             speed: Number(document.getElementById('set-msg-speed').value)
         },
-        invoiceStyle: document.getElementById('set-inv-style').value
+        invoiceStyle: document.getElementById('set-inv-style').value,
+        gstNo:   document.getElementById('set-gst-no').value.toUpperCase(),
+        panNo:   document.getElementById('set-pan-no').value.toUpperCase(),
+        dlNo:    document.getElementById('set-dl-no').value,
+        fssaiNo: document.getElementById('set-fssai-no').value
     };
 
     try {
@@ -1806,6 +1815,293 @@ function downloadInvoicePDF(id) {
 
     doc.save(`Invoice_${inv.invoiceNo}.pdf`);
 }
+
+function downloadInvoicePDF(id) {
+    const inv = allInvoices.find(x => x._id === id);
+    if (!inv) return alert('Invoice not found.');
+
+    // ── NUMBER TO WORDS (Indian Currency) ────────────────────────────────────
+    function numToWords(num) {
+        const a = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine',
+                   'Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen',
+                   'Seventeen','Eighteen','Nineteen'];
+        const b = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+        const grp = n => {
+            let s = '';
+            if (n >= 100) { s += a[Math.floor(n/100)] + ' Hundred '; n %= 100; }
+            if (n >= 20)  { s += b[Math.floor(n/10)] + ' '; n %= 10; }
+            if (n > 0)    { s += a[n] + ' '; }
+            return s;
+        };
+        if (num === 0) return 'Zero Rupees Only';
+        const parts = num.toFixed(2).split('.');
+        let int = parseInt(parts[0]), dec = parseInt(parts[1]);
+        let out = '', i = 0, divisors = [1000, 100, 100, 100];
+        const groups = ['Thousand ', 'Lakh ', 'Crore ', ''];
+        // Indian number system: units < 1000, then pairs
+        const groups2 = [];
+        groups2.push(int % 1000); int = Math.floor(int / 1000);
+        while (int > 0) { groups2.push(int % 100); int = Math.floor(int / 100); }
+        const suffixes = ['', 'Thousand ', 'Lakh ', 'Crore '];
+        for (let j = groups2.length - 1; j >= 0; j--) {
+            if (groups2[j] > 0) out += grp(groups2[j]) + suffixes[j];
+        }
+        let result = 'Rupees ' + out.trim();
+        if (dec > 0) result += ' and ' + grp(dec).trim() + ' Paise';
+        return result + ' Only';
+    }
+
+    const { jsPDF } = window.jspdf;
+    // A5 = 148mm x 210mm
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+    const W = 148, H = 210;
+    const co = companyProfile || {};
+
+    // Company legal info
+    const coName    = co.name    || 'EMYRIS BIOLIFESCIENCES';
+    const coAddr    = co.address || 'Corporate Office, Hyderabad, Telangana';
+    const coGST     = co.gstNo   || 'N/A';
+    const coPAN     = co.panNo   || 'N/A';
+    const coDL      = co.dlNo    || 'N/A';
+    const coFSSAI   = co.fssaiNo || '';
+    const coPhone   = (co.phones && co.phones[0]) || co.tollFree || '';
+    const coEmail   = (co.emails && co.emails[0]) || '';
+    const coWeb     = (co.websites && co.websites[0]) || '';
+
+    const stockist  = inv.stockistName || 'Unknown Party';
+    const stkCode   = inv.stockistCode || '';
+    const invDate   = new Date(inv.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+    // ── COLOURS & HELPERS ──────────────────────────────────────────────────────
+    const PRIMARY = [99, 102, 241];   // indigo
+    const DARK    = [15, 23, 42];
+    const LIGHT   = [241, 245, 249];
+    const MUTED   = [100, 116, 139];
+    const WHITE   = [255, 255, 255];
+    const GREEN   = [16, 185, 129];
+
+    const setFont = (size, style = 'normal', color = DARK) => {
+        doc.setFontSize(size);
+        doc.setFont('helvetica', style);
+        doc.setTextColor(...color);
+    };
+
+    let y = 0; // current Y position
+
+    // ── HEADER BAND ────────────────────────────────────────────────────────────
+    doc.setFillColor(...PRIMARY);
+    doc.rect(0, 0, W, 24, 'F');
+
+    // Company Name
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(...WHITE);
+    doc.text(coName.toUpperCase(), 5, 9);
+
+    // TAX INVOICE label (right)
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    doc.text('TAX INVOICE', W - 5, 7, { align: 'right' });
+    doc.setFontSize(6.5); doc.setFont('helvetica', 'normal');
+    doc.text('(Original for Recipient)', W - 5, 11, { align: 'right' });
+
+    // Company sub-info in header
+    doc.setFontSize(5.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 210, 255);
+    const headerInfo = [coAddr, `GST: ${coGST} | PAN: ${coPAN}`];
+    if (coDL !== 'N/A') headerInfo.push(`DL: ${coDL}`);
+    headerInfo.forEach((line, i) => doc.text(line, 5, 14 + (i * 3.5)));
+    // Phone / Email / Web (right side of header)
+    doc.text([`Ph: ${coPhone}`, coEmail, coWeb].filter(Boolean).join(' | '), W - 5, 18, { align: 'right' });
+    if (coFSSAI) doc.text(`FSSAI: ${coFSSAI}`, W - 5, 21, { align: 'right' });
+
+    y = 27;
+
+    // ── INVOICE META (2 columns) ───────────────────────────────────────────────
+    doc.setFillColor(...LIGHT);
+    doc.rect(0, y, W, 20, 'F');
+    doc.setDrawColor(220, 220, 230);
+    doc.rect(0, y, W, 20);
+    
+    // Left: Bill To
+    setFont(6, 'bold', PRIMARY);
+    doc.text('BILL TO', 5, y + 5);
+    setFont(8, 'bold', DARK);
+    doc.text(stockist.toUpperCase(), 5, y + 10);
+    setFont(6.5, 'normal', MUTED);
+    if (stkCode) doc.text(`Code: ${stkCode}`, 5, y + 14);
+    // Get stockist object for compliance info
+    const stkObj = allStockists.find(s => s.name === inv.stockistName) || {};
+    const stkComplianceLines = [];
+    if (stkObj.gstNo) stkComplianceLines.push(`GSTIN: ${stkObj.gstNo}`);
+    if (stkObj.dlNo)  stkComplianceLines.push(`DL: ${stkObj.dlNo}`);
+    stkComplianceLines.forEach((line, i) => doc.text(line, 5, y + 17 + i * 3));
+
+    // Right: Invoice details
+    const midX = W / 2 + 2;
+    const metaRows = [
+        ['Invoice No.', inv.invoiceNo],
+        ['Date',        invDate],
+        ['Place of Supply', (stkObj.state || 'Telangana')],
+    ];
+    setFont(6, 'bold', MUTED); doc.text('INVOICE DETAILS', midX, y + 5);
+    metaRows.forEach(([label, val], i) => {
+        setFont(6, 'normal', MUTED); doc.text(label + ':', midX, y + 10 + i * 3.5);
+        setFont(6.5, 'bold', DARK);  doc.text(String(val), W - 5, y + 10 + i * 3.5, { align: 'right' });
+    });
+
+    y += 23;
+
+    // ── ITEMS TABLE ────────────────────────────────────────────────────────────
+    const cols = {
+        sl:   { x: 1,  w: 6  },
+        name: { x: 7,  w: 41 },
+        hsn:  { x: 48, w: 14 },
+        qty:  { x: 62, w: 9  },
+        bon:  { x: 71, w: 8  },
+        rate: { x: 79, w: 17 },
+        txbl: { x: 96, w: 18 },
+        gst:  { x: 114,w: 14 },
+        amt:  { x: 128,w: 19 },
+    };
+
+    // Header row
+    doc.setFillColor(...DARK);
+    doc.rect(0, y, W, 6, 'F');
+    setFont(5, 'bold', WHITE);
+    const headers = { sl:'Sl', name:'Product / Description', hsn:'HSN', qty:'Qty', bon:'Bonus', rate:'Rate (₹)', txbl:'Taxable', gst:'GST', amt:'Amount (₹)' };
+    Object.entries(cols).forEach(([key, c]) => {
+        const align = ['sl','qty','bon','rate','txbl','gst','amt'].includes(key) ? 'center' : 'left';
+        doc.text(headers[key], c.x + (align === 'center' ? c.w/2 : 1), y + 4, { align });
+    });
+    y += 6;
+
+    // Item rows
+    let taxableTotal = 0, gstTotal = 0;
+    const gstBreakdown = {}; // { rate: { taxable, cgst, sgst } }
+
+    inv.items.forEach((item, idx) => {
+        const isEven = idx % 2 === 0;
+        const rowH = 6;
+        if (isEven) { doc.setFillColor(248, 250, 252); doc.rect(0, y, W, rowH, 'F'); }
+
+        const taxable  = (item.priceUsed || 0) * (item.qty || 0);
+        const gstPct   = item.gstPercent || 12;
+        const gstAmt   = taxable * gstPct / 100;
+        const lineAmt  = taxable + gstAmt;
+        taxableTotal  += taxable;
+        gstTotal      += gstAmt;
+
+        if (!gstBreakdown[gstPct]) gstBreakdown[gstPct] = { taxable: 0, cgst: 0, sgst: 0 };
+        gstBreakdown[gstPct].taxable += taxable;
+        gstBreakdown[gstPct].cgst   += gstAmt / 2;
+        gstBreakdown[gstPct].sgst   += gstAmt / 2;
+
+        const fmt = n => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        doc.setDrawColor(230, 230, 240);
+        doc.rect(0, y, W, rowH);
+        setFont(5.5, 'normal', DARK);
+        doc.text(String(idx + 1), cols.sl.x + cols.sl.w/2, y + 4, { align: 'center' });
+        doc.text(item.name || '-', cols.name.x + 1, y + 4, { maxWidth: cols.name.w - 1 });
+        doc.text(item.hsn || '30049', cols.hsn.x + cols.hsn.w/2, y + 4, { align: 'center' });
+        doc.text(String(item.qty || 0), cols.qty.x + cols.qty.w/2, y + 4, { align: 'center' });
+        setFont(5.5, 'normal', GREEN);
+        doc.text(String(item.bonusQty || 0), cols.bon.x + cols.bon.w/2, y + 4, { align: 'center' });
+        setFont(5.5, 'normal', DARK);
+        doc.text(fmt(item.priceUsed || 0), cols.rate.x + cols.rate.w - 1, y + 4, { align: 'right' });
+        doc.text(fmt(taxable), cols.txbl.x + cols.txbl.w - 1, y + 4, { align: 'right' });
+        doc.text(`${gstPct}%`, cols.gst.x + cols.gst.w/2, y + 4, { align: 'center' });
+        setFont(5.5, 'bold', DARK);
+        doc.text(fmt(lineAmt), cols.amt.x + cols.amt.w - 1, y + 4, { align: 'right' });
+        y += rowH;
+
+        // Page break safety
+        if (y > H - 55) {
+            doc.addPage('a5');
+            y = 10;
+        }
+    });
+
+    // ── GST BREAKDOWN TABLE ────────────────────────────────────────────────────
+    y += 2;
+    const grandTotal = taxableTotal + gstTotal;
+
+    // Left: GST Summary
+    const gstSummaryX = 0;
+    setFont(5.5, 'bold', PRIMARY);
+    doc.text('GST SUMMARY', gstSummaryX + 2, y + 4);
+    y += 5;
+    doc.setFillColor(235, 237, 255);
+    doc.rect(gstSummaryX, y, 75, 5, 'F');
+    setFont(5, 'bold', PRIMARY);
+    doc.text('GST Rate', gstSummaryX + 2, y + 3.5);
+    doc.text('Taxable', gstSummaryX + 20, y + 3.5);
+    doc.text('CGST', gstSummaryX + 38, y + 3.5);
+    doc.text('SGST', gstSummaryX + 52, y + 3.5);
+    doc.text('Total GST', gstSummaryX + 64, y + 3.5);
+    y += 5;
+    Object.entries(gstBreakdown).forEach(([rate, vals]) => {
+        setFont(5, 'normal', DARK);
+        const fv = v => v.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+        doc.text(`${rate}%`, gstSummaryX + 2, y + 3.5);
+        doc.text(fv(vals.taxable), gstSummaryX + 20, y + 3.5);
+        doc.text(fv(vals.cgst), gstSummaryX + 38, y + 3.5);
+        doc.text(fv(vals.sgst), gstSummaryX + 52, y + 3.5);
+        doc.text(fv(vals.cgst + vals.sgst), gstSummaryX + 64, y + 3.5);
+        y += 4.5;
+    });
+
+    // Right: Grand Total Box
+    const totX = W - 60;
+    const fmt2 = n => '₹ ' + n.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    const totRows = [
+        ['Taxable Value', taxableTotal],
+        ['Total GST',     gstTotal],
+        ['ROUND OFF',     Math.round(grandTotal) - grandTotal],
+    ];
+    let tY = y - (totRows.length + 1) * 5.5;
+    totRows.forEach(([lbl, val]) => {
+        setFont(6, 'normal', MUTED); doc.text(lbl, totX + 1, tY + 4);
+        setFont(6, 'normal', DARK);  doc.text(fmt2(val), W - 2, tY + 4, { align: 'right' });
+        tY += 5.5;
+    });
+    // Grand Total row
+    doc.setFillColor(...PRIMARY);
+    doc.rect(totX, tY, W - totX, 8, 'F');
+    setFont(7, 'bold', WHITE); doc.text('GRAND TOTAL', totX + 2, tY + 5.5);
+    doc.text(fmt2(Math.round(grandTotal)), W - 2, tY + 5.5, { align: 'right' });
+
+    y += 4;
+
+    // ── AMOUNT IN WORDS ────────────────────────────────────────────────────────
+    doc.setFillColor(240, 253, 250);
+    doc.rect(0, y, W, 7, 'F');
+    setFont(5.5, 'bold', GREEN); doc.text('Amount in Words:', 3, y + 4.5);
+    setFont(5.5, 'italic', DARK);
+    doc.text(numToWords(Math.round(grandTotal)), 33, y + 4.5, { maxWidth: W - 35 });
+    y += 9;
+
+    // ── TERMS & SIGNATURE ─────────────────────────────────────────────────────
+    setFont(5, 'normal', MUTED);
+    doc.text('Terms: Goods once sold will not be taken back. Subject to ' + (stkObj.state || 'Hyderabad') + ' jurisdiction.', 3, y + 4);
+    doc.text('Reverse Charge Applicable: NO', 3, y + 7.5);
+
+    // Signature block (right)
+    setFont(5.5, 'bold', PRIMARY); doc.text(`For ${coName}`, W - 3, y + 4, { align: 'right' });
+    doc.setDrawColor(...MUTED);
+    doc.line(W - 45, y + 16, W - 3, y + 16);
+    setFont(5, 'normal', MUTED); doc.text('Authorised Signatory', W - 3, y + 19, { align: 'right' });
+
+    // ── FOOTER ────────────────────────────────────────────────────────────────
+    y += 22;
+    doc.setFillColor(...DARK);
+    doc.rect(0, H - 8, W, 8, 'F');
+    setFont(5, 'normal', [150, 160, 200]);
+    doc.text('E. & O.E.  —  This is a Computer Generated Invoice  —  No signature required', W / 2, H - 4, { align: 'center' });
+    setFont(5, 'normal', [120, 130, 180]);
+    doc.text(coWeb, 3, H - 4);
+    doc.text(coEmail, W - 3, H - 4, { align: 'right' });
+
+    doc.save(`Invoice_${inv.invoiceNo}.pdf`);
+}
+
 
 // --- PURCHASE ENTRY ENHANCEMENTS ---
 function updateSupplierDetailsDisplay(id) {

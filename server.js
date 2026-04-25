@@ -152,8 +152,13 @@ const companySchema = new mongoose.Schema({
     superDistributorEmail: String,
     adminEmail: String,
     gstRate: { type: Number, default: 12 },
+    // Legal Compliance Details
+    gstNo:   { type: String, default: "" },
+    panNo:   { type: String, default: "" },
+    dlNo:    { type: String, default: "" },
+    fssaiNo: { type: String, default: "" },
     scrollingMessage: {
-        text: { type: String, default: "Welcome to EMYRIS OMS Portal - Your partner in healthcare." },
+        text:  { type: String, default: "Welcome to EMYRIS OMS Portal - Your partner in healthcare." },
         color: { type: String, default: "#6366f1" },
         speed: { type: Number, default: 30 }
     },
