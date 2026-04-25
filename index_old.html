@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMYRIS OMS | Stockist Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.5);
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.4);
+            --bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shine: rgba(255, 255, 255, 0.05);
+            --grad-primary: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: var(--bg); color: var(--text-main); min-height: 100vh; overflow-x: hidden; }
+
+        /* --- BACKGROUND DECOR --- */
+        .orb { position: fixed; border-radius: 50%; filter: blur(80px); z-index: -1; opacity: 0.4; animation: float 20s infinite alternate; }
+        .orb-1 { width: 500px; height: 500px; background: var(--primary); top: -100px; right: -100px; }
+        .orb-2 { width: 400px; height: 400px; background: #ec4899; bottom: -100px; left: -100px; animation-delay: -5s; }
+        @keyframes float { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(50px, 50px) scale(1.1); } }
+
+        /* --- MARQUEE --- */
+        .marquee-container { 
+            background: rgba(99, 102, 241, 0.1); 
+            backdrop-filter: blur(10px); 
+            border-bottom: 1px solid var(--glass-border);
+            color: #fff; 
+            padding: 6px 0; 
+            font-weight: 700; 
+            font-size: 0.65rem; 
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            overflow: hidden; 
+            white-space: nowrap; 
+            position: relative; 
+            z-index: 1001;
+        }
+        .marquee-text { display: inline-block; padding-left: 100%; animation: marquee linear infinite; }
+        @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+
+        .logo { font-weight: 800; font-size: 1.2rem; letter-spacing: -0.5px; background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; cursor: pointer; }
+        
+        .nav-links { display: flex; gap: 2rem; align-items: center; }
+        .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; font-weight: 700; transition: 0.3s; }
+        .nav-links a:hover { color: var(--primary); }
+        .nav-cta { background: var(--grad-primary); color: #fff; padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 0.8rem; font-weight: 800; text-decoration: none; box-shadow: 0 10px 20px -5px var(--primary-glow); transition: 0.3s; }
+        .nav-cta:hover { transform: translateY(-2px); box-shadow: 0 15px 30px -5px var(--primary-glow); }
+
+        .container { max-width: 1300px; margin: 0 auto; padding: 0 2rem; position: relative; }
+
+        /* --- NEW SCROLLING LANDING --- */
+        .landing-wrapper { 
+            background: #0b0f1a; 
+            position: relative; z-index: 100;
+            overflow-x: hidden;
+        }
+        
+        .hero-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 100px 0;
+            text-align: center;
+        }
+        .hero-image-bg {
+            position: absolute; inset: 0;
+            background: url('pharma_distribution_hero_v2_1777126997158.png') no-repeat center center;
+            background-size: cover;
+            filter: brightness(0.2) saturate(0.8);
+            z-index: -1;
+        }
+        .hero-glow {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 80%; height: 80%; background: radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%);
+            z-index: -1;
+        }
+
+        .section-padding { padding: 8rem 0; }
+        .section-title-alt { font-size: 3rem; font-weight: 900; text-align: center; margin-bottom: 4rem; letter-spacing: -2px; }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        .feature-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--glass-border);
+            padding: 3rem 2rem;
+            border-radius: 32px;
+            transition: 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            text-align: center;
+        }
+        .feature-card:hover {
+            background: rgba(255,255,255,0.05);
+            transform: translateY(-10px);
+            border-color: var(--primary);
+            box-shadow: 0 30px 60px -15px rgba(0,0,0,0.5);
+        }
+        .card-icon { font-size: 2.5rem; margin-bottom: 1.5rem; display: block; }
+        .card-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 1rem; color: #fff; }
+        .card-desc { font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; }
+
+        .stats-bar {
+            background: rgba(99, 102, 241, 0.05);
+            border-top: 1px solid var(--glass-border);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 3rem 0;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+        .stat-item { text-align: center; }
+        .stat-num { font-size: 2.5rem; font-weight: 900; color: #fff; display: block; }
+        .stat-label { font-size: 0.75rem; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 2px; }
+
+        .auth-portal-section {
+            background: radial-gradient(circle at top right, #1e293b, #0b0f1a);
+            padding: 8rem 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- PREMIUM LANDING OVERHAUL --- */
+        .landing-wrapper { 
+            height: 100vh; width: 100vw; 
+            display: flex; flex-direction: column; 
+            background: #0f172a; overflow: hidden; 
+            position: fixed; top: 0; left: 0; z-index: 5000;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .landing-content { flex: 1; display: flex; width: 100%; overflow: hidden; }
+        .landing-hero { 
+            flex: 1; position: relative; 
+            display: flex; align-items: center; justify-content: center; 
+            padding: 3rem; color: #fff; overflow: hidden;
+            border-right: 1px solid var(--glass-border);
+        }
+        .hero-bg { 
+            position: absolute; inset: 0; 
+            background-image: url('emyris_medical_distribution_hero_1777062722739.png');
+            background-size: cover; background-position: center; 
+            filter: brightness(0.35) saturate(1.2);
+            transform: scale(1.05); transition: 1.5s ease-out;
+        }
+        .landing-hero:hover .hero-bg { transform: scale(1); }
+        .hero-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(99,102,241,0.2) 0%, rgba(15,23,42,0.8) 100%); }
+        .hero-text { position: relative; z-index: 2; max-width: 450px; }
+        .hero-badge { display: inline-block; padding: 8px 16px; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.4); border-radius: 100px; font-size: 0.75rem; font-weight: 800; letter-spacing: 2.5px; margin-bottom: 2rem; color: var(--primary); text-transform: uppercase; }
+
+        .feature-list { display: grid; gap: 2rem; margin-top: 4rem; }
+        .feature-item { display: flex; gap: 1.25rem; align-items: start; }
+        .feature-icon { font-size: 1.5rem; min-width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; }
+        .feature-item strong { display: block; font-size: 1.1rem; margin-bottom: 4px; color: #fff; letter-spacing: -0.3px; }
+        .feature-item p { font-size: 0.9rem; opacity: 0.6; line-height: 1.5; font-weight: 500; }
+
+        .landing-auth { 
+            flex: 2; background: radial-gradient(circle at top right, #1e293b, #0f172a); 
+            display: flex; align-items: center; justify-content: center; 
+            padding: 3rem; position: relative; overflow-y: auto;
+        }
+        .landing-footer { 
+            height: 70px; background: rgba(15, 23, 42, 0.95); 
+            border-top: 1px solid var(--glass-border); 
+            display: flex; align-items: center; justify-content: space-between; 
+            padding: 0 5%; font-size: 0.85rem; color: var(--text-muted); 
+            backdrop-filter: blur(30px); position: relative; z-index: 5001;
+        }
+
+        /* --- ELEGANT AUTH LINKS --- */
+        .auth-footer-links { 
+            margin-top: 2.5rem; 
+            padding-top: 2rem; 
+            border-top: 1px solid var(--glass-border); 
+            display: flex; flex-direction: column; gap: 1.5rem; align-items: center; 
+        }
+        .auth-link { 
+            color: var(--text-muted); font-size: 0.95rem; font-weight: 600; 
+            text-decoration: none; cursor: pointer; transition: 0.3s; 
+            display: flex; align-items: center; gap: 12px; 
+        }
+        .auth-link:hover { color: var(--primary); transform: translateY(-1px); }
+        .auth-link strong { color: var(--primary); font-weight: 800; }
+
+        .admin-shortcut { 
+            margin-top: 2rem; font-size: 0.7rem; opacity: 0.3; 
+            transition: 0.3s; color: #fff; text-transform: uppercase; 
+            letter-spacing: 2px; font-weight: 800; text-decoration: none;
+            padding: 8px 16px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+        }
+        .admin-shortcut:hover { opacity: 1; color: var(--accent); background: rgba(255,255,255,0.05); }
+
+
+        /* --- AUTH CARDS --- */
+        .auth-card { 
+            width: 100%;
+            max-width: 450px; 
+            background: rgba(30, 41, 59, 0.4); 
+            padding: 3.5rem; 
+            border-radius: 40px; 
+            border: 1px solid var(--glass-border); 
+            box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(50px);
+            position: relative;
+            animation: fadeIn 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .auth-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: var(--grad-primary); border-radius: 40px 40px 0 0; }
+        .auth-title { font-size: 2.2rem; font-weight: 900; margin-bottom: 0.75rem; color: #fff; letter-spacing: -1.5px; line-height: 1; }
+        .auth-subtitle { color: var(--text-muted); margin-bottom: 3rem; font-size: 1rem; font-weight: 500; line-height: 1.5; }
+
+        /* --- CLEAN FORM DESIGN --- */
+        .form-group { margin-bottom: 1.75rem; text-align: left; }
+        .form-group label { 
+            display: block; margin-bottom: 0.75rem; 
+            font-size: 0.75rem; font-weight: 800; color: var(--primary); 
+            text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.8;
+        }
+        input, select, textarea { 
+            width: 100%; 
+            background: rgba(255, 255, 255, 0.03); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            border-radius: 12px; 
+            padding: 1.1rem 1.5rem; 
+            color: #fff; 
+            font-size: 1rem; 
+            font-weight: 500;
+            transition: 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            backdrop-filter: blur(5px);
+        }
+        input:focus { 
+            outline: none; 
+            border-color: var(--primary); 
+            background: rgba(255, 255, 255, 0.07); 
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.15); 
+        }
+        input::placeholder { color: rgba(255,255,255,0.2); }
+
+        .btn-primary { 
+            width: 100%;
+            background: var(--grad-primary); 
+            color: #fff; 
+            padding: 1.25rem; 
+            border-radius: 14px; 
+            border: none; 
+            font-weight: 800; 
+            font-size: 1rem; 
+            letter-spacing: 1px; 
+            cursor: pointer; 
+            transition: 0.4s; 
+            box-shadow: 0 15px 30px -5px rgba(99, 102, 241, 0.4);
+            text-transform: uppercase;
+        }
+        .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 20px 40px -5px rgba(99, 102, 241, 0.6); filter: brightness(1.1); }
+        
+        @media (max-width: 1200px) {
+            .landing-hero { padding: 3rem; }
+            .hero-text h1 { font-size: 2.8rem; }
+        }
+        @media (max-width: 1024px) {
+            .landing-wrapper { overflow-y: auto; position: relative; height: auto; min-height: 100vh; }
+            .landing-content { flex-direction: column; height: auto; overflow: visible; }
+            .landing-hero { display: none; }
+            .landing-auth { padding: 4rem 1.5rem; min-height: calc(100vh - 120px); }
+            .landing-footer { flex-direction: column; height: auto; padding: 2rem 1.5rem; gap: 1rem; text-align: center; }
+            .auth-card { padding: 2.5rem 1.5rem; }
+        }
+
+        .hidden { display: none !important; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- EXCEL TABLE --- */
+        .excel-container { 
+            background: var(--card-bg); 
+            border-radius: 16px; 
+            overflow: auto; 
+            border: 1px solid var(--glass-border); 
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+            backdrop-filter: blur(20px);
+            max-height: 75vh;
+        }
+        .excel-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 0.9rem;
+        }
+        .excel-table th { 
+            position: sticky;
+            top: 0;
+            background: #f1f5f9; 
+            padding: 1rem; 
+            text-align: left; 
+            font-size: 0.7rem; 
+            color: #475569; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #cbd5e1; 
+            border-right: 1px solid #cbd5e1;
+            z-index: 10;
+            font-weight: 800;
+        }
+        .excel-table td { 
+            padding: 0.75rem 1rem; 
+            border-bottom: 1px solid #e2e8f0; 
+            border-right: 1px solid #e2e8f0;
+            color: #1e293b;
+            vertical-align: middle;
+        }
+        /* Remove the last right border for a cleaner look */
+        .excel-table th:last-child, .excel-table td:last-child {
+            border-right: none;
+        }
+        .excel-table tr:hover { background: rgba(99, 102, 241, 0.03); }
+        .excel-table tr:nth-child(even) { background: rgba(0, 0, 0, 0.01); }
+
+        .qty-input { 
+            width: 90px; 
+            padding: 0.6rem; 
+            background: rgba(15, 23, 42, 0.8); 
+            border: 1px solid var(--glass-border); 
+            border-radius: 10px; 
+            text-align: center; 
+            font-weight: 800; 
+            color: var(--accent);
+        }
+
+        /* Remove spin buttons from number inputs */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        /* --- CATEGORIES --- */
+        .category-scroll { 
+            display: flex; 
+            gap: 1rem; 
+            overflow-x: auto; 
+            padding: 10px 5px; 
+            scrollbar-width: none;
+            margin-bottom: 2rem;
+        }
+        .category-scroll::-webkit-scrollbar { display: none; }
+        
+        .cat-chip { 
+            padding: 10px 20px; 
+            background: rgba(255, 255, 255, 0.05); 
+            border: 1px solid var(--glass-border); 
+            border-radius: 50px; 
+            color: var(--text-muted); 
+            font-weight: 700; 
+            font-size: 0.75rem; 
+            white-space: nowrap; 
+            cursor: pointer; 
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+        }
+        .cat-chip:hover { 
+            background: rgba(255, 255, 255, 0.1); 
+            transform: translateY(-3px); 
+            color: #fff;
+            border-color: var(--primary);
+        }
+        .cat-chip.active { 
+            background: var(--grad-primary); 
+            color: #fff; 
+            border-color: transparent;
+            box-shadow: 0 10px 25px -5px var(--primary-glow);
+        }
+        .cat-icon { font-size: 1.1rem; }
+
+        .total-cell { color: #facc15 !important; font-weight: 900 !important; font-size: 1rem !important; }
+        .price-warning { color: #f59e0b !important; font-weight: 800 !important; }
+        .negotiation-input { 
+            width: 80px; 
+            padding: 5px; 
+            border: 1px solid var(--glass-border); 
+            background: rgba(255,255,255,0.05); 
+            color: #fff; 
+            border-radius: 4px;
+            text-align: right;
+            font-weight: 700;
+        }
+        .note-input {
+            width: 120px;
+            padding: 5px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .sticky-footer { 
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            background: rgba(7, 10, 18, 0.98); 
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border); 
+            padding: 0.6rem 2.5rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            z-index: 1000; 
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8);
+        }
+
+        @media (max-width: 768px) {
+            .navbar { padding: 0 1.5rem; height: 70px; }
+            .logo { font-size: 1.4rem; }
+            .container { padding: 0 1rem; }
+            .sticky-footer { flex-direction: column; gap: 1rem; text-align: center; bottom: 0.5rem; width: 98%; border-radius: 20px; padding: 1rem; }
+            .sticky-footer button { width: 100% !important; }
+            .excel-table th:nth-child(2), .excel-table td:nth-child(2),
+            .excel-table th:nth-child(3), .excel-table td:nth-child(3) { display: none; } /* Hide HSN/MRP on mobile */
+        }
+
+        .hidden { display: none !important; }
+        .bonus-tag { background: rgba(16, 185, 129, 0.1); color: var(--accent); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; border: 1px solid var(--accent-glow); }
+        
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .tab-btn.active {
+            background: var(--grad-primary);
+            color: #fff;
+            box-shadow: 0 10px 20px -5px var(--primary-glow);
+        }
+    </style>
+</head>
+<body>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div id="marquee" class="marquee-container hidden">
+        <div id="marquee-content" class="marquee-text">Welcome to EMYRIS OMS Portal</div>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">EMYRIS OMS</div>
+        <div id="userMenu" class="hidden" style="display: flex; align-items: center; gap: 1.5rem;">
+            <span id="stockistName" style="font-weight: 700; color: #fff;"></span>
+            <button class="btn" onclick="handleLogout()" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 800; border-radius: 12px; display: flex; align-items: center; gap: 8px;">
+                🚪 SECURE LOGOUT
+            </button>
+        </div>
+    </nav>
+
+    <!-- LANDING PORTAL WRAPPER -->
+    <div id="section-auth" class="landing-wrapper">
+        <!-- TOP NAV (Updated) -->
+        <nav class="navbar" style="position: fixed; top: 0; width: 100%; height: 75px; background: rgba(11, 15, 26, 0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border);">
+            <div class="container" style="display: flex; justify-content: flex-end; align-items: center; width: 100%;">
+                <div class="nav-links">
+                    <a href="#features">FEATURES</a>
+                    <a href="#stats">BENEFITS</a>
+                    <a href="#support">SUPPORT</a>
+                    <a href="#portal" class="nav-cta">GET STARTED</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- HERO SECTION -->
+        <section class="hero-section">
+            <div class="hero-image-bg"></div>
+            <div class="hero-glow"></div>
+            <div class="container">
+                <div class="hero-badge">ADVANCED PHARMA ECOSYSTEM</div>
+                <h1 style="font-size: 2.2rem; line-height: 1.2; font-weight: 800; letter-spacing: -1px; margin-bottom: 1.5rem;">
+                    Empowering the Future of <br>
+                    <span style="background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Medical Distribution</span>
+                </h1>
+                <p style="font-size: 1.1rem; color: var(--text-muted); max-width: 700px; margin: 0 auto 2.5rem; line-height: 1.5; font-weight: 500;">
+                    A unified, glassmorphic platform designed for high-performance stockists and distributors. 
+                    Real-time compliance, intelligent pricing, and rapid order execution.
+                </p>
+                <div style="display: flex; gap: 1rem; justify-content: center;">
+                    <a href="#portal" class="btn-primary" style="width: auto; padding: 0.8rem 2rem; font-size: 0.85rem; text-decoration: none;">GET STARTED</a>
+                    <a href="#features" class="btn" style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #fff; padding: 0.8rem 2rem; border-radius: 14px; font-weight: 800; font-size: 0.85rem; text-decoration: none;">EXPLORE FEATURES</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- STATS BAR -->
+        <section id="stats" class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-num">1200+</span>
+                <span class="stat-label">SKUs ACTIVE</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-num">100%</span>
+                <span class="stat-label">GST COMPLIANT</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-num">24/7</span>
+                <span class="stat-label">PARTNER SUPPORT</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-num">0.5s</span>
+                <span class="stat-label">ORDER LATENCY</span>
+            </div>
+        </section>
+
+        <!-- FEATURES SECTION -->
+        <section id="features" class="section-padding container">
+            <h2 class="section-title-alt">Engineered for <span style="color: var(--primary);">Excellence</span></h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <span class="card-icon">⚡</span>
+                    <h3 class="card-title">Live Negotiations</h3>
+                    <p class="card-desc">Propose custom rates directly on the grid and lock-in prices for future orders automatically.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="card-icon">📄</span>
+                    <h3 class="card-title">Smart Compliance</h3>
+                    <p class="card-desc">Automated validation of DL, GST, and FSSAI credentials with high-fidelity document generation.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="card-icon">💹</span>
+                    <h3 class="card-title">Real-time Analytics</h3>
+                    <p class="card-desc">Track purchase trends, outstanding balances, and order fulfillment states in one unified view.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="card-icon">🚀</span>
+                    <h3 class="card-title">Next-Gen UX</h3>
+                    <p class="card-desc">Optimized for speed. No page reloads. Excel-style bulk entry for ultra-fast operations.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- PORTAL ACCESS SECTION -->
+        <section id="portal" class="auth-portal-section">
+            <div class="container" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+                
+                <div id="view-auth-combined" style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 2.5rem; width: 100%; max-width: 1200px;">
+                    <!-- LOGIN CARD -->
+                    <div id="view-login" class="auth-card" style="margin: 0; max-width: none;">
+                        <h2 class="auth-title" style="font-size: 1.8rem;">Welcome Back</h2>
+                        <p class="auth-subtitle" style="font-size: 0.9rem; margin-bottom: 2rem;">Secure gateway to your dashboard</p>
+                        <form onsubmit="handleLogin(event)">
+                            <div class="form-group">
+                                <label>Login ID</label>
+                                <input type="text" id="login-id" placeholder="e.g. EMY123456" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Secret Password</label>
+                                <input type="password" id="login-pass" placeholder="••••••••" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="loginBtn">SIGN IN TO PORTAL</button>
+                        </form>
+                        <div class="auth-footer-links">
+                            <a class="auth-link" onclick="switchView('forgot')" style="opacity: 0.6; font-size: 0.8rem;">
+                                <span>🔐</span> Forgot Login ID or Password?
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- REGISTER CARD -->
+                    <div id="view-register" class="auth-card" style="margin: 0; max-width: none; padding: 2.5rem;">
+                        <h2 class="auth-title" style="font-size: 1.8rem;">Partner Registration</h2>
+                        <p class="auth-subtitle" style="font-size: 0.9rem; margin-bottom: 2rem;">Join the EMYRIS professional distribution network</p>
+                        <form onsubmit="handleRegister(event)">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group"><label style="font-size: 0.65rem;">Firm Name</label><input type="text" id="reg-name" placeholder="ABC PHARMA" required style="padding: 0.8rem; font-size: 0.9rem; text-transform: uppercase;"></div>
+                                <div class="form-group"><label style="font-size: 0.65rem;">Official Email</label><input type="email" id="reg-email" placeholder="contact@firm.com" required style="padding: 0.8rem; font-size: 0.9rem; text-transform: none;"></div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group"><label style="font-size: 0.65rem;">Contact Number</label><input type="tel" id="reg-phone" placeholder="98XXXXXXXX" required style="padding: 0.8rem; font-size: 0.9rem;"></div>
+                                <div class="form-group"><label style="font-size: 0.65rem;">Access Password</label><input type="password" id="reg-pass" placeholder="••••••••" required style="padding: 0.8rem; font-size: 0.9rem;"></div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label style="font-size: 0.65rem;">GSTIN</label>
+                                    <input type="text" id="reg-gst" placeholder="22AAAAA0000A1Z5" required maxlength="15" oninput="handleGstInput(this)" style="padding: 0.8rem; font-size: 0.9rem;">
+                                    <div id="gst-status" style="font-size: 0.65rem; margin-top: 5px;"></div>
+                                </div>
+                                <div class="form-group"><label style="font-size: 0.65rem;">PAN Number</label><input type="text" id="reg-pan" placeholder="ABCDE1234F" required maxlength="10" style="padding: 0.8rem; font-size: 0.9rem;"></div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group"><label style="font-size: 0.65rem;">Drug License (DL)</label><input type="text" id="reg-dl" placeholder="DL-12345" required style="padding: 0.8rem; font-size: 0.9rem;"></div>
+                                <div class="form-group"><label style="font-size: 0.65rem;">FSSAI Number</label><input type="text" id="reg-fssai" placeholder="14-digit FSSAI No." required style="padding: 0.8rem; font-size: 0.9rem;"></div>
+                            </div>
+                            <div class="form-group"><label style="font-size: 0.65rem;">Registered Billing Address</label><input type="text" id="reg-address" placeholder="Shop No, Street, City, State" required style="padding: 0.8rem; font-size: 0.9rem;"></div>
+                            <button type="submit" class="btn btn-primary" id="regBtn" style="padding: 1rem;">SUBMIT REGISTRATION</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- REGISTRATION SUCCESS (SQUARE BOX) -->
+                <div id="view-reg-success" class="auth-card hidden" style="max-width: 600px; text-align: center; border: 2px solid var(--accent); background: rgba(16, 185, 129, 0.1);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+                    <h2 class="auth-title" style="color: var(--accent); font-size: 1.5rem;">Registration Successful</h2>
+                    <p class="auth-subtitle" style="font-size: 0.85rem;">Your application has been received. Please save these details.</p>
+                    
+                    <div id="reg-summary-box" style="background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); margin: 1.5rem 0; text-align: left; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.8rem;">
+                        <div style="grid-column: span 2; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                            <label style="color: var(--primary); font-size: 0.65rem; font-weight: 800; text-transform: uppercase;">Portal Credentials</label>
+                            <div style="display: flex; gap: 2rem; margin-top: 5px;">
+                                <div>ID: <strong id="success-login-id" style="color: #fff; font-size: 1.1rem;">-</strong></div>
+                                <div>PW: <strong id="success-password" style="color: #fff; font-size: 1.1rem;">-</strong></div>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="opacity: 0.5; font-size: 0.65rem; text-transform: uppercase;">Firm Name</label>
+                            <div id="summary-name" style="color: #fff; font-weight: 600;">-</div>
+                        </div>
+                        <div>
+                            <label style="opacity: 0.5; font-size: 0.65rem; text-transform: uppercase;">Email</label>
+                            <div id="summary-email" style="color: #fff; font-weight: 600;">-</div>
+                        </div>
+                        <div>
+                            <label style="opacity: 0.5; font-size: 0.65rem; text-transform: uppercase;">GSTIN</label>
+                            <div id="summary-gst" style="color: #fff; font-weight: 600;">-</div>
+                        </div>
+                        <div>
+                            <label style="opacity: 0.5; font-size: 0.65rem; text-transform: uppercase;">DL No.</label>
+                            <div id="summary-dl" style="color: #fff; font-weight: 600;">-</div>
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <label style="opacity: 0.5; font-size: 0.65rem; text-transform: uppercase;">Address</label>
+                            <div id="summary-address" style="color: #fff; font-weight: 600; font-size: 0.75rem;">-</div>
+                        </div>
+                    </div>
+                    
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.4;">
+                        Our administration team will verify your Drug License and compliance data. You will be notified via email once your account is activated.
+                    </p>
+                    
+                    <button class="btn btn-primary" onclick="window.location.reload()" style="padding: 0.8rem;">FINISH & GO BACK</button>
+                </div>
+
+                <!-- FORGOT CARD -->
+                <div id="view-forgot" class="auth-card hidden">
+                    <h2 class="auth-title">Account Recovery</h2>
+                    <p class="auth-subtitle">Verify your email to receive credentials</p>
+                    <form onsubmit="handleForgotPassword(event)">
+                        <div class="form-group">
+                            <label>Registered Email Address</label>
+                            <input type="email" id="forgot-email" placeholder="yourname@firm.com" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="forgotBtn">RECOVER ACCOUNT</button>
+                    </form>
+                    <div style="margin-top: 1.5rem; text-align: center;">
+                        <button class="btn-link" onclick="switchView('login')">Back to Secure Login</button>
+                    </div>
+                </div>
+
+                <!-- PIN CARD -->
+                <div id="view-pin" class="auth-card hidden">
+                    <h2 class="auth-title">Verify Entry</h2>
+                    <p class="auth-subtitle">A secure 6-digit PIN has been sent to your email</p>
+                    <form onsubmit="handleVerifyPin(event)">
+                        <div class="form-group">
+                            <label>Security PIN</label>
+                            <input type="text" id="login-pin-input" required maxlength="6" pattern="\d{6}" placeholder="000000" style="text-align: center; font-size: 2.5rem; letter-spacing: 12px; font-weight: 900;">
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="pinBtn">COMPLETE VERIFICATION</button>
+                    </form>
+                    <div style="margin-top: 1.5rem; text-align: center;">
+                        <button class="btn-link" onclick="switchView('login')">Cancel Attempt</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- COMPACT LANDING FOOTER (Updated with more details) -->
+        <div id="support" class="landing-footer" style="flex-direction: column; height: auto; padding: 3rem 5%; gap: 2rem; border-top: 1px solid var(--glass-border);">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3rem; width: 100%;">
+                <div style="text-align: left;">
+                    <div class="logo" style="font-size: 1.6rem; margin-bottom: 1rem;">EMYRIS OMS</div>
+                    <p style="font-size: 0.85rem; opacity: 0.7; line-height: 1.6;">Empowering the pharmaceutical ecosystem with state-of-the-art distribution technology and real-time compliance management.</p>
+                </div>
+                <div style="text-align: left;">
+                    <h4 style="color: #fff; margin-bottom: 1rem; font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">Contact Channels</h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.85rem; opacity: 0.8;">
+                        <span id="land-web">🌐 www.emyrisbio.com</span>
+                        <span id="land-tollfree">📞 TOLL-FREE: 7993163300</span>
+                        <span id="land-email">✉️ contact@emyrisbio.com</span>
+                        <span id="land-phone">💬 WHATSAPP: +91-XXXXXXXXXX</span>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <h4 style="color: #fff; margin-bottom: 1rem; font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">Corporate HQ</h4>
+                    <div id="land-address" style="font-size: 0.85rem; opacity: 0.6; line-height: 1.6;">
+                        Corporate Office:<br>
+                        EMYRIS BIOLIFESCIENCES PVT. LTD.
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: center; width: 100%; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem; font-size: 0.75rem; opacity: 0.4;">
+                &copy; 2026 EMYRIS BIOLIFESCIENCES. All rights reserved. • ISO 9001:2015 Certified
+            </div>
+        </div>
+    </div>
+
+    <!-- ORDERING VIEW -->
+    <div id="view-order" class="container hidden" style="max-width: 1400px; margin-bottom: 120px;">
+        <!-- HERO SECTION -->
+        <div style="width: 100%; height: 220px; border-radius: 28px; overflow: hidden; margin-bottom: 2rem; position: relative; border: 1px solid var(--glass-border); box-shadow: 0 20px 40px -10px rgba(0,0,0,0.4);">
+            <img src="assets/hero.png" style="width: 100%; height: 100%; object-fit: cover; filter: brightness(0.6);" alt="Emyris Hero">
+            <div style="position: absolute; inset: 0; background: linear-gradient(to right, rgba(15,23,42,0.85), transparent); display: flex; align-items: center; padding: 0 3rem;">
+                <div style="max-width: 500px;">
+                    <h2 style="font-size: 2.2rem; font-weight: 900; line-height: 1; margin-bottom: 0.5rem; background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Advanced Order Management</h2>
+                    <p style="color: var(--text-muted); font-size: 0.95rem; font-weight: 500;">Next-gen pharmaceutical distribution for elite partners.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="company-header" style="background: var(--card-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); padding: 2rem; border-radius: 28px; margin-bottom: 2rem;">
+            <div style="display: grid; grid-template-columns: 1.5fr 1fr 1.5fr; gap: 2rem; align-items: start;">
+                <!-- Column 1: Identity -->
+                <div>
+                    <h1 id="co-name" style="font-size: 1.8rem; margin-bottom: 0.5rem; letter-spacing: -1px;">EMYRIS BIOLIFESCIENCES</h1>
+                    <p id="co-address" style="opacity: 0.8; font-size: 0.8rem; line-height: 1.4;">Loading address...</p>
+                </div>
+                
+                <!-- Column 2: Hotlines (Center) -->
+                <div style="text-align: center; background: rgba(99, 102, 241, 0.05); border: 1px dashed rgba(99, 102, 241, 0.3); border-radius: 20px; padding: 1rem;">
+                    <div style="font-size: 0.65rem; color: var(--primary); font-weight: 800; text-transform: uppercase; margin-bottom: 5px;">📞 Toll-Free Support</div>
+                    <div id="co-tollfree" style="font-size: 1.5rem; font-weight: 900; color: #fff;">7993163300</div>
+                    <div id="co-phone" style="font-size: 0.8rem; opacity: 0.7; margin-top: 5px;">WhatsApp: +91-XXXXXXXXXX</div>
+                </div>
+
+                <!-- Column 3: Digital Channels -->
+                <div style="text-align: right; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="font-size: 0.75rem;">
+                        <span id="co-web1" style="display: block; color: var(--accent); font-weight: 700;">🌐 www.emyrisbio.com</span>
+                        <span id="co-web2" style="display: block; opacity: 0.8;">🌐 www.emyris.in</span>
+                    </div>
+                    <div style="font-size: 0.75rem; border-top: 1px solid var(--glass-border); padding-top: 8px;">
+                        <span id="co-email1" style="display: block;">✉️ contact@emyrisbio.com</span>
+                        <span id="co-email2" style="display: block; opacity: 0.8;">✉️ sales@emyrisbio.com</span>
+                        <span id="co-email3" style="display: block; opacity: 0.6; font-size: 0.7rem;">✉️ support@emyrisbio.com</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-bottom: 2rem; background: rgba(15,23,42,0.5); padding: 0.5rem; border-radius: 16px; border: 1px solid var(--glass-border); width: fit-content;">
+            <button class="tab-btn active" id="btn-tab-place" onclick="switchOrderTab('place')">🛒 Place Order</button>
+            <button class="tab-btn" id="btn-tab-history" onclick="switchOrderTab('history')">📜 My Order History</button>
+        </div>
+
+        <!-- PLACE ORDER SECTION -->
+        <div id="section-place-order">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <div class="category-scroll" id="categoryChips" style="margin: 0;">
+                    <div class="cat-chip active" onclick="filterCat('ALL', this)">ALL PRODUCTS</div>
+                </div>
+                <div style="position: relative; width: 300px;">
+                    <input type="text" id="productSearch" placeholder="Search product..." onkeyup="searchProducts(this.value)" style="padding: 0.75rem 1rem 0.75rem 2.5rem;">
+                    <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); opacity: 0.5;">🔍</span>
+                </div>
+            </div>
+
+            <div class="excel-container">
+                <table class="excel-table">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th style="width: 100px; text-align: center;">PACK</th>
+                            <th style="width: 90px; text-align: center;">HSN</th>
+                            <th style="width: 90px; text-align: right;">MRP (₹)</th>
+                            <th style="width: 90px; text-align: right;">PTR (₹)</th>
+                            <th style="width: 100px; text-align: center;">PTS (₹)</th>
+                            <th style="width: 130px; text-align: center;">AUTH NOTE</th>
+                            <th style="width: 80px; text-align: center;">GST %</th>
+                            <th style="width: 120px; text-align: center;">Order Qty</th>
+                            <th style="width: 100px; text-align: center;">BONUS</th>
+                            <th style="width: 110px; text-align: right;">Total (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="excelProductBody">
+                        <!-- Products rendered as rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ORDER HISTORY SECTION -->
+        <div id="section-order-history" class="hidden">
+            <h2 class="section-title">📅 Month-wise Order History</h2>
+            <div id="history-container">
+                <!-- Grouped orders will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <div id="orderFooter" class="sticky-footer hidden">
+        <div style="display: flex; gap: 2rem; align-items: center;">
+            <div>
+                <span style="color: var(--text-muted); font-size: 0.6rem; font-weight: 700; text-transform: uppercase;">Taxable</span>
+                <div id="footer-subtotal" style="font-size: 0.9rem; font-weight: 800; color: #fff;">₹0.00</div>
+            </div>
+            <div>
+                <span style="color: var(--text-muted); font-size: 0.6rem; font-weight: 700; text-transform: uppercase;">GST</span>
+                <div id="footer-gst" style="font-size: 0.9rem; font-weight: 800; color: #fff;">₹0.00</div>
+            </div>
+            <div style="padding-left: 1rem; border-left: 1px solid var(--glass-border);">
+                <span style="color: var(--text-muted); font-size: 0.6rem; font-weight: 700; text-transform: uppercase;">Net Amount</span>
+                <div id="footer-net" style="font-size: 0.9rem; font-weight: 800; color: var(--accent);">₹0.00</div>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 2rem;">
+            <div style="text-align: right;">
+                <span style="color: var(--primary); font-size: 0.65rem; font-weight: 800; text-transform: uppercase;">Grand Total</span>
+                <div id="footer-total" style="font-size: 1.4rem; font-weight: 900; color: var(--primary);">₹0.00</div>
+            </div>
+            <button class="btn btn-primary" style="width: 200px; padding: 0.75rem; font-size: 0.9rem; border-radius: 12px;" onclick="placeOrder()">PLACE ORDER NOW</button>
+        </div>
+    </div>
+
+    <!-- GLOBAL FOOTER (Only for logged-in views) -->
+    <footer id="global-footer" class="hidden" style="background: rgba(15, 23, 42, 0.9); border-top: 1px solid var(--glass-border); padding: 2rem 0; margin-top: 4rem; backdrop-filter: blur(20px);">
+        <div class="container" style="text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+            <div style="margin-bottom: 0.5rem; color: #fff; font-weight: 700;">
+                <span id="f-co-web">www.emyrisbio.com</span> • <span id="f-co-phone">+91-XXXXXXXXXX</span> • <span id="f-co-email">contact@emyrisbio.com</span>
+            </div>
+            <div id="f-co-address">Loading company address...</div>
+            <div style="margin-top: 1rem; font-size: 0.75rem; opacity: 0.6;">&copy; 2026 EMYRIS BIOLIFESCIENCES. All rights reserved.</div>
+        </div>
+    </footer>
+
+    <!-- MODAL (Order Details for Stockist) -->
+    <div id="orderDetailModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="glass-card" style="width: 90%; max-width: 1000px; margin: 0; max-height: 90vh; overflow-y: auto; border: 1px solid rgba(255,255,255,0.15); padding: 2.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1.5rem;">
+                <div>
+                    <h3 class="section-title" id="detail-order-no" style="margin: 0; font-size: 1.5rem; color: #fff;">Order #ORD-XXXXXX</h3>
+                    <p id="detail-date" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;"></p>
+                </div>
+                <button class="btn btn-ghost" onclick="closeOrderModal()" style="font-size: 1.5rem; padding: 5px 15px;">✕</button>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(99, 102, 241, 0.05); padding: 1.5rem; border-radius: 20px; border: 1px solid rgba(99, 102, 241, 0.1); margin-bottom: 2rem;">
+                <div>
+                    <span style="color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Order Status</span>
+                    <div id="detail-status" style="margin-top: 5px; font-weight: 900; font-size: 0.9rem; letter-spacing: 1px;">PENDING</div>
+                </div>
+                <div style="text-align: right;">
+                    <span style="color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Items Total</span>
+                    <div id="detail-item-count" style="margin-top: 5px; font-weight: 900; font-size: 1.1rem; color: #fff;">0 Items</div>
+                </div>
+            </div>
+
+            <div class="excel-container" style="margin-bottom: 2rem; border-radius: 16px;">
+                <table class="excel-table">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th style="text-align: right; color: var(--text-muted); font-size: 0.65rem;">Rate Requested</th>
+                            <th style="text-align: right; color: var(--accent); font-size: 0.65rem;">Rate Approved</th>
+                            <th style="text-align: center;">Qty</th>
+                            <th style="text-align: center;">Bonus</th>
+                            <th style="text-align: right;">Line Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detail-items-body"></tbody>
+                </table>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end;">
+                <div style="width: 320px; background: rgba(15, 23, 42, 0.4); padding: 2rem; border-radius: 24px; border: 1px solid var(--glass-border);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
+                        <span style="color: var(--text-muted); font-weight: 600;">Taxable Value:</span>
+                        <span id="detail-subtotal" style="color: #fff; font-weight: 700;">₹0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--glass-border);">
+                        <span style="color: var(--text-muted); font-weight: 600;">GST Amount:</span>
+                        <span id="detail-gst" style="color: #fff; font-weight: 700;">₹0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <span style="font-weight: 800; color: #fff;">GRAND TOTAL:</span>
+                        <span id="detail-total" style="font-size: 1.75rem; font-weight: 900; color: var(--primary);">₹0.00</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 2.5rem; display: flex; justify-content: center;">
+                <button class="btn btn-primary" onclick="closeOrderModal()" style="min-width: 200px;">CLOSE ORDER DETAILS</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

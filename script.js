@@ -73,13 +73,17 @@ function switchView(view) {
     } else {
         // Show auth section
         document.getElementById('section-auth').classList.remove('hidden');
+        if (globalFooter) globalFooter.classList.remove('hidden');
         const userMenu = document.getElementById('userMenu');
         if (userMenu) userMenu.classList.add('hidden');
 
         if (view === 'login' || view === 'register') {
             document.getElementById('view-auth-combined').classList.remove('hidden');
-            // Smooth scroll to portal if needed
-            document.getElementById('portal').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('view-login').classList.remove('hidden');
+            document.getElementById('view-register').classList.remove('hidden');
+            // Smooth scroll to auth section if needed
+            const authSection = document.getElementById('view-auth-combined');
+            if (authSection) authSection.scrollIntoView({ behavior: 'smooth' });
         } else {
             const card = document.getElementById(`view-${view}`);
             if (card) card.classList.remove('hidden');
