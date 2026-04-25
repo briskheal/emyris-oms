@@ -2040,9 +2040,10 @@ function downloadInvoicePDF(id) {
         }
     });
 
-    // ── GST BREAKDOWN TABLE ────────────────────────────────────────────────────
+    // ── GST BREAKDOWN TABLE & GRAND TOTALS ─────────────────────────────────────
     y += 2;
     const grandTotal = taxableTotal + gstTotal;
+    const totalsStartY = y; // Anchor below the last product row's faint line
 
     // Left: GST Summary
     const gstSummaryX = 0;
@@ -2068,16 +2069,17 @@ function downloadInvoicePDF(id) {
         doc.text(fv(vals.cgst + vals.sgst), gstSummaryX + 64, y + 3.5);
         y += 4.5;
     });
+    const finalGstY = y;
 
     // Right: Grand Total Box
-    const totX = W - 65; // SHIFTED LEFT from W-60 to W-65 to give more breathing room
+    const totX = W - 65; 
     const fmt2 = n => 'Rs. ' + n.toLocaleString('en-IN', { minimumFractionDigits: 2 });
     const totRows = [
         ['Taxable Value', taxableTotal],
         ['Total GST',     gstTotal],
         ['ROUND OFF',     Math.round(grandTotal) - grandTotal],
     ];
-    let tY = y - (totRows.length + 1) * 5.5;
+    let tY = totalsStartY; // Start EXACTLY below the last item row
     totRows.forEach(([lbl, val]) => {
         setFont(6, 'normal', MUTED); doc.text(lbl, totX + 1, tY + 4);
         setFont(6, 'normal', DARK);  doc.text(fmt2(val), W - 2, tY + 4, { align: 'right' });
@@ -2088,8 +2090,9 @@ function downloadInvoicePDF(id) {
     doc.rect(totX, tY, W - totX, 8, 'F');
     setFont(7, 'bold', WHITE); doc.text('GRAND TOTAL', totX + 2, tY + 5.5);
     doc.text(fmt2(Math.round(grandTotal)), W - 2, tY + 5.5, { align: 'right' });
+    tY += 8;
 
-    y += 4;
+    y = Math.max(finalGstY, tY) + 4;
 
     // ── AMOUNT IN WORDS ────────────────────────────────────────────────────────
     doc.setFillColor(240, 253, 250);
