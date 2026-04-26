@@ -755,6 +755,8 @@ async function loadSettings() {
         document.getElementById('set-bank-details').value = s.bankDetails || '';
         document.getElementById('set-terms').value = s.termsConditions || '';
         if (document.getElementById('set-upi-id')) document.getElementById('set-upi-id').value = s.upiId || '';
+        if (document.getElementById('set-bank-acc')) document.getElementById('set-bank-acc').value = s.bankAccountNo || '';
+        if (document.getElementById('set-bank-ifsc')) document.getElementById('set-bank-ifsc').value = s.bankIfsc || '';
         document.getElementById('set-signature-b64').value = s.signatureImage || '';
         if (s.signatureImage) {
             document.getElementById('sig-preview').src = s.signatureImage;
@@ -803,24 +805,26 @@ async function saveSettings(e) {
             document.getElementById('set-email2').value,
             document.getElementById('set-email3').value
         ].filter(v => v),
-        phones: [document.getElementById('set-phone').value],
-        address: document.getElementById('set-address').value,
+        phones: [document.getElementById('set-phone').value].filter(v => v),
         adminEmail: document.getElementById('set-admin-email').value,
+        address: document.getElementById('set-address').value,
+        gstNo: document.getElementById('set-gst-no').value,
+        panNo: document.getElementById('set-pan-no').value,
+        dlNo: document.getElementById('set-dl-no').value,
+        fssaiNo: document.getElementById('set-fssai-no').value,
+        bankDetails: document.getElementById('set-bank-details').value,
+        termsConditions: document.getElementById('set-terms').value,
+        upiId: document.getElementById('set-upi-id') ? document.getElementById('set-upi-id').value : '',
+        bankAccountNo: document.getElementById('set-bank-acc') ? document.getElementById('set-bank-acc').value : '',
+        bankIfsc: document.getElementById('set-bank-ifsc') ? document.getElementById('set-bank-ifsc').value : '',
+        signatureImage: document.getElementById('set-signature-b64').value,
+        logoImage: document.getElementById('set-logo-b64') ? document.getElementById('set-logo-b64').value : '',
         scrollingMessage: {
             text: document.getElementById('set-msg-text').value,
             color: document.getElementById('set-msg-color').value,
             speed: Number(document.getElementById('set-msg-speed').value)
         },
-        invoiceStyle: document.getElementById('set-inv-style').value,
-        gstNo:   document.getElementById('set-gst-no').value.toUpperCase(),
-        panNo:   document.getElementById('set-pan-no').value.toUpperCase(),
-        dlNo:    document.getElementById('set-dl-no').value,
-        fssaiNo: document.getElementById('set-fssai-no').value,
-        bankDetails: document.getElementById('set-bank-details').value,
-        termsConditions: document.getElementById('set-terms').value,
-        upiId: document.getElementById('set-upi-id') ? document.getElementById('set-upi-id').value : '',
-        signatureImage: document.getElementById('set-signature-b64').value,
-        logoImage: document.getElementById('set-logo-b64') ? document.getElementById('set-logo-b64').value : ''
+        invoiceStyle: document.getElementById('set-inv-style').value
     };
 
     try {
@@ -2077,9 +2081,15 @@ async function downloadInvoicePDF(id) {
     const bDetails = companyProfile.bankDetails ? companyProfile.bankDetails.split('\n') : [];
     bDetails.forEach((line, i) => doc.text(line, 15, finalY + 19 + (i * 4)));
 
-    if (companyProfile.upiId && window.QRCode) {
+    let upiTarget = companyProfile.upiId;
+    if (!upiTarget && companyProfile.bankAccountNo && companyProfile.bankIfsc) {
+        // NPCI format for Bank Account + IFSC
+        upiTarget = `${companyProfile.bankAccountNo}@${companyProfile.bankIfsc.toUpperCase().trim()}.ifsc.npci`;
+    }
+
+    if (upiTarget && window.QRCode) {
         try {
-            const upiUrl = `upi://pay?pa=${companyProfile.upiId}&pn=${encodeURIComponent(companyProfile.name || 'Company')}&am=${Math.round(inv.grandTotal)}&cu=INR`;
+            const upiUrl = `upi://pay?pa=${upiTarget}&pn=${encodeURIComponent(companyProfile.name || 'Company')}&am=${Math.round(inv.grandTotal)}&cu=INR`;
             const qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 150, margin: 1 });
             doc.addImage(qrDataUrl, 'PNG', 85, finalY + 10, 25, 25);
             doc.setFontSize(6);

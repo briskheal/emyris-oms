@@ -1103,9 +1103,14 @@ async function generateInvoicePDF(inv) {
     const bDetails = companySettings?.bankDetails ? companySettings.bankDetails.split('\n') : [];
     bDetails.forEach((line, i) => doc.text(line, 15, finalY + 19 + (i * 4)));
 
-    if (companySettings?.upiId && window.QRCode) {
+    let upiTarget = companySettings?.upiId;
+    if (!upiTarget && companySettings?.bankAccountNo && companySettings?.bankIfsc) {
+        upiTarget = `${companySettings.bankAccountNo}@${companySettings.bankIfsc.toUpperCase().trim()}.ifsc.npci`;
+    }
+
+    if (upiTarget && window.QRCode) {
         try {
-            const upiUrl = `upi://pay?pa=${companySettings.upiId}&pn=${encodeURIComponent(companySettings.name || 'Company')}&am=${Math.round(inv.grandTotal)}&cu=INR`;
+            const upiUrl = `upi://pay?pa=${upiTarget}&pn=${encodeURIComponent(companySettings.name || 'Company')}&am=${Math.round(inv.grandTotal)}&cu=INR`;
             const qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 150, margin: 1 });
             doc.addImage(qrDataUrl, 'PNG', 85, finalY + 10, 25, 25);
             doc.setFontSize(6);

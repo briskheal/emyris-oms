@@ -162,6 +162,8 @@ const companySchema = new mongoose.Schema({
     signatureImage: { type: String, default: "" },
     logoImage: { type: String, default: "" },
     upiId: { type: String, default: "" },
+    bankAccountNo: { type: String, default: "" },
+    bankIfsc: { type: String, default: "" },
     scrollingMessage: {
         text:  { type: String, default: "Welcome to EMYRIS OMS Portal - Your partner in healthcare." },
         color: { type: String, default: "#6366f1" },
