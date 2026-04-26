@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -371,8 +371,9 @@ const financialNoteSchema = new mongoose.Schema({
         gstPercent: Number,
         totalValue: Number
     }],
-    subTotal: Number,
-    gstAmount: Number,
+    subTotal:   Number,
+    gstAmount:  Number,
+    status: { type: String, enum: ['active','pending','approved','rejected'], default: 'active' },
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -1314,16 +1315,19 @@ app.post('/api/admin/financial-notes', async (req, res) => {
     try {
         const { noteType, party, amount, reason, description, refInvoiceNo, refInvoiceDate, items, subTotal, gstAmount } = req.body;
         
-        // Generate Note No
-        let noteNo;
-        if (reason === 'Salable Return') {
-            const count = await FinancialNote.countDocuments({ reason: 'Salable Return' });
-            noteNo = `S-CN-${(count + 1).toString().padStart(5, '0')}`;
-        } else {
-            const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-            const count = await FinancialNote.countDocuments({ noteType });
-            noteNo = `EMY-${noteType}-${dateStr}-${(count + 1).toString().padStart(4, '0')}`;
-        }
+        // Generate Note No — unique series per module
+        const reasonNoteMap = {
+            'Salable Return':   { prefix: 'S-CN',  type: 'CN' },
+            'Exp/Brk/Damg CN':  { prefix: 'EB-CN', type: 'CN' },
+            'Price Diff CN':    { prefix: 'PD-CN', type: 'CN' },
+            'Purchase Return':  { prefix: 'P-DN',  type: 'DN' },
+            'Price Diff DN':    { prefix: 'PD-DN', type: 'DN' },
+            'Brk/Dmg/Loss DN':  { prefix: 'BD-DN', type: 'DN' }
+        };
+        const noteMap = reasonNoteMap[reason] || { prefix: `EMY-${noteType}`, type: noteType };
+        const count = await FinancialNote.countDocuments({ reason });
+        const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+        const noteNo = `${noteMap.prefix}-${dateStr}-${(count+1).toString().padStart(4,'0')}`;
 
         const partyObj = await Stockist.findById(party);
         
@@ -1334,21 +1338,29 @@ app.post('/api/admin/financial-notes', async (req, res) => {
             subTotal, gstAmount
         });
 
-        // INVENTORY LOGIC for Multi-Items
-        if (items && Array.isArray(items)) {
+        // ── INVENTORY LOGIC (Only for inventory-affecting reasons) ────────────
+        // Salable Return  → add back to stock (goods returned in salable condition)
+        // Purchase Return → deduct from stock (goods sent back to supplier)
+        // ALL OTHERS (Exp/Brk/Damg CN, Price Diff CN, Price Diff DN, Brk/Dmg/Loss DN)
+        //              → LEDGER ONLY, zero inventory touch
+        const inventoryAdj = (r) => {
+            if (r === 'Salable Return')  return +1;
+            if (r === 'Purchase Return') return -1;
+            return 0; // ledger-only
+        };
+        const adjFactor = inventoryAdj(reason);
+
+        if (adjFactor !== 0 && items && Array.isArray(items)) {
             for (const item of items) {
                 const product = await Product.findById(item.productId);
                 if (product) {
-                    const adj = (reason === 'Salable Return') ? item.qty : -item.qty;
+                    const adj = adjFactor * item.qty;
                     product.qtyAvailable += adj;
-                    
-                    // Batch Logic
                     if (item.batchNo) {
                         const bIdx = product.batches.findIndex(b => b.batchNo === item.batchNo);
                         if (bIdx > -1) {
                             product.batches[bIdx].qtyAvailable += adj;
                         } else if (adj > 0) {
-                            // If it's a return and batch doesn't exist, create it (shouldn't happen often but possible)
                             product.batches.push({
                                 batchNo: item.batchNo,
                                 expDate: item.expDate || 'N/A',
@@ -1389,12 +1401,17 @@ app.put('/api/admin/financial-notes/:id', async (req, res) => {
             await Stockist.findByIdAndUpdate(oldNote.party, { $inc: { outstandingBalance: oldAdj } });
         }
 
-        // Reverse Inventory impact
-        if (oldNote.items && Array.isArray(oldNote.items)) {
+        // Reverse Inventory (only for inventory-affecting reasons)
+        const oldAdjFactor = (() => {
+            if (oldNote.reason === 'Salable Return')  return -1; // reverse: remove what was added
+            if (oldNote.reason === 'Purchase Return') return +1; // reverse: restore what was removed
+            return 0;
+        })();
+        if (oldAdjFactor !== 0 && oldNote.items && Array.isArray(oldNote.items)) {
             for (const item of oldNote.items) {
                 const product = await Product.findById(item.productId);
                 if (product) {
-                    const adj = (oldNote.reason === 'Salable Return') ? -item.qty : item.qty; 
+                    const adj = oldAdjFactor * item.qty;
                     product.qtyAvailable += adj;
                     if (item.batchNo) {
                         const bIdx = product.batches.findIndex(b => b.batchNo === item.batchNo);
@@ -1426,24 +1443,24 @@ app.put('/api/admin/financial-notes/:id', async (req, res) => {
             await Stockist.findByIdAndUpdate(party, { $inc: { outstandingBalance: newAdj } });
         }
 
-        // Apply New Inventory
-        if (items && Array.isArray(items)) {
+        // Apply New Inventory (only for inventory-affecting reasons)
+        const newAdjFactor = (() => {
+            if (reason === 'Salable Return')  return +1;
+            if (reason === 'Purchase Return') return -1;
+            return 0;
+        })();
+        if (newAdjFactor !== 0 && items && Array.isArray(items)) {
             for (const item of items) {
                 const product = await Product.findById(item.productId);
                 if (product) {
-                    const adj = (reason === 'Salable Return') ? item.qty : -item.qty;
+                    const adj = newAdjFactor * item.qty;
                     product.qtyAvailable += adj;
                     if (item.batchNo) {
                         const bIdx = product.batches.findIndex(b => b.batchNo === item.batchNo);
                         if (bIdx > -1) {
                             product.batches[bIdx].qtyAvailable += adj;
                         } else if (adj > 0) {
-                            product.batches.push({
-                                batchNo: item.batchNo,
-                                expDate: item.expDate || 'N/A',
-                                qtyAvailable: adj,
-                                mrp: item.price || 0
-                            });
+                            product.batches.push({ batchNo: item.batchNo, expDate: item.expDate || 'N/A', qtyAvailable: adj, mrp: item.price || 0 });
                         }
                     }
                     await product.save();
@@ -1470,12 +1487,17 @@ app.delete('/api/admin/financial-notes/:id', async (req, res) => {
             await Stockist.findByIdAndUpdate(note.party, { $inc: { outstandingBalance: adj } });
         }
 
-        // Reverse Inventory impact
-        if (note.items && Array.isArray(note.items)) {
+        // Reverse Inventory on delete (only for inventory-affecting reasons)
+        const delAdjFactor = (() => {
+            if (note.reason === 'Salable Return')  return -1;
+            if (note.reason === 'Purchase Return') return +1;
+            return 0;
+        })();
+        if (delAdjFactor !== 0 && note.items && Array.isArray(note.items)) {
             for (const item of note.items) {
                 const product = await Product.findById(item.productId);
                 if (product) {
-                    const adj = (note.reason === 'Salable Return') ? -item.qty : item.qty; 
+                    const adj = delAdjFactor * item.qty;
                     product.qtyAvailable += adj;
                     if (item.batchNo) {
                         const bIdx = product.batches.findIndex(b => b.batchNo === item.batchNo);
@@ -1488,6 +1510,174 @@ app.delete('/api/admin/financial-notes/:id', async (req, res) => {
 
         await FinancialNote.findByIdAndDelete(id);
         res.json({ success: true, message: "Note deleted and impacts reversed." });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+
+// --- PRICE DIFF CN (PDCN) INTELLIGENCE APIs ---
+
+// GET: Fetch per-product billed qty and already-claimed qty for a party
+// Used for real-time eligibility validation in the PDCN form
+app.get('/api/admin/pdcn/eligibility/:partyId', async (req, res) => {
+    try {
+        const { partyId } = req.params;
+
+        // Aggregate all invoiced items for this party
+        const invoices = await Invoice.find({ stockist: partyId, status: { $in: ['invoiced','approved'] } })
+            .select('items');
+
+        const billedMap = {}; // productId -> { name, totalBilledQty, invoices: [{invoiceNo, qty, price, batch}] }
+        for (const inv of invoices) {
+            for (const item of (inv.items || [])) {
+                const pid = String(item.productId || item._id || '');
+                if (!pid) continue;
+                if (!billedMap[pid]) {
+                    billedMap[pid] = { name: item.name, totalBilledQty: 0, invoices: [] };
+                }
+                billedMap[pid].totalBilledQty += (item.qty || 0);
+                billedMap[pid].invoices.push({ qty: item.qty, price: item.priceUsed || item.price, batch: item.batch });
+            }
+        }
+
+        // Aggregate already-claimed PDCN qty for this party
+        const claimedNotes = await FinancialNote.find({ party: partyId, reason: 'Price Diff CN' })
+            .select('items status');
+        const claimedMap = {}; // productId -> totalClaimedQty (approved + pending)
+        for (const note of claimedNotes) {
+            if (note.status === 'rejected') continue; // rejected claims don't count
+            for (const item of (note.items || [])) {
+                const pid = String(item.productId || '');
+                if (!pid) continue;
+                claimedMap[pid] = (claimedMap[pid] || 0) + (item.qty || 0);
+            }
+        }
+
+        // Build response with eligible qty
+        const eligibility = {};
+        for (const [pid, data] of Object.entries(billedMap)) {
+            const claimed = claimedMap[pid] || 0;
+            eligibility[pid] = {
+                name: data.name,
+                totalBilledQty:  data.totalBilledQty,
+                totalClaimedQty: claimed,
+                eligibleQty:     Math.max(0, data.totalBilledQty - claimed),
+            };
+        }
+
+        res.json({ success: true, eligibility });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// POST: Stockist self-service PDCN claim submission
+// Accessible via /pdcn-portal endpoint (stockist logs in with their credentials)
+app.post('/api/stockist/pdcn-claim', async (req, res) => {
+    try {
+        const { stockistId, items, refInvoiceNo, refInvoiceDate } = req.body;
+        if (!stockistId || !items || !items.length) return res.status(400).json({ success: false, error: 'Party and items are required.' });
+
+        const partyObj = await Stockist.findById(stockistId);
+        if (!partyObj) return res.status(404).json({ success: false, error: 'Party not found.' });
+
+        // Eligibility check per item
+        const invoices = await Invoice.find({ stockist: stockistId, status: { $in: ['invoiced','approved'] } });
+        const billedMap = {};
+        for (const inv of invoices) {
+            for (const item of (inv.items || [])) {
+                const pid = String(item.productId || '');
+                if (!pid) continue;
+                billedMap[pid] = (billedMap[pid] || 0) + (item.qty || 0);
+            }
+        }
+        const claimedNotes = await FinancialNote.find({ party: stockistId, reason: 'Price Diff CN', status: { $ne: 'rejected' } });
+        const claimedMap = {};
+        for (const note of claimedNotes) {
+            for (const item of (note.items || [])) {
+                const pid = String(item.productId || '');
+                claimedMap[pid] = (claimedMap[pid] || 0) + (item.qty || 0);
+            }
+        }
+
+        for (const item of items) {
+            const pid = String(item.productId);
+            const billed  = billedMap[pid] || 0;
+            const claimed = claimedMap[pid] || 0;
+            const eligible = Math.max(0, billed - claimed);
+            if (item.qty > eligible) {
+                return res.status(400).json({
+                    success: false,
+                    error: `Product "${item.name}": You have claimed ${claimed} of ${billed} billed units. Only ${eligible} units are eligible for PDCN. Cannot claim ${item.qty}.`
+                });
+            }
+        }
+
+        const count = await FinancialNote.countDocuments({ reason: 'Price Diff CN' });
+        const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+        const noteNo  = `PD-CN-${dateStr}-${(count+1).toString().padStart(4,'0')}`;
+
+        const subTotal  = items.reduce((s, i) => s + (i.qty * i.priceDiff), 0);
+        const gstAmount = items.reduce((s, i) => s + (i.qty * i.priceDiff * (i.gstPercent||0) / 100), 0);
+        const amount    = Math.round(subTotal + gstAmount);
+
+        const claim = new FinancialNote({
+            noteNo, noteType: 'CN', party: stockistId,
+            partyName: partyObj.name,
+            amount, subTotal, gstAmount,
+            reason: 'Price Diff CN',
+            status: 'pending',  // Needs admin approval
+            description: `PDCN self-claim against Inv: ${refInvoiceNo || 'N/A'}`,
+            refInvoiceNo, refInvoiceDate,
+            items: items.map(i => ({
+                productId: i.productId, name: i.name,
+                qty: i.qty, price: i.priceDiff,
+                gstPercent: i.gstPercent || 0,
+                totalValue: i.qty * i.priceDiff * (1 + (i.gstPercent||0)/100),
+                batchNo: i.batchNo, expDate: i.expDate, hsn: i.hsn
+            }))
+        });
+        await claim.save();
+
+        res.json({ success: true, noteNo, message: 'Your PDCN claim has been submitted for admin approval.' });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// POST: Admin approve/reject PDCN claim
+app.post('/api/admin/pdcn-claim/:id/review', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { action } = req.body; // 'approve' or 'reject'
+        const note = await FinancialNote.findById(id);
+        if (!note || note.reason !== 'Price Diff CN') return res.status(404).json({ success: false });
+
+        if (action === 'approve') {
+            note.status = 'approved';
+            await note.save();
+            // Apply ledger impact (no inventory)
+            const adj = -note.amount; // CN reduces outstanding
+            await Stockist.findByIdAndUpdate(note.party, { $inc: { outstandingBalance: adj } });
+            res.json({ success: true, message: 'PDCN Claim approved. CN issued to party ledger.' });
+        } else {
+            note.status = 'rejected';
+            await note.save();
+            res.json({ success: true, message: 'PDCN Claim rejected.' });
+        }
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// Serve PDCN Self-Service Portal
+
+
+app.get('/pdcn-portal', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pdcn-portal.html'));
+});
+
+// GET: Fetch notes for a specific stockist (for portal history)
+app.get('/api/stockist/notes', async (req, res) => {
+    try {
+        const { partyId, reason } = req.query;
+        const filter = { party: partyId };
+        if (reason) filter.reason = reason;
+        const notes = await FinancialNote.find(filter).sort({ createdAt: -1 });
+        res.json(notes);
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 

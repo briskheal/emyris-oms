@@ -1722,39 +1722,69 @@ function renderFinancialNotes(data = allNotes) {
     const tbody = document.getElementById('noteTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = data.map(n => `
-        <tr>
-            <td style="font-family:monospace; font-weight:700; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">${n.noteNo}</td>
-            <td><span class="badge ${n.noteType === 'CN' ? 'badge-approved' : 'badge-pending'}">${n.noteType === 'CN' ? 'CREDIT' : 'DEBIT'}</span></td>
-            <td style="font-weight:600;">${n.partyName}</td>
-            <td>
-                <div>${n.reason}</div>
-                ${n.items && n.items.length > 0 
-                    ? `<div style="font-size:0.7rem; color:var(--text-muted);">📦 ${n.items.length} Items | Inv: ${n.refInvoiceNo || '-'}</div>` 
-                    : (n.productName ? `<div style="font-size:0.7rem; color:var(--text-muted);">📦 ${n.productName} | ${n.batchNo} | Qty: ${n.qty}</div>` : '')}
-            </td>
-            <td style="text-align:right; font-weight:800; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">₹${n.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-            <td>${new Date(n.createdAt).toLocaleDateString('en-GB')}</td>
-            <td style="text-align:right; display: flex; gap: 5px; justify-content: flex-end;">
-                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="editNote('${n._id}')" title="Edit Record">✏️</button>
-                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="downloadNotePDF('${n._id}')" title="Download PDF">📥</button>
-                <button class="btn btn-ghost" style="padding:5px 10px; color:#ef4444;" onclick="deleteNote('${n._id}')" title="Delete Record">✕</button>
-            </td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = data.map(n => {
+        const isPending = n.status === 'pending';
+        const statusBadge = n.status 
+            ? `<span class="badge ${n.status === 'approved' ? 'badge-approved' : (n.status === 'rejected' ? 'badge-rejected' : 'badge-pending')}" style="font-size:0.6rem; margin-top:2px;">${n.status.toUpperCase()}</span>`
+            : '';
+
+        return `
+            <tr>
+                <td style="font-family:monospace; font-weight:700; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">
+                    ${n.noteNo}
+                    <br>${statusBadge}
+                </td>
+                <td><span class="badge ${n.noteType === 'CN' ? 'badge-approved' : 'badge-pending'}">${n.noteType === 'CN' ? 'CREDIT' : 'DEBIT'}</span></td>
+                <td style="font-weight:600;">${n.partyName}</td>
+                <td>
+                    <div style="font-weight:700;">${n.reason}</div>
+                    ${n.items && n.items.length > 0 
+                        ? `<div style="font-size:0.7rem; color:var(--text-muted);">📦 ${n.items.length} Items | Inv: ${n.refInvoiceNo || '-'}</div>` 
+                        : (n.productName ? `<div style="font-size:0.7rem; color:var(--text-muted);">📦 ${n.productName} | ${n.batchNo} | Qty: ${n.qty}</div>` : '')}
+                </td>
+                <td style="text-align:right; font-weight:800; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">₹${n.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td>${new Date(n.createdAt).toLocaleDateString('en-GB')}</td>
+                <td style="text-align:right; display: flex; gap: 5px; justify-content: flex-end; align-items: center;">
+                    ${isPending ? `
+                        <button class="btn btn-primary" style="padding:4px 8px; font-size:0.65rem; background:#10b981;" onclick="reviewPDCNClaim('${n._id}', 'approve')">APPROVE</button>
+                        <button class="btn btn-primary" style="padding:4px 8px; font-size:0.65rem; background:#ef4444;" onclick="reviewPDCNClaim('${n._id}', 'reject')">REJECT</button>
+                    ` : ''}
+                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="editNote('${n._id}')" title="Edit Record">✏️</button>
+                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="downloadNotePDF('${n._id}')" title="Download PDF">📥</button>
+                    <button class="btn btn-ghost" style="padding:5px 10px; color:#ef4444;" onclick="deleteNote('${n._id}')" title="Delete Record">✕</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function reviewPDCNClaim(id, action) {
+    if (!confirm(`Are you sure you want to ${action} this claim?`)) return;
+    try {
+        const res = await fetch(`/api/admin/pdcn-claim/${id}/review`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action })
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert(result.message);
+            loadFinancialNotes();
+        } else {
+            alert("Error: " + result.error);
+        }
+    } catch (e) { alert("Action failed"); }
 }
 
 async function editNote(id) {
     const note = allNotes.find(x => x._id === id);
     if (!note) return;
-
     currentEditingNoteId = id;
-    
-    if (note.items && note.items.length > 0) {
-        // Multi-item return
+    // Any note that was created with items OR belongs to a multi-item module goes to unified table
+    const multiItemReasons = ['Salable Return','Exp/Brk/Damg CN','Price Diff CN','Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'];
+    if ((note.items && note.items.length > 0) || multiItemReasons.includes(note.reason)) {
         openReturnModal(note.reason, note);
     } else {
-        // Single adjustment
         openNoteModal(note);
     }
 }
@@ -1778,8 +1808,11 @@ async function deleteNote(id) {
 }
 
 function openNoteModal(editData = null) {
-    if (!editData && (currentNoteReason === 'Salable Return' || currentNoteReason === 'Purchase Return')) {
-        openReturnModal(currentNoteReason);
+    // Route ALL multi-item module types to the unified return modal
+    const multiItemReasons = ['Salable Return','Exp/Brk/Damg CN','Price Diff CN','Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'];
+    const activeReason = editData ? editData.reason : currentNoteReason;
+    if (!editData && multiItemReasons.includes(activeReason)) {
+        openReturnModal(activeReason);
         return;
     }
 
@@ -1858,7 +1891,99 @@ function closeNoteModal() {
 // --- MULTI-ITEM RETURN LOGIC ---
 let returnItems = [];
 
+// Config map for all 6 return/note module types
+const RETURN_MODULE_CONFIG = {
+    'Salable Return':   { badge:'CREDIT NOTE (CN)',  title:'Sale Return \u2014 Credit Note',              noteType:'CN', submitLabel:'\u2713 POST RETURN & GENERATE CN',  tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'],   tabLabels:['Sale Return','Exp/Brk/Damg CN','Price Diff CN'] },
+    'Exp/Brk/Damg CN':  { badge:'CREDIT NOTE (CN)',  title:'Exp / Broken / Damaged \u2014 Credit Note',   noteType:'CN', submitLabel:'\u2713 POST & GENERATE CN',          tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'],   tabLabels:['Sale Return','Exp/Brk/Damg CN','Price Diff CN'] },
+    'Price Diff CN':    { badge:'CREDIT NOTE (CN)',  title:'Price Difference \u2014 Credit Note',          noteType:'CN', submitLabel:'\u2713 POST & GENERATE CN',          tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'],   tabLabels:['Sale Return','Exp/Brk/Damg CN','Price Diff CN'] },
+    'Purchase Return':  { badge:'DEBIT NOTE (DN)',   title:'Purchase Return \u2014 Debit Note',            noteType:'DN', submitLabel:'\u2713 POST RETURN & GENERATE DN',  tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'],  tabLabels:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'] },
+    'Price Diff DN':    { badge:'DEBIT NOTE (DN)',   title:'Price Difference \u2014 Debit Note',           noteType:'DN', submitLabel:'\u2713 POST & GENERATE DN',          tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'],  tabLabels:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'] },
+    'Brk/Dmg/Loss DN': { badge:'DEBIT NOTE (DN)',   title:'Breakage / Damage / Loss \u2014 Debit Note',   noteType:'DN', submitLabel:'\u2713 POST & GENERATE DN',          tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'],  tabLabels:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'] }
+};
 
+function openReturnModal(reason, editData = null) {
+    const cfg = RETURN_MODULE_CONFIG[reason] || RETURN_MODULE_CONFIG['Salable Return'];
+    currentEditingNoteId = editData ? editData._id : null;
+
+    // Badge, title, note type, submit button
+    document.getElementById('return-module-badge').innerText  = cfg.badge;
+    document.getElementById('return-modal-title').innerText   = editData ? ('\u270f\ufe0f Edit: ' + editData.noteNo) : cfg.title;
+    document.getElementById('return-note-type').value         = cfg.noteType;
+    document.getElementById('return-reason').value            = reason;
+    document.getElementById('return-submit-btn').innerHTML    = cfg.submitLabel;
+
+    // CN = indigo, DN = red gradient
+    const btn = document.getElementById('return-submit-btn');
+    btn.style.background = cfg.noteType === 'CN'
+        ? 'linear-gradient(135deg,#6366f1,#818cf8)'
+        : 'linear-gradient(135deg,#ef4444,#f87171)';
+
+    // Build 3-tab switcher
+    const tabsEl = document.getElementById('return-action-tabs');
+    tabsEl.innerHTML = cfg.tabs.map((t, i) => {
+        const active = t === reason;
+        const accentColor = cfg.noteType === 'CN' ? '#6366f1' : '#ef4444';
+        return `<button type="button" onclick="switchReturnTab('${t}')"
+            style="padding:5px 13px;border-radius:6px;font-size:0.63rem;font-weight:700;
+                   letter-spacing:0.05em;border:1px solid ${active ? accentColor : 'transparent'};
+                   cursor:pointer;transition:all 0.2s;
+                   background:${active ? 'rgba(' + (cfg.noteType==='CN'?'99,102,241':'239,68,68') + ',0.22)' : 'transparent'};
+                   color:${active ? '#fff' : '#64748b'};"
+        >${cfg.tabLabels[i]}</button>`;
+    }).join('');
+
+    // Party dropdown
+    const sel = document.getElementById('return-party');
+    sel.innerHTML = '<option value="">\u2014 Select Party \u2014</option>' +
+        allStockists.map(s => `<option value="${s._id}">${s.name} (${s.partyType || 'STOCKIST'})</option>`).join('');
+
+    document.getElementById('returnForm').reset();
+    document.getElementById('return-items-body').innerHTML = '';
+    returnItems = [];
+
+    if (editData && editData.items && editData.items.length > 0) {
+        document.getElementById('return-party').value    = editData.party?._id || editData.party;
+        updateNotePartyDetails(editData.party?._id || editData.party, 'return-party-info');
+        document.getElementById('return-inv-no').value   = editData.refInvoiceNo  || '';
+        document.getElementById('return-inv-date').value = editData.refInvoiceDate || '';
+        editData.items.forEach(item => {
+            const rowId = addReturnRow();
+            const row   = document.getElementById(`return-row-${rowId}`);
+            if (row) row.querySelector('.return-prod-select').value = item.productId;
+            document.getElementById(`return-hsn-${rowId}`).value   = item.hsn      || '';
+            document.getElementById(`return-batch-${rowId}`).value = item.batchNo  || '';
+            // Populate MM/YY selects from stored expDate (MM/YY)
+            if (item.expDate) {
+                const parts = item.expDate.split('/');
+                const mm = (parts[0] || '').padStart(2,'0');
+                const yy = parts[1] || '';
+                const fullYear = yy.length === 2 ? '20' + yy : yy;
+                const mSel = document.getElementById(`return-exp-mm-${rowId}`);
+                const ySel = document.getElementById(`return-exp-yy-${rowId}`);
+                if (mSel) mSel.value = mm;
+                if (ySel) ySel.value = fullYear;
+            }
+            document.getElementById(`return-qty-${rowId}`).value     = item.qty;
+            document.getElementById(`return-price-${rowId}`).value   = item.price;
+            document.getElementById(`return-gst-pct-${rowId}`).value = item.gstPercent;
+        });
+    } else {
+        addReturnRow();
+    }
+    calculateReturnTotals();
+    document.getElementById('returnModal').classList.remove('hidden');
+}
+
+function switchReturnTab(reason) {
+    // Switch tabs while preserving party/invoice header
+    const party   = document.getElementById('return-party').value;
+    const invNo   = document.getElementById('return-inv-no').value;
+    const invDate = document.getElementById('return-inv-date').value;
+    openReturnModal(reason);
+    if (party)   { document.getElementById('return-party').value   = party; updateNotePartyDetails(party, 'return-party-info'); }
+    if (invNo)   document.getElementById('return-inv-no').value    = invNo;
+    if (invDate) document.getElementById('return-inv-date').value  = invDate;
+}
 
 function closeReturnModal() {
     document.getElementById('returnModal').classList.add('hidden');
@@ -2356,9 +2481,18 @@ async function downloadNotePDF(id) {
         if (!note) return alert("Note not found");
         const party = allStockists.find(s => s._id === (note.party?._id || note.party)) || {};
         const isCN = note.noteType === 'CN';
+                const reasonTitles = {
+            'Salable Return':   'CREDIT NOTE (SALES RETURN)',
+            'Exp/Brk/Damg CN':  'CREDIT NOTE (EXP/BRK/DAMG)',
+            'Price Diff CN':    'CREDIT NOTE (PRICE DIFFERENCE)',
+            'Purchase Return':  'DEBIT NOTE (PURCHASE RETURN)',
+            'Price Diff DN':    'DEBIT NOTE (PRICE DIFFERENCE)',
+            'Brk/Dmg/Loss DN':  'DEBIT NOTE (BRK/DMG/LOSS)'
+        };
+        const pdfTitle = reasonTitles[note.reason] || (isCN ? "CREDIT NOTE" : "DEBIT NOTE");
+
         await generateStandardPDF({
-            title: note.reason === 'Salable Return' ? "CREDIT NOTE (SALES RETURN)" : (isCN ? "CREDIT NOTE" : "DEBIT NOTE"),
-            subTitle: "Original For Recipient", docNo: note.noteNo, docTypeLabel: isCN ? "CN No" : "DN No",
+            title: pdfTitle, subtitle: "Original For Recipient", docNo: note.noteNo, docTypeLabel: isCN ? "CN No" : "DN No",
             date: new Date(note.createdAt).toLocaleDateString('en-GB'),
             party: { 
                 name: note.partyName, 

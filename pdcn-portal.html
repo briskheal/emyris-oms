@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EMYRIS — Price Difference Credit Note Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:#060c1a;color:#e2e8f0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:2rem 1rem;}
+.logo{font-size:1.2rem;font-weight:900;color:#6366f1;letter-spacing:-0.03em;margin-bottom:0.25rem;}
+.subtitle{font-size:0.65rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#475569;margin-bottom:2rem;}
+.card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:2rem;width:100%;max-width:480px;}
+.card h2{font-size:0.95rem;font-weight:700;margin-bottom:1.5rem;color:#e2e8f0;}
+label{display:block;font-size:0.6rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px;}
+input,select{width:100%;padding:8px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#e2e8f0;font-size:0.82rem;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:1rem;}
+input:focus,select:focus{outline:none;border-color:#6366f1;}
+.btn{width:100%;padding:10px;border:none;border-radius:8px;font-size:0.8rem;font-weight:800;cursor:pointer;letter-spacing:0.05em;transition:all 0.2s;}
+.btn-primary{background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;}
+.btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.1);color:#94a3b8;margin-top:0.5rem;}
+.alert{padding:10px 14px;border-radius:8px;font-size:0.75rem;margin-bottom:1rem;display:none;}
+.alert-err{background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;}
+.alert-ok{background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#6ee7b7;}
+/* Claim form */
+#claimSection{display:none;}
+.section-label{font-size:0.6rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#6366f1;margin-bottom:0.75rem;}
+table{width:100%;border-collapse:collapse;font-size:0.72rem;margin-bottom:0.75rem;}
+th{padding:6px 8px;text-align:left;font-size:0.58rem;font-weight:800;letter-spacing:0.07em;text-transform:uppercase;color:#475569;background:rgba(99,102,241,0.08);border-bottom:1px solid rgba(99,102,241,0.15);}
+td{padding:5px 6px;border-bottom:1px solid rgba(255,255,255,0.04);}
+td input,td select{margin:0;padding:4px 6px;font-size:0.7rem;}
+.eligible-badge{font-size:0.6rem;color:#10b981;font-weight:700;}
+.over-claim{color:#ef4444!important;}
+.totals-bar{display:flex;gap:1.5rem;justify-content:flex-end;background:rgba(0,0,0,0.3);padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);margin-bottom:1rem;}
+.t-item{text-align:right;}
+.t-label{font-size:0.52rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#475569;margin-bottom:2px;}
+.t-val{font-size:0.8rem;font-weight:700;color:#94a3b8;font-family:monospace;}
+.t-val.grand{font-size:1rem;font-weight:900;color:#6366f1;}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6rem;font-weight:700;letter-spacing:0.05em;}
+.tag-pending{background:rgba(245,158,11,0.2);color:#fbbf24;}
+.tag-approved{background:rgba(16,185,129,0.2);color:#34d399;}
+.tag-rejected{background:rgba(239,68,68,0.2);color:#f87171;}
+.history-row td{font-size:0.7rem;padding:7px 8px;}
+</style>
+</head>
+<body>
+
+<div class="logo">EMYRIS BIOLIFESCIENCES</div>
+<div class="subtitle">Price Difference Credit Note — Stockist Portal</div>
+
+<!-- LOGIN -->
+<div class="card" id="loginSection">
+  <h2>?? Stockist Login</h2>
+  <div class="alert alert-err" id="login-err"></div>
+  <div>
+    <label>Email / Username</label>
+    <input type="text" id="login-user" placeholder="your@email.com">
+  </div>
+  <div>
+    <label>Password</label>
+    <input type="password" id="login-pass" placeholder="••••••••">
+  </div>
+  <button class="btn btn-primary" onclick="doLogin()">LOGIN & ACCESS PDCN PORTAL</button>
+</div>
+
+<!-- CLAIM SECTION -->
+<div style="width:100%;max-width:1100px;" id="claimSection">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+    <div>
+      <div style="font-size:0.6rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#6366f1;">WELCOME</div>
+      <div id="party-name-display" style="font-size:1rem;font-weight:700;color:#e2e8f0;"></div>
+    </div>
+    <button class="btn btn-ghost" style="width:auto;padding:6px 16px;font-size:0.7rem;" onclick="doLogout()">LOGOUT</button>
+  </div>
+
+  <!-- Tabs -->
+  <div style="display:flex;gap:6px;margin-bottom:1.25rem;background:rgba(0,0,0,0.3);padding:4px;border-radius:8px;width:fit-content;">
+    <button id="tab-new" onclick="showTab('new')" style="padding:6px 18px;border-radius:6px;font-size:0.68rem;font-weight:800;border:none;cursor:pointer;background:rgba(99,102,241,0.25);color:#fff;letter-spacing:0.05em;">NEW CLAIM</button>
+    <button id="tab-history" onclick="showTab('history')" style="padding:6px 18px;border-radius:6px;font-size:0.68rem;font-weight:800;border:none;cursor:pointer;background:transparent;color:#64748b;letter-spacing:0.05em;">MY CLAIMS</button>
+  </div>
+
+  <!-- New Claim Form -->
+  <div id="tab-new-content">
+    <div class="card" style="max-width:100%;">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:0.85rem;margin-bottom:1rem;">
+        <div><label>Ref Invoice No</label><input type="text" id="claim-inv-no" placeholder="INV-XXXX"></div>
+        <div><label>Invoice Date</label><input type="text" id="claim-inv-date" placeholder="DD-MM-YYYY"></div>
+        <div><label>Products Loaded From</label><select id="claim-product-select" onchange="addProductRow(this)"><option value="">— Add Product —</option></select></div>
+      </div>
+
+      <div style="border:1px solid rgba(99,102,241,0.15);border-radius:10px;overflow:hidden;margin-bottom:0.75rem;">
+        <table>
+          <thead><tr>
+            <th style="width:28%;">Product</th>
+            <th>Batch</th><th>Eligible Qty</th><th>Claim Qty</th>
+            <th>Billed Price</th><th>Claim Price</th><th>Price Diff</th>
+            <th>GST%</th><th style="text-align:right;">Total</th><th></th>
+          </tr></thead>
+          <tbody id="claim-items-body"><tr id="empty-row"><td colspan="10" style="text-align:center;color:#334155;padding:20px;font-size:0.72rem;">Add products using the selector above</td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="alert alert-err" id="claim-err"></div>
+      <div class="alert alert-ok" id="claim-ok"></div>
+
+      <div class="totals-bar">
+        <div class="t-item"><div class="t-label">Subtotal</div><div class="t-val" id="claim-sub">?0.00</div></div>
+        <div class="t-item"><div class="t-label">GST</div><div class="t-val" id="claim-gst">?0.00</div></div>
+        <div class="t-item"><div class="t-label">Grand Total</div><div class="t-val grand" id="claim-total">?0.00</div></div>
+      </div>
+
+      <button class="btn btn-primary" onclick="submitClaim()">? SUBMIT PDCN CLAIM FOR APPROVAL</button>
+      <div style="font-size:0.6rem;color:#475569;margin-top:0.5rem;text-align:center;">Your claim will be reviewed by admin. CN will be issued upon approval.</div>
+    </div>
+  </div>
+
+  <!-- Claim History -->
+  <div id="tab-history-content" style="display:none;">
+    <div class="card" style="max-width:100%;">
+      <div class="section-label">My PDCN Claims</div>
+      <div style="border:1px solid rgba(99,102,241,0.15);border-radius:10px;overflow:hidden;">
+        <table>
+          <thead><tr>
+            <th>Claim No</th><th>Date</th><th>Ref Invoice</th>
+            <th style="text-align:right;">Amount</th><th>Status</th>
+          </tr></thead>
+          <tbody id="history-body"><tr><td colspan="5" style="text-align:center;padding:20px;color:#334155;">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';
+let sessionParty = null;
+let eligibility  = {};
+let claimRows    = [];
+
+// -- LOGIN ------------------------------------------------------------------
+async function doLogin() {
+    const user = document.getElementById('login-user').value.trim();
+    const pass = document.getElementById('login-pass').value.trim();
+    if (!user || !pass) return showErr('login-err','Enter credentials.');
+    try {
+        const res  = await fetch(`${API}/api/stockist/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ loginId: user, password: pass }) });
+        const data = await res.json();
+        if (!data.success) return showErr('login-err', data.message || 'Login failed');
+        sessionParty = data.user;
+        document.getElementById('loginSection').style.display   = 'none';
+        document.getElementById('claimSection').style.display   = 'block';
+        document.getElementById('party-name-display').innerText = sessionParty.name || sessionParty.email;
+        await loadEligibility();
+        await loadHistory();
+    } catch(e) { showErr('login-err','Server error. Try again.'); }
+}
+async function loadEligibility() {
+    const res  = await fetch(`${API}/api/admin/pdcn/eligibility/${sessionParty._id || sessionParty.id}`);
+    const data = await res.json();
+    if (!data.success) return;
+    eligibility = data.eligibility;
+
+    const sel = document.getElementById('claim-product-select');
+    sel.innerHTML = '<option value="">— Add Product —</option>' +
+        Object.entries(eligibility)
+              .filter(([,v]) => v.eligibleQty > 0)
+              .map(([pid,v]) => `<option value="${pid}">${v.name} (Eligible: ${v.eligibleQty})</option>`)
+              .join('');
+}
+
+// -- ADD ROW ----------------------------------------------------------------
+function addProductRow(sel) {
+    const pid = sel.value; if (!pid) return;
+    const info = eligibility[pid]; if (!info) return;
+    if (claimRows.includes(pid)) { sel.value=''; return alert('Already added.'); }
+
+    document.getElementById('empty-row')?.remove();
+    claimRows.push(pid);
+    const id = 'cr-' + pid.slice(-6);
+    const tr = document.createElement('tr');
+    tr.id = id;
+    tr.innerHTML = `
+      <td><strong style="font-size:0.7rem;">${info.name}</strong>
+        <div class="eligible-badge" id="${id}-elig">Eligible: ${info.eligibleQty}</div></td>
+      <td><input type="text" id="${id}-batch" placeholder="Batch" style="width:80px;"></td>
+      <td style="text-align:center;font-weight:700;color:#10b981;" id="${id}-max">${info.eligibleQty}</td>
+      <td><input type="number" id="${id}-qty" min="1" max="${info.eligibleQty}" value="1" oninput="validateQty('${id}','${pid}');calcTotals();" style="width:55px;text-align:center;"></td>
+      <td><input type="number" id="${id}-bprice" step="0.01" placeholder="0.00" oninput="calcTotals()" style="width:75px;text-align:right;font-family:monospace;"></td>
+      <td><input type="number" id="${id}-cprice" step="0.01" placeholder="0.00" oninput="calcDiff('${id}');calcTotals();" style="width:75px;text-align:right;font-family:monospace;"></td>
+      <td style="text-align:right;font-family:monospace;font-weight:700;color:#f59e0b;" id="${id}-diff">0.00</td>
+      <td><input type="number" id="${id}-gst" value="12" step="0.5" oninput="calcTotals()" style="width:46px;text-align:center;color:#fff;font-weight:700;"></td>
+      <td style="text-align:right;font-family:monospace;font-weight:800;" id="${id}-total">?0.00</td>
+      <td><button onclick="removeRow('${id}','${pid}')" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:0.85rem;opacity:0.6;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">?</button></td>`;
+    document.getElementById('claim-items-body').appendChild(tr);
+    sel.value = '';
+}
+
+function validateQty(id, pid) {
+    const max = eligibility[pid]?.eligibleQty || 0;
+    const inp = document.getElementById(`${id}-qty`);
+    const v   = parseInt(inp.value) || 0;
+    const elig = document.getElementById(`${id}-elig`);
+    if (v > max) { inp.classList.add('over-claim'); elig.classList.add('over-claim'); elig.innerText = `? Max: ${max}`; }
+    else         { inp.classList.remove('over-claim'); elig.classList.remove('over-claim'); elig.innerText = `Eligible: ${max}`; }
+}
+
+function calcDiff(id) {
+    const bp = parseFloat(document.getElementById(`${id}-bprice`).value) || 0;
+    const cp = parseFloat(document.getElementById(`${id}-cprice`).value) || 0;
+    document.getElementById(`${id}-diff`).innerText = (bp - cp).toFixed(2);
+}
+
+function calcTotals() {
+    let sub = 0, gst = 0;
+    claimRows.forEach(pid => {
+        const id   = 'cr-' + pid.slice(-6);
+        const qty  = parseFloat(document.getElementById(`${id}-qty`)?.value) || 0;
+        const bp   = parseFloat(document.getElementById(`${id}-bprice`)?.value) || 0;
+        const cp   = parseFloat(document.getElementById(`${id}-cprice`)?.value) || 0;
+        const diff = Math.max(0, bp - cp);
+        const gstP = parseFloat(document.getElementById(`${id}-gst`)?.value) || 0;
+        const taxable = qty * diff;
+        const gstAmt  = taxable * gstP / 100;
+        const total   = taxable + gstAmt;
+        sub += taxable; gst += gstAmt;
+        if (document.getElementById(`${id}-total`)) document.getElementById(`${id}-total`).innerText = '?' + total.toFixed(2);
+    });
+    document.getElementById('claim-sub').innerText   = '?' + sub.toFixed(2);
+    document.getElementById('claim-gst').innerText   = '?' + gst.toFixed(2);
+    document.getElementById('claim-total').innerText = '?' + Math.round(sub+gst).toFixed(2);
+}
+
+function removeRow(id, pid) {
+    document.getElementById(id)?.remove();
+    claimRows = claimRows.filter(p => p !== pid);
+    if (!claimRows.length) {
+        const tb = document.getElementById('claim-items-body');
+        tb.innerHTML = '<tr id="empty-row"><td colspan="10" style="text-align:center;color:#334155;padding:20px;font-size:0.72rem;">Add products using the selector above</td></tr>';
+    }
+    calcTotals();
+}
+
+// -- SUBMIT -----------------------------------------------------------------
+async function submitClaim() {
+    hideMsg();
+    if (!claimRows.length) return showErr('claim-err','Add at least one product.');
+    const invNo  = document.getElementById('claim-inv-no').value.trim();
+    if (!invNo)  return showErr('claim-err','Ref Invoice No is required.');
+
+    const items = [];
+    for (const pid of claimRows) {
+        const id   = 'cr-' + pid.slice(-6);
+        const qty  = parseInt(document.getElementById(`${id}-qty`).value) || 0;
+        const bp   = parseFloat(document.getElementById(`${id}-bprice`).value) || 0;
+        const cp   = parseFloat(document.getElementById(`${id}-cprice`).value) || 0;
+        const diff = bp - cp;
+        const gstP = parseFloat(document.getElementById(`${id}-gst`).value) || 0;
+        const max  = eligibility[pid]?.eligibleQty || 0;
+        if (qty <= 0) return showErr('claim-err',`Enter qty for ${eligibility[pid]?.name}`);
+        if (qty > max) return showErr('claim-err',`${eligibility[pid]?.name}: max ${max} units allowed`);
+        if (diff <= 0) return showErr('claim-err',`${eligibility[pid]?.name}: Claim price must be less than billed price`);
+        items.push({ productId: pid, name: eligibility[pid]?.name, qty, priceDiff: diff, gstPercent: gstP,
+                     batchNo: document.getElementById(`${id}-batch`).value });
+    }
+
+    try {
+        const res  = await fetch(`${API}/api/stockist/pdcn-claim`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ stockistId: sessionParty._id || sessionParty.id, items,
+                                   refInvoiceNo: invNo, refInvoiceDate: document.getElementById('claim-inv-date').value })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showOk('claim-ok', `? Claim ${data.noteNo} submitted! Awaiting admin approval.`);
+            claimRows = []; document.getElementById('claim-items-body').innerHTML =
+                '<tr id="empty-row"><td colspan="10" style="text-align:center;color:#334155;padding:20px;font-size:0.72rem;">Claim submitted</td></tr>';
+            calcTotals(); await loadHistory(); await loadEligibility();
+        } else { showErr('claim-err', data.error || 'Submission failed'); }
+    } catch(e) { showErr('claim-err','Server error.'); }
+}
+
+// -- HISTORY ----------------------------------------------------------------
+async function loadHistory() {
+    const pid = sessionParty._id || sessionParty.id;
+    try {
+        const res  = await fetch(`${API}/api/stockist/notes?partyId=${pid}&reason=Price+Diff+CN`);
+        const data = await res.json();
+        const tb   = document.getElementById('history-body');
+        const notes = data.notes || data || [];
+        if (!notes.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#334155;">No PDCN claims yet.</td></tr>'; return; }
+        tb.innerHTML = notes.map(n => `
+            <tr class="history-row">
+                <td style="font-weight:700;color:#6366f1;">${n.noteNo}</td>
+                <td>${new Date(n.createdAt).toLocaleDateString('en-GB')}</td>
+                <td>${n.refInvoiceNo||'—'}</td>
+                <td style="text-align:right;font-family:monospace;font-weight:700;">?${(n.amount||0).toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+                <td><span class="tag tag-${n.status||'pending'}">${(n.status||'PENDING').toUpperCase()}</span></td>
+            </tr>`).join('');
+    } catch(e) {}
+}
+
+// -- TABS -------------------------------------------------------------------
+function showTab(t) {
+    document.getElementById('tab-new-content').style.display     = t==='new' ? 'block' : 'none';
+    document.getElementById('tab-history-content').style.display = t==='history' ? 'block' : 'none';
+    const act = 'background:rgba(99,102,241,0.25);color:#fff;';
+    const ina = 'background:transparent;color:#64748b;';
+    document.getElementById('tab-new').style.cssText     += t==='new' ? act : ina;
+    document.getElementById('tab-history').style.cssText += t==='history' ? act : ina;
+    if (t==='history') loadHistory();
+}
+
+function showErr(id,msg){ const el=document.getElementById(id); el.innerText=msg; el.style.display='block'; }
+function showOk(id,msg) { const el=document.getElementById(id); el.innerText=msg; el.style.display='block'; }
+function hideMsg(){ ['claim-err','claim-ok'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';}); }
+</script>
+</body>
+</html>
