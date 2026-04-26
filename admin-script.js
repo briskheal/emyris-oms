@@ -823,12 +823,12 @@ async function saveSettings(e) {
         upiId: document.getElementById('set-upi-id') ? document.getElementById('set-upi-id').value : '',
         bankAccountNo: document.getElementById('set-bank-acc') ? document.getElementById('set-bank-acc').value : '',
         bankIfsc: document.getElementById('set-bank-ifsc') ? document.getElementById('set-bank-ifsc').value : '',
-        signatureImage: document.getElementById('set-signature-b64').value,
-        logoImage: document.getElementById('set-logo-b64') ? document.getElementById('set-logo-b64').value : '',
+        signatureImage: document.getElementById('set-signature-b64').value || companyProfile.signatureImage || '',
+        logoImage: (document.getElementById('set-logo-b64') && document.getElementById('set-logo-b64').value) ? document.getElementById('set-logo-b64').value : (companyProfile.logoImage || ''),
         scrollingMessage: {
             text: document.getElementById('set-msg-text').value,
             color: document.getElementById('set-msg-color').value,
-            speed: Number(document.getElementById('set-msg-speed').value)
+            speed: Number(document.getElementById('set-msg-speed').value || 30)
         },
         invoiceStyle: document.getElementById('set-inv-style').value
     };

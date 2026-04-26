@@ -848,8 +848,16 @@ app.get('/api/admin/settings', async (req, res) => {
 app.post('/api/admin/settings', async (req, res) => {
     try {
         let settings = await Company.findOne();
-        if (!settings) settings = new Company(req.body);
-        else Object.assign(settings, req.body);
+        if (!settings) {
+            settings = new Company(req.body);
+        } else {
+            const updateData = { ...req.body };
+            // Safety: Don't overwrite existing images with empty strings
+            if (!updateData.logoImage && settings.logoImage) delete updateData.logoImage;
+            if (!updateData.signatureImage && settings.signatureImage) delete updateData.signatureImage;
+            
+            Object.assign(settings, updateData);
+        }
         await settings.save();
         res.json({ success: true, settings });
     } catch (e) { res.status(500).json({ error: e.message }); }
