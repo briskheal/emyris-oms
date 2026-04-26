@@ -1859,11 +1859,14 @@ async function downloadInvoicePDF(id) {
     doc.text(`Date: ${new Date(inv.createdAt).toLocaleDateString('en-GB')}`, 15, 53);
     
     const party = allStockists.find(s => s.name === inv.stockistName) || {};
-    doc.text("BILL TO:", 110, 48);
+    doc.setFont("helvetica", "bold");
+    doc.text("BILL TO / SHIP TO:", 110, 48);
     doc.setFont("helvetica", "normal");
     doc.text(inv.stockistName || 'N/A', 110, 53);
-    doc.text(party.address || '', 110, 58, { maxWidth: 80 });
-    doc.text(`GST: ${party.gst || 'N/A'} | DL: ${party.dl || 'N/A'}`, 110, 68);
+    const stockistAddressLines = doc.splitTextToSize(party.address || 'N/A', 80);
+    doc.text(stockistAddressLines, 110, 58);
+    let sY = 58 + (stockistAddressLines.length * 4);
+    doc.text(`GST: ${party.gst || 'N/A'} | DL: ${party.dl || 'N/A'}`, 110, sY + 2);
 
     doc.autoTable({
         startY: 75,
@@ -1929,10 +1932,10 @@ async function downloadInvoicePDF(id) {
     doc.setFont("helvetica", "normal");
     doc.text(numberToWords(inv.grandTotal), 15, finalY + 5);
 
-    doc.setFontSize(11);
+    doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(16, 185, 129);
-    doc.text(`NET PAYABLE: Rs. ${inv.grandTotal.toLocaleString('en-IN')}`, 130, finalY + 22);
+    doc.text(`NET PAYABLE: Rs. ${inv.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`, 195, finalY + 12, { align: 'right' });
     doc.setTextColor(40, 44, 52);
 
     doc.setFont("helvetica", "bold");
