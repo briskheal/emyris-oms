@@ -749,6 +749,11 @@
                                 <input type="hidden" id="set-logo-b64">
                                 <img id="logo-preview" src="" style="max-height: 40px; margin-top: 10px; display: none; border: 1px dashed var(--glass-border); padding: 2px;">
                             </div>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>Company Logo (Optional)</label>
+                                <input type="file" id="set-logo" accept="image/png, image/jpeg" onchange="convertLogoToBase64(this)">
+                                <input type="hidden" id="set-logo-b64">
+                            </div>
                         </div>
 
                         <!-- Card 2: Hotlines & Communication -->

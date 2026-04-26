@@ -1866,7 +1866,10 @@ async function downloadInvoicePDF(id) {
     const stockistAddressLines = doc.splitTextToSize(party.address || 'N/A', 80);
     doc.text(stockistAddressLines, 110, 58);
     let sY = 58 + (stockistAddressLines.length * 4);
-    doc.text(`GST: ${party.gst || 'N/A'} | DL: ${party.dl || 'N/A'}`, 110, sY + 2);
+    doc.setFontSize(8);
+    doc.text(`DL No: ${party.dl || party.dlNo || 'N/A'}`, 110, sY);
+    doc.text(`GSTIN: ${party.gst || party.gstNo || 'N/A'}`, 110, sY + 4);
+    doc.text(`FSSAI: ${party.fssai || party.fssaiNo || 'N/A'}`, 110, sY + 8);
 
     doc.autoTable({
         startY: 75,
