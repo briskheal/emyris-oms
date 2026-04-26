@@ -1068,7 +1068,7 @@ async function generateInvoicePDF(inv) {
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(16, 185, 129);
-    doc.text(`NET PAYABLE: Rs. ${inv.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`, 195, finalY + 12, { align: 'right' });
+    doc.text(`NET PAYABLE: Rs. ${inv.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`, 195, finalY + 5, { align: 'right' });
     doc.setTextColor(40, 44, 52);
 
     doc.setFont("helvetica", "bold");
