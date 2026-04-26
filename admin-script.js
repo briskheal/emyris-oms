@@ -644,19 +644,7 @@ async function handleProductBulkUpload(input) {
 // --- MASTERS & SETTINGS ---
 window.masters = { categories: [], hsns: [], gst: [], groups: [] };
 
-async function loadMasters() {
-    try {
-        const [cats, hsns, gst, groups] = await Promise.all([
-            fetch(`${API_BASE}/admin/categories`).then(r => r.json()),
-            fetch(`${API_BASE}/admin/hsns`).then(r => r.json()),
-            fetch(`${API_BASE}/admin/gst`).then(r => r.json()),
-            fetch(`${API_BASE}/admin/groups`).then(r => r.json())
-        ]);
-        window.masters = { categories: cats, hsns, gst, groups };
-        renderMasterLists();
-        updateDatalists();
-    } catch (e) { console.error("Load masters fail", e); }
-}
+
 
 function renderMasterLists() {
     const render = (id, list, key, type) => {
@@ -2180,51 +2168,7 @@ function downloadNotePDF(id) {
         alert("PDF Error: " + err.message);
     }
 }
-    } catch (err) {
-        console.error("PDF Generation Error:", err);
-        alert("Failed to generate PDF. Error: " + err.message);
-    }
-}
 
-// --- LEDGER RE-INTEGRATION ---
-async function viewLedger(id) {
-    const s = allStockists.find(x => x._id === id);
-    if (!s) return;
-
-    currentLedgerPartyId = id;
-    const nameEl = document.getElementById('ledger-party-name');
-    if(nameEl) nameEl.innerText = '📋 Ledger: ' + s.name;
-    
-    try {
-        const res = await fetch('/api/admin/parties/' + id + '/ledger');
-        const ledger = await res.json();
-        renderLedger(ledger);
-        document.getElementById('ledgerModal').classList.remove('hidden');
-    } catch (e) { alert("Failed to load ledger"); }
-}
-
-function renderLedger(ledger) {
-    const tbody = document.getElementById('ledgerTableBody');
-    if(!tbody) return;
-    let runningBalance = 0;
-
-    tbody.innerHTML = ledger.map(entry => {
-        runningBalance += (entry.debit - entry.credit);
-
-        return `<tr>
-                <td>${new Date(entry.date).toLocaleDateString('en-GB')}</td>
-                <td style="font-family:monospace; font-weight:700;">${entry.refNo}</td>
-                <td><span class="badge" style="background:rgba(255,255,255,0.05); color:#fff;">${entry.type}</span></td>
-                <td>${entry.description}</td>
-                <td style="text-align:right; color:#ef4444; font-weight:700;">${entry.debit > 0 ? '₹' + entry.debit.toLocaleString('en-IN') : '-'}</td>
-                <td style="text-align:right; color:#10b981; font-weight:700;">${entry.credit > 0 ? '₹' + entry.credit.toLocaleString('en-IN') : '-'}</td>
-                <td style="text-align:right; font-weight:800; color:${runningBalance >= 0 ? 'var(--accent)' : '#10b981'}">₹${Math.abs(runningBalance).toLocaleString('en-IN')} ${runningBalance >= 0 ? 'Dr' : 'Cr'}</td>
-            </tr>`;
-    }).join('');
-}
-function closeLedgerModal() {
-    document.getElementById('ledgerModal').classList.add('hidden');
-}
 
 function viewPurchaseDetails(id) {
     const p = allPurchaseEntries.find(x => x._id === id);
