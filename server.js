@@ -1358,6 +1358,89 @@ app.post('/api/admin/financial-notes', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+app.put('/api/admin/financial-notes/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { noteType, party, amount, reason, description, refInvoiceNo, refInvoiceDate, items, subTotal, gstAmount } = req.body;
+        
+        const oldNote = await FinancialNote.findById(id);
+        if (!oldNote) return res.status(404).json({ success: false, message: "Note not found" });
+
+        // 1. REVERSE OLD LOGIC
+        // Reverse Accounting impact on Stockist balance
+        const oldParty = await Stockist.findById(oldNote.party);
+        if (oldParty) {
+            const oldAdj = oldNote.noteType === 'CN' ? oldNote.amount : -oldNote.amount; 
+            await Stockist.findByIdAndUpdate(oldNote.party, { $inc: { outstandingBalance: oldAdj } });
+        }
+
+        // Reverse Inventory impact
+        if (oldNote.items && Array.isArray(oldNote.items)) {
+            for (const item of oldNote.items) {
+                const product = await Product.findById(item.productId);
+                if (product) {
+                    const adj = (oldNote.reason === 'Salable Return') ? -item.qty : item.qty; 
+                    product.qtyAvailable += adj;
+                    if (item.batchNo) {
+                        const bIdx = product.batches.findIndex(b => b.batchNo === item.batchNo);
+                        if (bIdx > -1) product.batches[bIdx].qtyAvailable += adj;
+                    }
+                    await product.save();
+                }
+            }
+        }
+
+        // 2. APPLY NEW LOGIC
+        const partyObj = await Stockist.findById(party);
+        
+        oldNote.noteType = noteType;
+        oldNote.party = party;
+        oldNote.partyName = partyObj ? partyObj.name : 'Unknown';
+        oldNote.amount = amount;
+        oldNote.reason = reason;
+        oldNote.description = description;
+        oldNote.refInvoiceNo = refInvoiceNo;
+        oldNote.refInvoiceDate = refInvoiceDate;
+        oldNote.items = items;
+        oldNote.subTotal = subTotal;
+        oldNote.gstAmount = gstAmount;
+
+        // Apply New Accounting
+        if (partyObj) {
+            const newAdj = noteType === 'CN' ? -amount : amount;
+            await Stockist.findByIdAndUpdate(party, { $inc: { outstandingBalance: newAdj } });
+        }
+
+        // Apply New Inventory
+        if (items && Array.isArray(items)) {
+            for (const item of items) {
+                const product = await Product.findById(item.productId);
+                if (product) {
+                    const adj = (reason === 'Salable Return') ? item.qty : -item.qty;
+                    product.qtyAvailable += adj;
+                    if (item.batchNo) {
+                        const bIdx = product.batches.findIndex(b => b.batchNo === item.batchNo);
+                        if (bIdx > -1) {
+                            product.batches[bIdx].qtyAvailable += adj;
+                        } else if (adj > 0) {
+                            product.batches.push({
+                                batchNo: item.batchNo,
+                                expDate: item.expDate || 'N/A',
+                                qtyAvailable: adj,
+                                mrp: item.price || 0
+                            });
+                        }
+                    }
+                    await product.save();
+                }
+            }
+        }
+
+        await oldNote.save();
+        res.json({ success: true, note: oldNote });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 // --- PAYMENTS & LEDGER MODULE ---
 
 app.get('/api/admin/payments', async (req, res) => {

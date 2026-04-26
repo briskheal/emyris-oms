@@ -9,6 +9,7 @@ let allNotes = [];
 let currentNoteReason = 'ALL';
 let purchaseItems = []; // Temporary storage for new purchase entry
 let companyProfile = {};
+let currentEditingNoteId = null; // Track if we are editing a CN/DN
 
 // --- INITIALIZATION ---
 window.onload = async () => {
@@ -1710,15 +1711,31 @@ function renderFinancialNotes(data = allNotes) {
             </td>
             <td style="text-align:right; font-weight:800; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">₹${n.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             <td>${new Date(n.createdAt).toLocaleDateString('en-GB')}</td>
-            <td style="text-align:right;">
-                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="downloadNotePDF('${n._id}')">📥</button>
+            <td style="text-align:right; display: flex; gap: 5px; justify-content: flex-end;">
+                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="editNote('${n._id}')" title="Edit Record">✏️</button>
+                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="downloadNotePDF('${n._id}')" title="Download PDF">📥</button>
             </td>
         </tr>
     `).join('');
 }
 
-function openNoteModal() {
-    if (currentNoteReason === 'Salable Return' || currentNoteReason === 'Purchase Return') {
+async function editNote(id) {
+    const note = allNotes.find(x => x._id === id);
+    if (!note) return;
+
+    currentEditingNoteId = id;
+    
+    if (note.items && note.items.length > 0) {
+        // Multi-item return
+        openReturnModal(note.reason, note);
+    } else {
+        // Single adjustment
+        openNoteModal(note);
+    }
+}
+
+function openNoteModal(editData = null) {
+    if (!editData && (currentNoteReason === 'Salable Return' || currentNoteReason === 'Purchase Return')) {
         openReturnModal(currentNoteReason);
         return;
     }
@@ -1738,6 +1755,25 @@ function openNoteModal() {
     const form = document.getElementById('noteForm');
     if(form) form.reset();
     document.getElementById('note-inventory-fields').classList.add('hidden');
+
+    if (editData) {
+        document.getElementById('note-type').value = editData.noteType;
+        document.getElementById('note-party').value = editData.party?._id || editData.party;
+        document.getElementById('note-amount').value = editData.amount;
+        document.getElementById('note-reason').value = editData.reason;
+        document.getElementById('note-desc').value = editData.description;
+        if (editData.productId) {
+            document.getElementById('note-product').value = editData.productId;
+            document.getElementById('note-batch').value = editData.batchNo || '';
+            document.getElementById('note-qty').value = editData.qty || 0;
+            document.getElementById('note-inventory-fields').classList.remove('hidden');
+        }
+        document.getElementById('note-modal-title').innerText = "✏️ Edit Financial Note";
+    } else {
+        document.getElementById('note-modal-title').innerText = "📝 Record Financial Adjustment";
+        currentEditingNoteId = null;
+    }
+
     document.getElementById('noteModal').classList.remove('hidden');
 }
 
@@ -1770,16 +1806,24 @@ function updateNoteBatches(productId) {
 
 function closeNoteModal() {
     document.getElementById('noteModal').classList.add('hidden');
+    currentEditingNoteId = null;
 }
 
 // --- MULTI-ITEM RETURN LOGIC ---
 let returnItems = [];
 
-function openReturnModal(reason) {
+function openReturnModal(reason, editData = null) {
     const modal = document.getElementById('returnModal');
     const title = document.getElementById('return-modal-title');
     document.getElementById('return-reason').value = reason;
-    title.innerText = reason === 'Salable Return' ? "📝 Record Sale Return (Credit Note)" : "📝 Record Purchase Return (Debit Note)";
+    
+    if (editData) {
+        title.innerText = "✏️ Edit Return Note: " + editData.noteNo;
+        currentEditingNoteId = editData._id;
+    } else {
+        title.innerText = reason === 'Salable Return' ? "📝 Record Sale Return (Credit Note)" : "📝 Record Purchase Return (Debit Note)";
+        currentEditingNoteId = null;
+    }
     
     // Setup Party Select
     const select = document.getElementById('return-party');
@@ -1791,13 +1835,34 @@ function openReturnModal(reason) {
     document.getElementById('returnForm').reset();
     document.getElementById('return-items-body').innerHTML = '';
     returnItems = [];
-    addReturnRow(); // Add first empty row
+    
+    if (editData && editData.items && editData.items.length > 0) {
+        document.getElementById('return-party').value = editData.party?._id || editData.party;
+        document.getElementById('return-inv-no').value = editData.refInvoiceNo || '';
+        document.getElementById('return-inv-date').value = editData.refInvoiceDate || '';
+        
+        editData.items.forEach(item => {
+            const rowId = addReturnRow();
+            const row = document.getElementById(`return-row-${rowId}`);
+            row.querySelector('.return-prod-select').value = item.productId;
+            document.getElementById(`return-hsn-${rowId}`).value = item.hsn || '';
+            document.getElementById(`return-batch-${rowId}`).value = item.batchNo || '';
+            document.getElementById(`return-exp-${rowId}`).value = item.expDate || '';
+            document.getElementById(`return-qty-${rowId}`).value = item.qty;
+            document.getElementById(`return-price-${rowId}`).value = item.price;
+            document.getElementById(`return-gst-pct-${rowId}`).value = item.gstPercent;
+        });
+    } else {
+        addReturnRow(); // Add first empty row
+    }
+    
     calculateReturnTotals();
     modal.classList.remove('hidden');
 }
 
 function closeReturnModal() {
     document.getElementById('returnModal').classList.add('hidden');
+    currentEditingNoteId = null;
 }
 
 function addReturnRow() {
@@ -1822,6 +1887,7 @@ function addReturnRow() {
     `;
     document.getElementById('return-items-body').appendChild(row);
     returnItems.push(id);
+    return id; // Return ID for editing population
 }
 
 function removeReturnRow(id) {
@@ -1902,6 +1968,7 @@ async function saveMultiItemReturn(e) {
             return {
                 productId: prodId,
                 name: p ? p.name : 'Unknown',
+                manufacturer: p ? p.manufacturer : 'EMYRIS',
                 qty,
                 hsn,
                 batchNo: batch,
@@ -1931,19 +1998,22 @@ async function saveMultiItemReturn(e) {
             items
         };
 
-        const res = await fetch('/api/admin/financial-notes', {
-            method: 'POST',
+        const url = currentEditingNoteId ? `/api/admin/financial-notes/${currentEditingNoteId}` : '/api/admin/financial-notes';
+        const method = currentEditingNoteId ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+            method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
         const result = await res.json();
         if(result.success) {
-            alert("Return Processed & Document Generated!");
+            alert(currentEditingNoteId ? "Note Updated Successfully!" : "Return Processed & Document Generated!");
             closeReturnModal();
             await loadFinancialNotes();
             await loadProducts();
             await loadStockists();
-            // Automatically trigger download of the new note
+            // Automatically trigger download of the new/updated note
             if (result.note && result.note._id) {
                 downloadNotePDF(result.note._id);
             }
@@ -1967,21 +2037,24 @@ async function saveFinancialNote(e) {
     };
 
     try {
-        const res = await fetch('/api/admin/financial-notes', {
-            method: 'POST',
+        const url = currentEditingNoteId ? `/api/admin/financial-notes/${currentEditingNoteId}` : '/api/admin/financial-notes';
+        const method = currentEditingNoteId ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+            method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
         const result = await res.json();
         if (result.success) {
-            alert("✅ Financial Note Issued Successfully!");
+            alert(currentEditingNoteId ? "✅ Note Updated Successfully!" : "✅ Financial Note Issued Successfully!");
             await loadFinancialNotes();
             await loadStockists();
             await loadProducts();
             renderFinancialNotes();
             closeNoteModal();
         }
-    } catch (e) { alert("Failed to issue note"); }
+    } catch (e) { alert("Failed to save note"); }
 }
 
 async function downloadNotePDF(id) {
