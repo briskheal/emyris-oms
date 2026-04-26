@@ -2145,9 +2145,14 @@ async function generateStandardPDF({
     extraFields = [], // e.g., [{label: 'Ref Invoice', value: '...'}]
     filename = "Document.pdf"
 }) {
-    const { jsPDF } = window.jspdf;
+    const { jsPDF } = window.jspdf || window;
+    if (!jsPDF) {
+        console.error("jsPDF library not found! Please check your internet connection or script includes.");
+        alert("CRITICAL ERROR: PDF library not loaded. Please refresh the page.");
+        return;
+    }
     const doc = new jsPDF('p', 'mm', 'a4');
-    const style = companyProfile.invoiceStyle || 'classic';
+    const style = (companyProfile && companyProfile.invoiceStyle) || 'classic';
 
     const themes = {
         classic: { primary: [99, 102, 241], secondary: [40, 44, 52] },
@@ -2163,10 +2168,10 @@ async function generateStandardPDF({
         doc.setTextColor(255, 255, 255);
         doc.setFont("helvetica", "bold"); doc.setFontSize(22);
         doc.text(title, 15, 18);
-        doc.setFontSize(10); doc.text(companyProfile.name || "EMYRIS BIOLIFESCIENCES", 15, 28);
+        doc.setFontSize(10); doc.text((companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES", 15, 28);
         doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-        doc.text(`GSTIN: ${companyProfile.gstNo || 'N/A'} | DL: ${companyProfile.dlNo || 'N/A'}`, 15, 34);
-        doc.text(`Contact: ${companyProfile.phones?.[0] || 'N/A'}`, 15, 38);
+        doc.text(`GSTIN: ${(companyProfile && companyProfile.gstNo) || 'N/A'} | DL: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, 15, 34);
+        doc.text(`Contact: ${(companyProfile && companyProfile.phones?.[0]) || 'N/A'}`, 15, 38);
         doc.setFont("helvetica", "bold");
         doc.text(`${docTypeLabel}: ${docNo}`, 195, 18, { align: 'right' });
         doc.setFont("helvetica", "normal");
@@ -2175,9 +2180,9 @@ async function generateStandardPDF({
     } else if (style === 'compact') {
         doc.setDrawColor(t.primary[0], t.primary[1], t.primary[2]); doc.setLineWidth(1); doc.line(15, 8, 195, 8);
         doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
-        doc.text(companyProfile.name || "EMYRIS BIOLIFESCIENCES", 15, 15);
+        doc.text((companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES", 15, 15);
         doc.setFontSize(8); doc.setTextColor(100, 100, 100);
-        doc.text(`GST: ${companyProfile.gstNo} | DL: ${companyProfile.dlNo}`, 15, 24);
+        doc.text(`GST: ${(companyProfile && companyProfile.gstNo) || 'N/A'} | DL: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, 15, 24);
         doc.setTextColor(t.secondary[0], t.secondary[1], t.secondary[2]);
         doc.setFontSize(10); doc.text(title, 195, 15, { align: 'right' });
         doc.setFontSize(8); doc.text(`${docTypeLabel}: ${docNo} | DT: ${date}`, 195, 24, { align: 'right' });
@@ -2186,15 +2191,15 @@ async function generateStandardPDF({
         doc.setFont("helvetica", "bold"); doc.text(title, 105, 12, { align: 'center' });
         doc.setFontSize(7); doc.setTextColor(150, 150, 150); doc.text(subTitle, 195, 7, { align: 'right' });
         doc.setDrawColor(t.primary[0], t.primary[1], t.primary[2]); doc.setLineWidth(0.5); doc.line(105, 15, 105, 65); 
-        if (companyProfile.logoImage) { try { doc.addImage(companyProfile.logoImage, 'PNG', 15, 8, 30, 15); } catch(e){} }
+        if (companyProfile && companyProfile.logoImage) { try { doc.addImage(companyProfile.logoImage, 'JPEG', 15, 8, 30, 15); } catch(e){} }
         doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
-        doc.text(companyProfile.name || "EMYRIS BIOLIFESCIENCES", 15, 28);
+        doc.text((companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES", 15, 28);
         doc.setFont("helvetica", "normal"); doc.setTextColor(40, 44, 52); doc.setFontSize(8);
-        const addrLines = doc.splitTextToSize(companyProfile.address || "", 80);
+        const addrLines = doc.splitTextToSize((companyProfile && companyProfile.address) || "", 80);
         doc.text(addrLines, 15, 33);
         let cY = 33 + (addrLines.length * 4);
-        doc.text(`DL No: ${companyProfile.dlNo || 'N/A'}`, 15, cY);
-        doc.text(`GSTIN: ${companyProfile.gstNo || 'N/A'}`, 15, cY + 4);
+        doc.text(`DL No: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, 15, cY);
+        doc.text(`GSTIN: ${(companyProfile && companyProfile.gstNo) || 'N/A'}`, 15, cY + 4);
     }
 
     // 2. Party Info
