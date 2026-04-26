@@ -773,6 +773,15 @@ async function loadSettings() {
             document.getElementById('set-msg-text').value = s.scrollingMessage.text || '';
             document.getElementById('set-msg-color').value = s.scrollingMessage.color || '#6366f1';
         }
+
+        // Load Document Formats
+        if (document.getElementById('set-invoice-terms')) document.getElementById('set-invoice-terms').value = s.invoiceTerms || '';
+        if (document.getElementById('set-cn-terms')) document.getElementById('set-cn-terms').value = s.cnTerms || '';
+        if (document.getElementById('set-dn-terms')) document.getElementById('set-dn-terms').value = s.dnTerms || '';
+        if (document.getElementById('set-invoice-bank-visible')) document.getElementById('set-invoice-bank-visible').checked = !!s.invoiceBankVisible;
+        if (document.getElementById('set-cn-bank-visible')) document.getElementById('set-cn-bank-visible').checked = !!s.cnBankVisible;
+        if (document.getElementById('set-dn-bank-visible')) document.getElementById('set-dn-bank-visible').checked = !!s.dnBankVisible;
+
         setInvoiceStyle(s.invoiceStyle || 'classic');
     } catch (e) { console.error("Load settings fail"); }
 }
@@ -805,7 +814,12 @@ async function saveSettings(e) {
         dlNo: document.getElementById('set-dl-no').value,
         fssaiNo: document.getElementById('set-fssai-no').value,
         bankDetails: document.getElementById('set-bank-details').value,
-        termsConditions: document.getElementById('set-terms').value,
+        invoiceTerms: document.getElementById('set-invoice-terms').value,
+        cnTerms: document.getElementById('set-cn-terms').value,
+        dnTerms: document.getElementById('set-dn-terms').value,
+        invoiceBankVisible: document.getElementById('set-invoice-bank-visible').checked,
+        cnBankVisible: document.getElementById('set-cn-bank-visible').checked,
+        dnBankVisible: document.getElementById('set-dn-bank-visible').checked,
         upiId: document.getElementById('set-upi-id') ? document.getElementById('set-upi-id').value : '',
         bankAccountNo: document.getElementById('set-bank-acc') ? document.getElementById('set-bank-acc').value : '',
         bankIfsc: document.getElementById('set-bank-ifsc') ? document.getElementById('set-bank-ifsc').value : '',
@@ -1714,6 +1728,7 @@ function renderFinancialNotes(data = allNotes) {
             <td style="text-align:right; display: flex; gap: 5px; justify-content: flex-end;">
                 <button class="btn btn-ghost" style="padding:5px 10px;" onclick="editNote('${n._id}')" title="Edit Record">✏️</button>
                 <button class="btn btn-ghost" style="padding:5px 10px;" onclick="downloadNotePDF('${n._id}')" title="Download PDF">📥</button>
+                <button class="btn btn-ghost" style="padding:5px 10px; color:#ef4444;" onclick="deleteNote('${n._id}')" title="Delete Record">✕</button>
             </td>
         </tr>
     `).join('');
@@ -1732,6 +1747,24 @@ async function editNote(id) {
         // Single adjustment
         openNoteModal(note);
     }
+}
+
+async function deleteNote(id) {
+    if (!confirm("⚠️ CAUTION: Are you sure you want to COMPLETELY DELETE this note?\n\nThis will REVERSE all inventory changes and accounting impacts (Stockist balance will be adjusted back). This action cannot be undone.")) return;
+
+    try {
+        const res = await fetch(`/api/admin/financial-notes/${id}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ Note deleted and all impacts reversed successfully.");
+            await loadFinancialNotes();
+            await loadProducts();
+            await loadStockists();
+            renderFinancialNotes();
+        } else {
+            alert("Error: " + result.message);
+        }
+    } catch (e) { alert("Failed to delete note"); }
 }
 
 function openNoteModal(editData = null) {
@@ -2234,8 +2267,24 @@ async function downloadNotePDF(id) {
             });
         }
 
-        // 8. Fixed Footer (No Bank Details as requested)
+        // 8. Dynamic Footer & Master Formats
         const finalY = 240;
+        const isCN = note.noteType === 'CN';
+        const showBank = isCN ? !!companyProfile.cnBankVisible : !!companyProfile.dnBankVisible;
+        const masterTerms = isCN ? (companyProfile.cnTerms || "Credit adjusted in next invoice.") : (companyProfile.dnTerms || "Amount debited to account.");
+
+        if (showBank && companyProfile.bankDetails) {
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(99, 102, 241);
+            doc.text("BANK DETAILS:", 15, finalY - 45);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(40, 44, 52);
+            doc.setFontSize(7);
+            const bLines = doc.splitTextToSize(companyProfile.bankDetails, 80);
+            doc.text(bLines, 15, finalY - 40);
+        }
+
         doc.setDrawColor(99, 102, 241);
         doc.setLineWidth(0.5);
         doc.line(15, finalY - 15, 195, finalY - 15);
@@ -2253,11 +2302,20 @@ async function downloadNotePDF(id) {
         doc.setTextColor(99, 102, 241);
         doc.text(`TOTAL ADJUSTMENT: Rs. ${note.amount.toFixed(2)}`, 195, finalY, { align: 'right' });
         
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(99, 102, 241);
+        doc.text("TERMS & CONDITIONS:", 15, finalY + 5);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(40, 44, 52);
+        const tLines = doc.splitTextToSize(masterTerms, 100);
+        doc.text(tLines, 15, finalY + 9);
+
         doc.setFontSize(8);
         doc.setFont("helvetica", "italic");
         doc.setTextColor(40, 44, 52);
-        doc.text("Reason: " + (note.reason || "General Adjustment"), 15, finalY + 10);
-        doc.text("Remarks: " + (note.description || "N/A"), 15, finalY + 14);
+        doc.text("Reason: " + (note.reason || "General Adjustment"), 15, finalY + 25);
+        doc.text("Remarks: " + (note.description || "N/A"), 15, finalY + 29);
 
         doc.setFont("helvetica", "bold");
         doc.text(`For ${companyProfile.name || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 30, { align: 'right' });
@@ -2583,13 +2641,18 @@ async function downloadInvoicePDF(id) {
     doc.text(`NET PAYABLE: Rs. ${inv.grandTotal.toFixed(2)}`, 195, finalY, { align: 'right' });
     doc.setTextColor(40, 44, 52);
 
-    doc.setFont("courier", "bold");
-    doc.setFontSize(8);
-    doc.text("Bank Details:", 15, finalY + 15);
-    doc.setFont("courier", "normal");
-    const bDetails = companyProfile.bankDetails ? companyProfile.bankDetails.split('\n') : [];
-    bDetails.forEach((line, i) => doc.text(line, 15, finalY + 19 + (i * 4)));
-    doc.setFont("helvetica", "normal"); // Switch back
+    // 8. Dynamic Footer & Master Formats
+    const showBank = !!companyProfile.invoiceBankVisible;
+    const masterTerms = companyProfile.invoiceTerms || "1. Goods once sold will not be taken back.\n2. Interest @ 24% p.a. will be charged if payment is delayed.";
+
+    if (showBank) {
+        doc.setFont("courier", "bold");
+        doc.setFontSize(8);
+        doc.text("Bank Details:", 15, finalY + 15);
+        doc.setFont("courier", "normal");
+        const bDetails = companyProfile.bankDetails ? companyProfile.bankDetails.split('\n') : [];
+        bDetails.forEach((line, i) => doc.text(line, 15, finalY + 19 + (i * 4)));
+    }
 
     let upiTarget = companyProfile.upiId;
     if (!upiTarget && companyProfile.bankAccountNo && companyProfile.bankIfsc) {
@@ -2597,11 +2660,10 @@ async function downloadInvoicePDF(id) {
         upiTarget = `${companyProfile.bankAccountNo}@${companyProfile.bankIfsc.toUpperCase().trim()}.ifsc.npci`;
     }
 
-    if (upiTarget && window.QRCode) {
+    if (upiTarget && window.QRCode && showBank) { // Only show QR if bank details are visible
         try {
             const upiUrl = `upi://pay?pa=${upiTarget}&pn=${encodeURIComponent(companyProfile.name || 'Company')}&am=${Math.round(inv.grandTotal)}&cu=INR`;
             const qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 150, margin: 1 });
-            // Moved slightly right (to X=100) and increased size to 30x30
             doc.addImage(qrDataUrl, 'PNG', 100, finalY + 10, 30, 30);
             doc.setFontSize(6);
             doc.text("Scan to Pay", 115, finalY + 42, { align: 'center' });
@@ -2610,7 +2672,7 @@ async function downloadInvoicePDF(id) {
 
     doc.setFontSize(8);
     doc.setFont("helvetica", "italic");
-    const tConds = companyProfile.termsConditions ? companyProfile.termsConditions.split('\n') : ["1. Goods once sold will not be taken back. 2. Subject to local Jurisdiction."];
+    const tConds = masterTerms.split('\n');
     tConds.forEach((line, i) => doc.text(line, 15, 280 + (i * 4)));
 
     doc.setFont("helvetica", "bold");

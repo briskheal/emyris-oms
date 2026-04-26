@@ -174,6 +174,13 @@ const companySchema = new mongoose.Schema({
     upiId: { type: String, default: "" },
     bankAccountNo: { type: String, default: "" },
     bankIfsc: { type: String, default: "" },
+    // Document Specific Formats
+    invoiceTerms: { type: String, default: "1. Goods once sold will not be taken back.\n2. Interest @ 24% p.a. will be charged if payment is delayed." },
+    cnTerms: { type: String, default: "1. Subject to verification of physical goods.\n2. Credit will be adjusted in next invoice." },
+    dnTerms: { type: String, default: "1. Shortage/Damage claim acknowledged.\n2. Amount debited to your account." },
+    invoiceBankVisible: { type: Boolean, default: true },
+    cnBankVisible: { type: Boolean, default: false },
+    dnBankVisible: { type: Boolean, default: false },
     scrollingMessage: {
         text:  { type: String, default: "Welcome to EMYRIS OMS Portal - Your partner in healthcare." },
         color: { type: String, default: "#6366f1" },
@@ -1438,6 +1445,41 @@ app.put('/api/admin/financial-notes/:id', async (req, res) => {
 
         await oldNote.save();
         res.json({ success: true, note: oldNote });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.delete('/api/admin/financial-notes/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const note = await FinancialNote.findById(id);
+        if (!note) return res.status(404).json({ success: false, message: "Note not found" });
+
+        // REVERSE LOGIC
+        // Reverse Accounting impact
+        const party = await Stockist.findById(note.party);
+        if (party) {
+            const adj = note.noteType === 'CN' ? note.amount : -note.amount; 
+            await Stockist.findByIdAndUpdate(note.party, { $inc: { outstandingBalance: adj } });
+        }
+
+        // Reverse Inventory impact
+        if (note.items && Array.isArray(note.items)) {
+            for (const item of note.items) {
+                const product = await Product.findById(item.productId);
+                if (product) {
+                    const adj = (note.reason === 'Salable Return') ? -item.qty : item.qty; 
+                    product.qtyAvailable += adj;
+                    if (item.batchNo) {
+                        const bIdx = product.batches.findIndex(b => b.batchNo === item.batchNo);
+                        if (bIdx > -1) product.batches[bIdx].qtyAvailable += adj;
+                    }
+                    await product.save();
+                }
+            }
+        }
+
+        await FinancialNote.findByIdAndDelete(id);
+        res.json({ success: true, message: "Note deleted and impacts reversed." });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
