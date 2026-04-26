@@ -2317,10 +2317,10 @@ async function generateStandardPDF({
     if (showBank && companyProfile && companyProfile.bankDetails) {
         doc.setTextColor(0, 0, 0); // BLACK COLOR FOR BANK DETAILS
         doc.setFont("courier", "bold"); doc.setFontSize(style === 'compact' ? 7 : 8);
-        doc.text("Bank Details:", 15, finalY + 25);
+        doc.text("Bank Details:", 15, finalY + 15);
         doc.setFont("courier", "normal");
         const bD = companyProfile.bankDetails.split('\n');
-        bD.forEach((line, i) => doc.text(line, 15, finalY + 29 + (i * 4)));
+        bD.forEach((line, i) => doc.text(line, 15, finalY + 19 + (i * 4)));
 
         // QR Code Logic
         let upiTarget = companyProfile.upiId;
@@ -2331,8 +2331,8 @@ async function generateStandardPDF({
             try {
                 const upiUrl = `upi://pay?pa=${upiTarget}&pn=${encodeURIComponent(companyProfile.name || 'EMYRIS')}&am=${Math.round(grandTotal)}&cu=INR`;
                 const qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 150, margin: 1 });
-                doc.addImage(qrDataUrl, 'PNG', 100, finalY + 20, 30, 30);
-                doc.setFontSize(6); doc.text("Scan to Pay", 115, finalY + 52, { align: 'center' });
+                doc.addImage(qrDataUrl, 'PNG', 100, finalY + 10, 30, 30);
+                doc.setFontSize(6); doc.text("Scan to Pay", 115, finalY + 42, { align: 'center' });
             } catch(err) { console.error("QR Error", err); }
         }
     }
