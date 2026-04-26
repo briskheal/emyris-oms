@@ -743,12 +743,19 @@ async function loadSettings() {
         document.getElementById('set-dl-no').value = s.dlNo || '';
         document.getElementById('set-fssai-no').value = s.fssaiNo || '';
         
-        // Bank & Terms & Signature
         document.getElementById('set-bank-details').value = s.bankDetails || '';
-        document.getElementById('set-terms').value = s.termsConditions || '';
+        if (document.getElementById('set-invoice-terms')) document.getElementById('set-invoice-terms').value = s.invoiceTerms || '';
+        if (document.getElementById('set-cn-terms')) document.getElementById('set-cn-terms').value = s.cnTerms || '';
+        if (document.getElementById('set-dn-terms')) document.getElementById('set-dn-terms').value = s.dnTerms || '';
+        
+        if (document.getElementById('set-invoice-bank-visible')) document.getElementById('set-invoice-bank-visible').checked = !!s.invoiceBankVisible;
+        if (document.getElementById('set-cn-bank-visible')) document.getElementById('set-cn-bank-visible').checked = !!s.cnBankVisible;
+        if (document.getElementById('set-dn-bank-visible')) document.getElementById('set-dn-bank-visible').checked = !!s.dnBankVisible;
+
         if (document.getElementById('set-upi-id')) document.getElementById('set-upi-id').value = s.upiId || '';
         if (document.getElementById('set-bank-acc')) document.getElementById('set-bank-acc').value = s.bankAccountNo || '';
         if (document.getElementById('set-bank-ifsc')) document.getElementById('set-bank-ifsc').value = s.bankIfsc || '';
+        
         document.getElementById('set-signature-b64').value = s.signatureImage || '';
         if (s.signatureImage) {
             document.getElementById('sig-preview').src = s.signatureImage;
@@ -839,7 +846,10 @@ async function saveSettings(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        if (res.ok) alert("✅ Settings updated successfully!");
+        if (res.ok) {
+            alert("✅ Settings updated successfully!");
+            loadSettings(); // Refresh UI and global object
+        }
     } catch (e) { alert("Save settings failed"); }
     finally {
         btn.disabled = false;
