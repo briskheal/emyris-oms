@@ -862,6 +862,18 @@ function convertLogoToBase64(input) {
     }
 }
 
+function convertLogoToBase64(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('set-logo-b64').value = e.target.result;
+            document.getElementById('logo-preview').src = e.target.result;
+            document.getElementById('logo-preview').style.display = 'block';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
 function renderStockists(list = null) {
     const tbody = document.getElementById('stockistTableBody');
     if (!tbody) return;
