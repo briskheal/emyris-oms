@@ -1146,7 +1146,7 @@ function viewOrderDetails(id) {
         `;
     }).join('');
 
-    const unroundedTotal = o.subTotal + o.gstAmount;
+    const unroundedTotal = Number((o.subTotal + o.gstAmount).toFixed(2));
     const roundOffValue = (o.grandTotal - unroundedTotal).toFixed(2);
 
     document.getElementById('detail-subtotal').innerText = `₹${o.subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -2056,7 +2056,7 @@ async function downloadInvoicePDF(id) {
     doc.text(numberToWords(inv.grandTotal), 15, finalY - 5);
 
     // Right Side: Sub Total, Round Off, Net Payable
-    const unroundedTotal = inv.subTotal + inv.gstAmount;
+    const unroundedTotal = Number((inv.subTotal + inv.gstAmount).toFixed(2));
     const roundOff = (inv.grandTotal - unroundedTotal).toFixed(2);
     
     doc.setFontSize(9);
