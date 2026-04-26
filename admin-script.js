@@ -2226,9 +2226,9 @@ async function generateStandardPDF({
         doc.text(`Contact: ${party.phone || 'N/A'}`, 115, sY + 12);
         doc.text(`Email: ${party.email || 'N/A'}`, 115, sY + 16);
         doc.setFont("helvetica", "bold"); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
-        doc.text(`${docTypeLabel}: ${docNo}`, 115, sY + 24);
-        doc.setTextColor(40, 44, 52); doc.text(`Date: ${date}`, 115, sY + 28);
-        extraFields.forEach((f, i) => doc.text(`${f.label}: ${f.value}`, 115, sY + 32 + (i * 4)));
+        doc.text(`${docTypeLabel}: ${docNo}`, 115, sY + 20);
+        doc.setTextColor(40, 44, 52); doc.text(`Date: ${date}`, 115, sY + 24);
+        extraFields.forEach((f, i) => doc.text(`${f.label}: ${f.value}`, 115, sY + 28 + (i * 4)));
     }
 
     // 3. Items Table
