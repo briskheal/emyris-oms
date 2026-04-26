@@ -2292,11 +2292,11 @@ async function downloadNotePDF(id) {
             items: note.items && note.items.length > 0 ? note.items.map(it => ({
                 name: it.name, manufacturer: it.manufacturer, hsn: it.hsn, batch: it.batchNo, exp: it.expDate,
                 mrp: it.mrp || it.price, qty: it.qty, price: it.price, gstPercent: it.gstPercent, totalValue: it.totalValue
-            })) : [{ name: note.reason, qty: 1, price: note.amount, gstPercent: 0, totalValue: note.amount }],
+            })) : [{ name: note.reason, qty: 1, price: note.amount, gstPercent: 0, totalValue: note.amount, exp: '-', hsn: '-', batch: '-', manufacturer: 'EMYRIS' }],
             grandTotal: note.amount,
             terms: isCN ? (companyProfile.cnTerms || "") : (companyProfile.dnTerms || ""),
             showBank: isCN ? !!companyProfile.cnBankVisible : !!companyProfile.dnBankVisible,
-                        extraFields: note.refInvoiceNo ? [{ label: 'Ref Invoice', value: note.refInvoiceNo }] : [],
+            extraFields: note.refInvoiceNo ? [{ label: 'Ref Invoice', value: note.refInvoiceNo }] : [],
             filename: `${isCN ? 'CN' : 'DN'}_${note.noteNo}.pdf`
         });
     } catch (e) { console.error("PDF Fail", e); }
@@ -2315,8 +2315,8 @@ async function downloadInvoicePDF(id) {
             date: new Date(inv.createdAt).toLocaleDateString('en-GB'),
             party: { name: inv.stockistName, address: party.address, dl: party.dl || party.dlNo, gst: party.gst || party.gstNo },
             items: inv.items.map(it => ({
-                name: it.name, manufacturer: it.manufacturer, hsn: it.hsn, batch: it.batch, exp: it.exp,
-                mrp: it.mrp, qty: it.qty, price: it.price, gstPercent: it.gstPercent, totalValue: it.totalValue
+                name: it.name, manufacturer: it.manufacturer, hsn: it.hsn, batch: it.batch, exp: it.expDate || it.exp || '-',
+                mrp: it.mrp || 0, qty: it.qty, price: it.priceUsed || it.price || 0, gstPercent: it.gstPercent || 12, totalValue: it.totalValue || 0
             })),
             grandTotal: inv.grandTotal,
             terms: companyProfile.invoiceTerms || "",
