@@ -595,7 +595,17 @@
             <div id="tab-notes" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                     <h2 class="section-title" style="margin: 0;">📝 Financial Credit/Debit Notes</h2>
-                    <button class="btn btn-primary" onclick="openNoteModal()">+ ISSUE NEW NOTE</button>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <input type="text" id="noteSearch" placeholder="Search by Party or Note No..." 
+                            onkeyup="filterNotes()"
+                            style="width: 250px; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; color: #fff;">
+                        <select id="note-filter-type" onchange="filterNotes()" style="width: 150px;">
+                            <option value="ALL">All Types</option>
+                            <option value="CN">Credit Notes</option>
+                            <option value="DN">Debit Notes</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="openNoteModal()">+ ISSUE NEW NOTE</button>
+                    </div>
                 </div>
                 <div class="glass-card">
                     <div class="table-container">
@@ -1303,42 +1313,54 @@
                 </div>
             </div>
     <!-- MODAL (Financial Note) -->
-    <div id="noteModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
-        <div class="glass-card" style="width: 500px; margin: 0;">
-            <h3 class="section-title">📝 Issue Financial Note</h3>
+    <div id="noteModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(15px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="glass-card" style="width: 600px; padding: 2.5rem; border: 1px solid rgba(255,255,255,0.15);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem; border-bottom:1px solid var(--glass-border); padding-bottom:1rem;">
+                <h3 class="section-title" style="margin:0;">📝 Issue New Financial Adjustment</h3>
+                <button class="btn btn-ghost" onclick="closeNoteModal()">✕</button>
+            </div>
             <form id="noteForm" onsubmit="saveFinancialNote(event)">
-                <div class="form-group">
-                    <label>Note Type</label>
-                    <select id="note-type" required>
-                        <option value="CN">CREDIT NOTE (Reducing Balance)</option>
-                        <option value="DN">DEBIT NOTE (Increasing Balance)</option>
-                    </select>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">
+                    <div class="form-group">
+                        <label>Transaction Type</label>
+                        <select id="note-type" required style="border-color: var(--primary);">
+                            <option value="CN">CREDIT NOTE (Reduce Due)</option>
+                            <option value="DN">DEBIT NOTE (Increase Due)</option>
+                        </select>
+                        <p style="font-size:0.65rem; color:var(--text-muted); margin-top:5px;">*CN for Returns/Discounts, DN for Charges.</p>
+                    </div>
+                    <div class="form-group">
+                        <label>Adjustment Amount (₹)</label>
+                        <input type="number" id="note-amount" required step="0.01" placeholder="0.00" style="font-weight:800; font-size:1.1rem; color:var(--primary);">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Select Party</label>
-                    <select id="note-party" required></select>
+
+                <div class="form-group" style="margin-top:1.5rem;">
+                    <label>Select Party / Stockist</label>
+                    <select id="note-party" required onchange="updateNotePartyDetails(this.value)"></select>
+                    <div id="note-party-info" style="font-size:0.7rem; color:var(--accent); margin-top:5px; height: 1rem;"></div>
                 </div>
-                <div class="form-group">
-                    <label>Adjustment Amount (₹)</label>
-                    <input type="number" id="note-amount" required step="0.01">
-                </div>
-                <div class="form-group">
-                    <label>Reason for Note</label>
+
+                <div class="form-group" style="margin-top:1.5rem;">
+                    <label>Reason for Adjustment</label>
                     <select id="note-reason" required>
-                        <option value="Price Difference">Price Difference</option>
-                        <option value="Expiry Return">Expiry Return</option>
-                        <option value="Breakage/Damage">Breakage/Damage</option>
-                        <option value="Promotional Discount">Promotional Discount</option>
-                        <option value="Other">Other</option>
+                        <option value="Price Difference">Price Difference / Rate Variance</option>
+                        <option value="Expiry Return">Expiry Return (Short Dated)</option>
+                        <option value="Breakage/Damage">Breakage or Physical Damage</option>
+                        <option value="Promotional Discount">Special Promotional Discount</option>
+                        <option value="Scheme Benefit">Scheme / Bonus Settlement</option>
+                        <option value="Other">Other Adjustment</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Description (Optional)</label>
-                    <textarea id="note-desc" style="min-height: 80px;"></textarea>
+
+                <div class="form-group" style="margin-top:1.5rem;">
+                    <label>Internal Reference / Description</label>
+                    <textarea id="note-desc" style="min-height: 100px;" placeholder="Details for ledger entry..."></textarea>
                 </div>
-                <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
-                    <button type="button" class="btn btn-ghost" onclick="closeNoteModal()">CANCEL</button>
-                    <button type="submit" class="btn btn-primary">ISSUE NOTE</button>
+
+                <div style="margin-top: 2.5rem; display: flex; gap: 1rem;">
+                    <button type="button" class="btn btn-ghost" onclick="closeNoteModal()" style="flex: 1; justify-content:center;">CANCEL</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 2; justify-content:center; font-weight:800;">✓ GENERATE & POST NOTE</button>
                 </div>
             </form>
         </div>

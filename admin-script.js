@@ -1633,10 +1633,34 @@ async function loadFinancialNotes() {
     try {
         const res = await fetch('/api/admin/financial-notes');
         allNotes = await res.json();
+        renderFinancialNotes();
     } catch (e) { console.error("Load notes fail", e); }
 }
 
-function renderFinancialNotes() {
+function filterNotes() {
+    const query = document.getElementById('noteSearch').value.toLowerCase();
+    const type = document.getElementById('note-filter-type').value;
+    
+    const filtered = allNotes.filter(n => {
+        const matchesQuery = n.noteNo.toLowerCase().includes(query) || n.partyName.toLowerCase().includes(query);
+        const matchesType = type === 'ALL' || n.noteType === type;
+        return matchesQuery && matchesType;
+    });
+    
+    renderFinancialNotes(filtered);
+}
+
+function updateNotePartyDetails(id) {
+    const s = allStockists.find(x => x._id === id);
+    const info = document.getElementById('note-party-info');
+    if (s && info) {
+        info.innerText = `Current Outstanding: ₹${s.outstandingBalance.toLocaleString('en-IN')}`;
+    } else if (info) {
+        info.innerText = '';
+    }
+}
+
+function renderFinancialNotes(data = allNotes) {
     const tbody = document.getElementById('noteTableBody');
     if (!tbody) return;
 
@@ -1703,35 +1727,94 @@ function downloadNotePDF(id) {
     if (!note) return;
 
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    doc.setFontSize(20);
-    doc.setTextColor(note.noteType === 'CN' ? 16 : 239, note.noteType === 'CN' ? 185 : 68, note.noteType === 'CN' ? 129 : 68);
-    doc.text(note.noteType === 'CN' ? "CREDIT NOTE" : "DEBIT NOTE", 105, 20, { align: 'center' });
-
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text("EMYRIS BIOLIFESCIENCES", 20, 35);
+    const doc = new jsPDF('p', 'mm', 'a4');
     
-    doc.text("Issued To:", 20, 50);
-    doc.setFontSize(12);
-    doc.setTextColor(0);
-    doc.text(note.partyName || 'N/A', 20, 57);
+    const isCN = note.noteType === 'CN';
+    const themeColor = isCN ? [16, 185, 129] : [239, 68, 68]; // Green for Credit, Red for Debit
 
+    // Header Block
+    doc.setFillColor(...themeColor);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text(isCN ? "CREDIT NOTE" : "DEBIT NOTE", 105, 20, { align: 'center' });
     doc.setFontSize(10);
-    doc.text("Note No: " + note.noteNo, 140, 50);
-    doc.text("Date: " + new Date(note.createdAt).toLocaleDateString('en-GB'), 140, 57);
+    doc.text("Financial Adjustment Record", 105, 28, { align: 'center' });
 
+    // Company Info
+    doc.setTextColor(40, 44, 52);
+    if (companyProfile.logoImage) {
+        doc.addImage(companyProfile.logoImage, 'PNG', 15, 45, 30, 15);
+    }
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text(companyProfile.name || "EMYRIS BIOLIFESCIENCES", 15, 65);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    const addr = doc.splitTextToSize(companyProfile.address || "", 80);
+    doc.text(addr, 15, 70);
+
+    // Note Details (Right Side)
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Note No: ${note.noteNo}`, 195, 55, { align: 'right' });
+    doc.setFont("helvetica", "normal");
+    doc.text(`Date: ${new Date(note.createdAt).toLocaleDateString('en-GB')}`, 195, 60, { align: 'right' });
+    doc.text(`Reference: INTERNAL/ADJ`, 195, 65, { align: 'right' });
+
+    // Issued To Block
+    doc.setFillColor(245, 247, 250);
+    doc.rect(15, 85, 180, 25, 'F');
+    doc.setFont("helvetica", "bold");
+    doc.text("ISSUED TO:", 20, 92);
+    doc.setFontSize(11);
+    doc.text(note.partyName || 'N/A', 20, 98);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text("The mentioned amount has been adjusted in the party's ledger account.", 20, 104);
+
+    // Table
     doc.autoTable({
-        startY: 70,
-        head: [['Reason/Description', 'Adjustment Amount']],
+        startY: 115,
+        head: [['Adjustment Description', 'Reason Code', 'Adjustment Amount (INR)']],
         body: [[
-            `${note.reason} - ${note.description || ''}`,
-            `₹ ${note.amount.toLocaleString('en-IN')}`
+            note.description || 'General financial adjustment',
+            note.reason,
+            `Rs. ${note.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`
         ]],
         theme: 'grid',
-        headStyles: { fillColor: note.noteType === 'CN' ? [16, 185, 129] : [239, 68, 68] }
+        headStyles: { fillColor: themeColor, halign: 'center' },
+        columnStyles: {
+            2: { halign: 'right', fontStyle: 'bold' }
+        }
     });
+
+    let finalY = doc.lastAutoTable.finalY + 15;
+
+    // Amount in Words
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("Amount in Words:", 15, finalY);
+    doc.setFont("helvetica", "normal");
+    // Simple word conversion or placeholder
+    doc.text(`INR ${note.amount.toLocaleString('en-IN')} Rupees Only`, 15, finalY + 5);
+
+    // Signature Area
+    doc.setFont("helvetica", "bold");
+    doc.text(`For ${companyProfile.name || 'EMYRIS BIOLIFESCIENCES'}`, 195, finalY + 20, { align: 'right' });
+    if (companyProfile.signatureImage) {
+        doc.addImage(companyProfile.signatureImage, 'PNG', 165, finalY + 22, 30, 12);
+    }
+    doc.text("Authorized Signatory", 195, finalY + 40, { align: 'right' });
+
+    // Footer
+    doc.setFontSize(7);
+    doc.setTextColor(150);
+    doc.text("This is a computer-generated financial document and does not require a physical seal.", 105, 285, { align: 'center' });
+
+    doc.save(`Note_${note.noteNo}.pdf`);
+}
 
     doc.text("This is a financial adjustment note and does not affect physical inventory.", 20, doc.lastAutoTable.finalY + 20);
     doc.save(`Note_${note.noteNo}.pdf`);
