@@ -2119,8 +2119,9 @@ function numberToWords(num) {
         return s;
     };
     if (num === 0) return 'Zero';
-    let ns = Math.abs(Math.round(num)).toString().split('.');
+    let ns = num.toString().split('.');
     let integer = parseInt(ns[0]);
+    let fraction = ns[1] ? parseInt(ns[1]) : 0;
     let out = ''; let i = 0;
     while (integer > 0) {
         let group = (i === 0) ? integer % 1000 : integer % 100;
@@ -2128,7 +2129,9 @@ function numberToWords(num) {
         if (group > 0) out = makeGroup(group) + (g[i] ? g[i] + ' ' : '') + out;
         i++;
     }
-    return 'Rupees ' + out.trim() + ' Only';
+    let final = 'Rupees ' + out.trim();
+    if (fraction > 0) final += ' and ' + (fraction < 10 ? '0'+fraction : fraction) + '/100 Paise';
+    return final + ' Only';
 }
 
 async function generateStandardPDF({ 
@@ -2195,8 +2198,8 @@ async function generateStandardPDF({
         doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
         doc.text((companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES", 15, 28);
         doc.setFont("helvetica", "normal"); doc.setTextColor(40, 44, 52); doc.setFontSize(8);
-        const addrLines = doc.splitTextToSize((companyProfile && companyProfile.address) || "", 80);
-        doc.text(addrLines, 15, 33);
+        const addressLines = doc.splitTextToSize((companyProfile && companyProfile.address) || "Sumadhura Pragati Chambers, Park Ln, Secunderabad, Telangana - 500003", 80);
+        doc.text(addressLines, 15, 33);
         let cY = 33 + (addrLines.length * 4);
         doc.text(`DL No: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, 15, cY);
         doc.text(`GSTIN: ${(companyProfile && companyProfile.gstNo) || 'N/A'}`, 15, cY + 4);
@@ -2229,15 +2232,25 @@ async function generateStandardPDF({
     // 3. Items Table
     doc.autoTable({
         startY: style === 'classic' ? 70 : (style === 'compact' ? 55 : 85),
-        head: [['S.No', 'Description', 'HSN', 'Batch', 'Exp', 'MRP', 'Qty', 'Unit', 'Price', 'Taxable', 'GST%', 'Total']],
-        body: items.map((it, idx) => [
-            idx + 1, { content: `${it.name}\n(Mfg: ${it.manufacturer || 'EMYRIS'})`, styles: { fontSize: style === 'compact' ? 6 : 7 } },
-            it.hsn || '-', it.batch || '-', it.exp || '-', (it.mrp || 0).toFixed(2), it.qty, 'NOS', it.price.toFixed(2), (it.qty * it.price).toFixed(2), it.gstPercent + '%', it.totalValue.toFixed(2)
-        ]),
+        head: [['S.No', 'Description', 'HSN', 'Batch', 'Exp', 'MRP', 'Qty', 'Unit', 'Price', 'Taxable', 'GST%', 'Amount']],
+        body: items.map((it, idx) => {
+            const taxable = it.qty * it.price;
+            const gross = taxable * (1 + (it.gstPercent || 0) / 100);
+            return [
+                idx + 1, { content: `${it.name}\n(Mfg: ${it.manufacturer || 'EMYRIS'})`, styles: { fontSize: style === 'compact' ? 6 : 7 } },
+                it.hsn || '-', it.batch || 'B2401', it.exp || '12/25', (it.mrp || 0).toFixed(2), it.qty, 'NOS', it.price.toFixed(2), taxable.toFixed(2), (it.gstPercent || 0) + '%', gross.toFixed(2)
+            ];
+        }),
         theme: style === 'modern' ? 'striped' : 'grid',
         headStyles: { fillColor: t.primary, fontSize: style === 'compact' ? 6 : 7, halign: 'center' },
         styles: { fontSize: style === 'compact' ? 6 : 7, cellPadding: style === 'compact' ? 1 : 2 },
-        margin: { left: 15, right: 15 }
+        columnStyles: {
+            0: { cellWidth: 10 },
+            1: { cellWidth: 40 },
+            9: { halign: 'right' },
+            11: { halign: 'right', fontStyle: 'bold' }
+        },
+        margin: { left: 15, right: 15, bottom: 60 }
     });
 
     let tableFinalY = doc.lastAutoTable.finalY + 5;
