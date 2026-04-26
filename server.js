@@ -67,25 +67,35 @@ async function sendOrderEmails(order, stockist) {
     } catch (e) { console.error("❌ Bridge Email Fail:", e.message); }
 }
 
-async function sendEmail(to, subject, html) {
+async function sendEmail(to, subject, html, retryCount = 0) {
     if (!GOOGLE_SCRIPT_URL) {
         console.warn("⚠️ No GOOGLE_SCRIPT_URL configured. Email not sent to:", to);
         return false;
     }
     try {
-        console.log(`📤 Attempting email to: ${to} | Subject: ${subject}`);
+        console.log(`📤 Attempting email (Attempt ${retryCount + 1}) to: ${to}`);
         const res = await axios.post(GOOGLE_SCRIPT_URL, { to, subject, html }, { timeout: 15000 });
-        if (res.data && res.data.status === 'success') {
+        
+        if (res.data && (res.data.status === 'success' || res.data.success === true)) {
             console.log(`✅ Email Sent Successfully to: ${to}`);
             return true;
         } else {
-            console.error(`❌ Bridge returned error for ${to}:`, res.data);
-            return false;
+            throw new Error(res.data ? JSON.stringify(res.data) : "Unknown Bridge Error");
         }
     } catch (e) {
-        console.error(`❌ Email failed for ${to}:`, e.message);
-        if (e.code === 'ECONNABORTED') console.error("   Reason: Request timed out (15s)");
-        return false;
+        console.error(`❌ Email attempt ${retryCount + 1} failed for ${to}:`, e.message);
+        
+        if (retryCount < 1) { // Retry once
+            console.log(`🔄 Retrying email to ${to}...`);
+            return await sendEmail(to, subject, html, retryCount + 1);
+        } else {
+            // Log to FailedEmails for manual recovery
+            try {
+                await FailedEmail.create({ to, subject, html, error: e.message, attempts: retryCount + 1 });
+                console.log(`💾 Logged failed email to ${to} for recovery.`);
+            } catch (logErr) { console.error("❌ Failed to log email error:", logErr.message); }
+            return false;
+        }
     }
 }
 
@@ -337,14 +347,25 @@ const financialNoteSchema = new mongoose.Schema({
     noteType: { type: String, enum: ['CN', 'DN'], required: true },
     party: { type: mongoose.Schema.Types.ObjectId, ref: 'Stockist', required: true },
     partyName: String,
+    refInvoiceNo: String,
+    refInvoiceDate: String,
     amount: { type: Number, required: true },
     reason: { type: String, required: true },
     description: String,
-    // Inventory Link (Optional)
-    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
-    productName: String,
-    batchNo: String,
-    qty: { type: Number, default: 0 },
+    // Multi-Item Support
+    items: [{
+        productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+        name: String,
+        qty: Number,
+        hsn: String,
+        batchNo: String,
+        expDate: String,
+        price: Number,
+        gstPercent: Number,
+        totalValue: Number
+    }],
+    subTotal: Number,
+    gstAmount: Number,
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -360,6 +381,16 @@ const paymentSchema = new mongoose.Schema({
     date: { type: Date, default: Date.now }
 });
 
+// 9. Failed Emails Log
+const failedEmailSchema = new mongoose.Schema({
+    to: String,
+    subject: String,
+    html: String,
+    error: String,
+    attempts: { type: Number, default: 0 },
+    lastAttempt: { type: Date, default: Date.now }
+});
+
 const Company = mongoose.model('Company', companySchema);
 const Product = mongoose.model('Product', productSchema);
 const Stockist = mongoose.model('Stockist', stockistSchema);
@@ -372,6 +403,7 @@ const Invoice = mongoose.model('Invoice', invoiceSchema);
 const PurchaseEntry = mongoose.model('PurchaseEntry', purchaseEntrySchema);
 const FinancialNote = mongoose.model('FinancialNote', financialNoteSchema);
 const Payment = mongoose.model('Payment', paymentSchema);
+const FailedEmail = mongoose.model('FailedEmail', failedEmailSchema);
 
 // --- NEGOTIATION ENDPOINTS ---
 
@@ -872,6 +904,36 @@ app.delete('/api/admin/gst/:id', async (req, res) => {
     res.json({ success: true });
 });
 
+// Email Recovery Endpoints
+app.get('/api/admin/failed-emails', async (req, res) => {
+    try {
+        const failed = await FailedEmail.find().sort({ lastAttempt: -1 });
+        res.json(failed);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/failed-emails/:id/retry', async (req, res) => {
+    try {
+        const email = await FailedEmail.findById(req.params.id);
+        if (!email) return res.status(404).json({ success: false, message: 'Email not found' });
+        
+        const success = await sendEmail(email.to, email.subject, email.html);
+        if (success) {
+            await FailedEmail.findByIdAndDelete(req.params.id);
+            res.json({ success: true });
+        } else {
+            res.status(500).json({ success: false, message: 'Retry failed again' });
+        }
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/admin/failed-emails/:id', async (req, res) => {
+    try {
+        await FailedEmail.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Public Products List
 app.get('/api/products', async (req, res) => {
     try {
@@ -1235,54 +1297,59 @@ app.get('/api/admin/financial-notes', async (req, res) => {
 
 app.post('/api/admin/financial-notes', async (req, res) => {
     try {
-        const { noteType, party, amount, reason, description, productId, batchNo, qty } = req.body;
+        const { noteType, party, amount, reason, description, refInvoiceNo, refInvoiceDate, items, subTotal, gstAmount } = req.body;
         
-        // Generate Note No (EMY-CN-YYYYMMDD-XXXX or EMY-DN-...)
-        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        const count = await FinancialNote.countDocuments({ noteType });
-        const noteNo = `EMY-${noteType}-${dateStr}-${(count + 1).toString().padStart(4, '0')}`;
+        // Generate Note No
+        let noteNo;
+        if (reason === 'Salable Return') {
+            const count = await FinancialNote.countDocuments({ reason: 'Salable Return' });
+            noteNo = `S-CN-${(count + 1).toString().padStart(5, '0')}`;
+        } else {
+            const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            const count = await FinancialNote.countDocuments({ noteType });
+            noteNo = `EMY-${noteType}-${dateStr}-${(count + 1).toString().padStart(4, '0')}`;
+        }
 
         const partyObj = await Stockist.findById(party);
         
         const newNote = new FinancialNote({
-            noteNo,
-            noteType,
-            party,
+            noteNo, noteType, party,
             partyName: partyObj ? partyObj.name : 'Unknown',
-            amount,
-            reason,
-            description,
-            productId,
-            batchNo,
-            qty: qty || 0
+            amount, reason, description, refInvoiceNo, refInvoiceDate, items,
+            subTotal, gstAmount
         });
 
-        // INVENTORY LOGIC
-        if (productId && batchNo && qty > 0) {
-            const product = await Product.findById(productId);
-            if (product) {
-                newNote.productName = product.name;
-                
-                if (reason === 'Salable Return') {
-                    // Credit Note to Stockist + Stock Added Back to Inventory
-                    await Product.findByIdAndUpdate(productId, { $inc: { qtyAvailable: qty } });
-                } else if (reason === 'Purchase Return') {
-                    // Debit Note to Supplier + Stock Removed from Inventory
-                    await Product.findByIdAndUpdate(productId, { $inc: { qtyAvailable: -qty } });
+        // INVENTORY LOGIC for Multi-Items
+        if (items && Array.isArray(items)) {
+            for (const item of items) {
+                const product = await Product.findById(item.productId);
+                if (product) {
+                    const adj = (reason === 'Salable Return') ? item.qty : -item.qty;
+                    product.qtyAvailable += adj;
+                    
+                    // Batch Logic
+                    if (item.batchNo) {
+                        const bIdx = product.batches.findIndex(b => b.batchNo === item.batchNo);
+                        if (bIdx > -1) {
+                            product.batches[bIdx].qtyAvailable += adj;
+                        } else if (adj > 0) {
+                            // If it's a return and batch doesn't exist, create it (shouldn't happen often but possible)
+                            product.batches.push({
+                                batchNo: item.batchNo,
+                                expDate: item.expDate || 'N/A',
+                                qtyAvailable: adj,
+                                mrp: item.price || 0
+                            });
+                        }
+                    }
+                    await product.save();
                 }
             }
         }
 
         await newNote.save();
 
-        // Update Party's Outstanding Balance
-        // CN (Credit Note) reduces what they owe (if stockist) or reduces what we owe them (if supplier?)
-        // User said "generate file and issue the same for accounting purpose"
-        // I will update the outstanding balance for tracking
         if (partyObj) {
-            // If Stockist (Customer): CN decreases balance, DN increases balance
-            // If Supplier (Vendor): CN increases balance (we owe them more?), DN decreases (we owe them less)
-            // Let's stick to Stockist logic for now as it's primarily an OMS
             const adjustment = noteType === 'CN' ? -amount : amount;
             await Stockist.findByIdAndUpdate(party, { $inc: { outstandingBalance: adjustment } });
         }

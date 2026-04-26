@@ -5,6 +5,8 @@ let allStockists = [];
 let allOrders = [];
 let allInvoices = [];
 let allPurchaseEntries = [];
+let allNotes = [];
+let currentNoteReason = 'ALL';
 let purchaseItems = []; // Temporary storage for new purchase entry
 let companyProfile = {};
 
@@ -73,18 +75,19 @@ function switchTab(tabId, el, subType = null) {
     if (tabId === 'orders') renderOrderHistory();
     if (tabId === 'invoices') renderInvoices();
     if (tabId === 'notes') {
+        currentNoteReason = subType || 'ALL';
         renderFinancialNotes();
-        if (subType) {
-            // If a specific sub-type was requested (e.g. from sub-menu)
-            const typeFilter = document.getElementById('note-type-filter');
-            if (typeFilter) {
-                typeFilter.value = subType;
-                filterNotes();
-            }
+        filterNotes();
+        
+        // Update context label
+        const label = document.getElementById('note-context-label');
+        if(label) {
+            label.innerText = currentNoteReason === 'ALL' ? "Global View" : `Viewing: ${currentNoteReason}`;
         }
     }
     if (tabId === 'purchase') renderPurchaseEntries();
     if (tabId === 'reports') refreshInventoryVal();
+    if (tabId === 'system') loadFailedEmails();
 }
 
 function toggleSubmenu(id, el) {
@@ -1675,27 +1678,26 @@ async function loadFinancialNotes() {
 
 function filterNotes() {
     const query = document.getElementById('noteSearch').value.toLowerCase();
-    const reasonFilter = document.getElementById('note-type-filter').value;
     
     // Update dynamic title
     const titleEl = document.getElementById('notes-page-title');
     if (titleEl) {
-        if (reasonFilter === 'ALL') titleEl.innerText = "📝 Global Financial Adjustments";
-        else titleEl.innerText = `📝 ${reasonFilter} Records`;
+        if (currentNoteReason === 'ALL') titleEl.innerText = "📝 Global Financial Adjustments";
+        else titleEl.innerText = `📝 ${currentNoteReason} Records`;
     }
 
     const filtered = allNotes.filter(n => {
         const matchesQuery = n.noteNo.toLowerCase().includes(query) || n.partyName.toLowerCase().includes(query);
-        const matchesReason = reasonFilter === 'ALL' || n.reason === reasonFilter;
+        const matchesReason = currentNoteReason === 'ALL' || n.reason === currentNoteReason;
         return matchesQuery && matchesReason;
     });
     
     renderFinancialNotes(filtered);
 }
 
-function updateNotePartyDetails(id) {
+function updateNotePartyDetails(id, infoId = 'note-party-info') {
     const s = allStockists.find(x => x._id === id);
-    const info = document.getElementById('note-party-info');
+    const info = document.getElementById(infoId);
     if (s && info) {
         info.innerText = `Current Outstanding: ₹${s.outstandingBalance.toLocaleString('en-IN')}`;
     } else if (info) {
@@ -1707,14 +1709,16 @@ function renderFinancialNotes(data = allNotes) {
     const tbody = document.getElementById('noteTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = allNotes.map(n => `
+    tbody.innerHTML = data.map(n => `
         <tr>
             <td style="font-family:monospace; font-weight:700; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">${n.noteNo}</td>
             <td><span class="badge ${n.noteType === 'CN' ? 'badge-approved' : 'badge-pending'}">${n.noteType === 'CN' ? 'CREDIT' : 'DEBIT'}</span></td>
             <td style="font-weight:600;">${n.partyName}</td>
             <td>
                 <div>${n.reason}</div>
-                ${n.productName ? `<div style="font-size:0.7rem; color:var(--text-muted);">📦 ${n.productName} | ${n.batchNo} | Qty: ${n.qty}</div>` : ''}
+                ${n.items && n.items.length > 0 
+                    ? `<div style="font-size:0.7rem; color:var(--text-muted);">📦 ${n.items.length} Items | Inv: ${n.refInvoiceNo || '-'}</div>` 
+                    : (n.productName ? `<div style="font-size:0.7rem; color:var(--text-muted);">📦 ${n.productName} | ${n.batchNo} | Qty: ${n.qty}</div>` : '')}
             </td>
             <td style="text-align:right; font-weight:800; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">₹${n.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             <td>${new Date(n.createdAt).toLocaleDateString('en-GB')}</td>
@@ -1726,6 +1730,11 @@ function renderFinancialNotes(data = allNotes) {
 }
 
 function openNoteModal() {
+    if (currentNoteReason === 'Salable Return' || currentNoteReason === 'Purchase Return') {
+        openReturnModal(currentNoteReason);
+        return;
+    }
+
     const select = document.getElementById('note-party');
     if(select) {
         select.innerHTML = '<option value="">-- Select Party --</option>' + 
@@ -1775,6 +1784,187 @@ function closeNoteModal() {
     document.getElementById('noteModal').classList.add('hidden');
 }
 
+// --- MULTI-ITEM RETURN LOGIC ---
+let returnItems = [];
+
+function openReturnModal(reason) {
+    const modal = document.getElementById('returnModal');
+    const title = document.getElementById('return-modal-title');
+    document.getElementById('return-reason').value = reason;
+    title.innerText = reason === 'Salable Return' ? "📝 Record Sale Return (Credit Note)" : "📝 Record Purchase Return (Debit Note)";
+    
+    // Setup Party Select
+    const select = document.getElementById('return-party');
+    if(select) {
+        select.innerHTML = '<option value="">-- Select Party --</option>' + 
+            allStockists.map(s => `<option value="${s._id}">${s.name} (${s.partyType || 'STOCKIST'})</option>`).join('');
+    }
+
+    document.getElementById('returnForm').reset();
+    document.getElementById('return-items-body').innerHTML = '';
+    returnItems = [];
+    addReturnRow(); // Add first empty row
+    calculateReturnTotals();
+    modal.classList.remove('hidden');
+}
+
+function closeReturnModal() {
+    document.getElementById('returnModal').classList.add('hidden');
+}
+
+function addReturnRow() {
+    const id = Date.now();
+    const row = document.createElement('tr');
+    row.id = `return-row-${id}`;
+    row.innerHTML = `
+        <td style="padding: 10px;">
+            <select class="return-prod-select" onchange="updateReturnRowData('${id}', this.value)" required>
+                <option value="">-- Select Product --</option>
+                ${allProducts.map(p => `<option value="${p._id}">${p.name} (${p.packing})</option>`).join('')}
+            </select>
+        </td>
+        <td><input type="text" id="return-hsn-${id}" readonly style="background:transparent; border:none; color:var(--text-muted);"></td>
+        <td><input type="text" id="return-batch-${id}" placeholder="Batch"></td>
+        <td><input type="text" id="return-exp-${id}" placeholder="MM/YY"></td>
+        <td><input type="number" id="return-qty-${id}" oninput="calculateReturnTotals()" required style="text-align:center;"></td>
+        <td><input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" required style="text-align:right;"></td>
+        <td><input type="number" id="return-gst-pct-${id}" oninput="calculateReturnTotals()" step="0.1" required style="text-align:center;"></td>
+        <td style="text-align:right; font-weight:700;" id="return-row-total-${id}">₹0.00</td>
+        <td><button type="button" class="btn btn-ghost" onclick="removeReturnRow('${id}')" style="color:#ef4444; padding:5px;">✕</button></td>
+    `;
+    document.getElementById('return-items-body').appendChild(row);
+    returnItems.push(id);
+}
+
+function removeReturnRow(id) {
+    if(returnItems.length <= 1) return;
+    document.getElementById(`return-row-${id}`).remove();
+    returnItems = returnItems.filter(x => x != id);
+    calculateReturnTotals();
+}
+
+function updateReturnRowData(rowId, productId) {
+    const p = allProducts.find(x => x._id === productId);
+    if(p) {
+        document.getElementById(`return-hsn-${rowId}`).value = p.hsn || '';
+        document.getElementById(`return-price-${rowId}`).value = p.pts || 0;
+        document.getElementById(`return-gst-pct-${rowId}`).value = p.gstPercent || 12;
+        if(p.batches && p.batches.length > 0) {
+            document.getElementById(`return-batch-${rowId}`).value = p.batches[0].batchNo || '';
+            document.getElementById(`return-exp-${rowId}`).value = p.batches[0].expDate || '';
+        }
+    }
+    calculateReturnTotals();
+}
+
+function calculateReturnTotals() {
+    let subtotal = 0;
+    let gstTotal = 0;
+
+    returnItems.forEach(id => {
+        const qty = Number(document.getElementById(`return-qty-${id}`).value) || 0;
+        const price = Number(document.getElementById(`return-price-${id}`).value) || 0;
+        const gstPct = Number(document.getElementById(`return-gst-pct-${id}`).value) || 0;
+        
+        const taxable = qty * price;
+        const gst = taxable * (gstPct / 100);
+        const rowTotal = taxable + gst;
+        
+        subtotal += taxable;
+        gstTotal += gst;
+        
+        document.getElementById(`return-row-total-${id}`).innerText = `₹${rowTotal.toFixed(2)}`;
+    });
+
+    const total = subtotal + gstTotal;
+    const rounded = Math.round(total);
+    const roundOff = rounded - total;
+
+    document.getElementById('return-subtotal').innerText = `₹${subtotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    document.getElementById('return-gst').innerText = `₹${gstTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    document.getElementById('return-roundoff').innerText = `₹${roundOff.toFixed(2)}`;
+    document.getElementById('return-total').innerText = `₹${rounded.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+}
+
+async function saveMultiItemReturn(e) {
+    e.preventDefault();
+    const reasonValue = document.getElementById('return-reason').value;
+    
+    // Strict Header Validation
+    if(!document.getElementById('return-party').value) return alert("❌ Please select a Party.");
+    if(!document.getElementById('return-inv-no').value) return alert("❌ Ref. Invoice No is mandatory.");
+    if(!document.getElementById('return-inv-date').value) return alert("❌ Invoice Date is mandatory.");
+
+    try {
+        const items = returnItems.map(id => {
+            const prodId = document.querySelector(`#return-row-${id} .return-prod-select`).value;
+            const p = allProducts.find(x => x._id === prodId);
+            const qty = Number(document.getElementById(`return-qty-${id}`).value);
+            const price = Number(document.getElementById(`return-price-${id}`).value);
+            const gstPct = Number(document.getElementById(`return-gst-pct-${id}`).value);
+            const batch = document.getElementById(`return-batch-${id}`).value;
+            const exp = document.getElementById(`return-exp-${id}`).value;
+            const hsn = document.getElementById(`return-hsn-${id}`).value;
+
+            if(!prodId || !qty || !price || !batch || !exp) {
+                throw new Error("All columns (Product, Batch, Exp, Qty, Price) are mandatory and cannot be left blank.");
+            }
+            
+            const taxable = qty * price;
+            return {
+                productId: prodId,
+                name: p ? p.name : 'Unknown',
+                qty,
+                hsn,
+                batchNo: batch,
+                expDate: exp,
+                price,
+                gstPercent: gstPct,
+                totalValue: taxable + (taxable * (gstPct / 100))
+            };
+        });
+
+        if(items.length === 0) return alert("Please add at least one product.");
+
+        const totalStr = document.getElementById('return-total').innerText.replace(/[₹,]/g, '');
+        const subTotalStr = document.getElementById('return-subtotal').innerText.replace(/[₹,]/g, '');
+        const gstAmountStr = document.getElementById('return-gst').innerText.replace(/[₹,]/g, '');
+        
+        const data = {
+            noteType: reasonValue === 'Salable Return' ? 'CN' : 'DN',
+            party: document.getElementById('return-party').value,
+            amount: Number(totalStr),
+            subTotal: Number(subTotalStr),
+            gstAmount: Number(gstAmountStr),
+            reason: reasonValue,
+            description: `Multi-item return against Inv: ${document.getElementById('return-inv-no').value}`,
+            refInvoiceNo: document.getElementById('return-inv-no').value,
+            refInvoiceDate: document.getElementById('return-inv-date').value,
+            items
+        };
+
+        const res = await fetch('/api/admin/financial-notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if(result.success) {
+            alert("Return Processed & Document Generated!");
+            closeReturnModal();
+            await loadFinancialNotes();
+            await loadProducts();
+            await loadStockists();
+            // Automatically trigger download of the new note
+            if (result.note && result.note._id) {
+                downloadNotePDF(result.note._id);
+            }
+        } else {
+            alert("Error: " + result.error);
+        }
+    } catch (e) { alert(e.message || "Submission failed"); }
+}
+
 async function saveFinancialNote(e) {
     e.preventDefault();
     const data = {
@@ -1799,7 +1989,7 @@ async function saveFinancialNote(e) {
             alert("✅ Financial Note Issued Successfully!");
             await loadFinancialNotes();
             await loadStockists();
-            await loadProducts(); // Refresh stock if changed
+            await loadProducts();
             renderFinancialNotes();
             closeNoteModal();
         }
@@ -1807,97 +1997,193 @@ async function saveFinancialNote(e) {
 }
 
 function downloadNotePDF(id) {
-    const note = allNotes.find(x => x._id === id);
-    if (!note) return;
+    try {
+        const note = allNotes.find(x => x._id === id);
+        if (!note) return alert("Note not found");
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p', 'mm', 'a4');
-    
-    const isCN = note.noteType === 'CN';
-    const themeColor = isCN ? [16, 185, 129] : [239, 68, 68]; // Green for Credit, Red for Debit
-
-    // Header Block
-    doc.setFillColor(...themeColor);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.text(isCN ? "CREDIT NOTE" : "DEBIT NOTE", 105, 20, { align: 'center' });
-    doc.setFontSize(10);
-    doc.text("Financial Adjustment Record", 105, 28, { align: 'center' });
-
-    // Company Info
-    doc.setTextColor(40, 44, 52);
-    if (companyProfile.logoImage) {
-        doc.addImage(companyProfile.logoImage, 'PNG', 15, 45, 30, 15);
-    }
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text(companyProfile.name || "EMYRIS BIOLIFESCIENCES", 15, 65);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    const addr = doc.splitTextToSize(companyProfile.address || "", 80);
-    doc.text(addr, 15, 70);
-
-    // Note Details (Right Side)
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Note No: ${note.noteNo}`, 195, 55, { align: 'right' });
-    doc.setFont("helvetica", "normal");
-    doc.text(`Date: ${new Date(note.createdAt).toLocaleDateString('en-GB')}`, 195, 60, { align: 'right' });
-    doc.text(`Reference: INTERNAL/ADJ`, 195, 65, { align: 'right' });
-
-    // Issued To Block
-    doc.setFillColor(245, 247, 250);
-    doc.rect(15, 85, 180, 25, 'F');
-    doc.setFont("helvetica", "bold");
-    doc.text("ISSUED TO:", 20, 92);
-    doc.setFontSize(11);
-    doc.text(note.partyName || 'N/A', 20, 98);
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.text("The mentioned amount has been adjusted in the party's ledger account.", 20, 104);
-
-    // Table
-    doc.autoTable({
-        startY: 115,
-        head: [['Adjustment Description', 'Reason Code', 'Adjustment Amount (INR)']],
-        body: [[
-            note.description || 'General financial adjustment',
-            note.reason,
-            `Rs. ${note.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`
-        ]],
-        theme: 'grid',
-        headStyles: { fillColor: themeColor, halign: 'center' },
-        columnStyles: {
-            2: { halign: 'right', fontStyle: 'bold' }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        
+        function numberToWords(num) {
+            const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+            const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+            const g = ['', 'Thousand', 'Lakh', 'Crore'];
+            const makeGroup = (n) => {
+                let s = '';
+                if (n >= 100) { s += a[Math.floor(n / 100)] + 'Hundred '; n %= 100; }
+                if (n >= 20) { s += b[Math.floor(n / 10)] + ' '; n %= 10; }
+                if (n > 0) s += a[n];
+                return s;
+            };
+            if (num === 0) return 'Zero';
+            let ns = Math.abs(Math.round(num)).toString().split('.');
+            let integer = parseInt(ns[0]);
+            let out = ''; let i = 0;
+            while (integer > 0) {
+                let group = (i === 0) ? integer % 1000 : integer % 100;
+                integer = (i === 0) ? Math.floor(integer / 1000) : Math.floor(integer / 100);
+                if (group > 0) out = makeGroup(group) + (g[i] ? g[i] + ' ' : '') + out;
+                i++;
+            }
+            return 'Rupees ' + out.trim() + ' Only';
         }
-    });
 
-    let finalY = doc.lastAutoTable.finalY + 15;
+        const party = allStockists.find(s => s._id === (note.party?._id || note.party)) || {};
+        const isInterstate = companyProfile.gstNo && party.gstNo && companyProfile.gstNo.substring(0, 2) !== party.gstNo.substring(0, 2);
 
-    // Amount in Words
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.text("Amount in Words:", 15, finalY);
-    doc.setFont("helvetica", "normal");
-    // Simple word conversion or placeholder
-    doc.text(`INR ${note.amount.toLocaleString('en-IN')} Rupees Only`, 15, finalY + 5);
+        // 1. Header Area
+        doc.setFontSize(16);
+        doc.setTextColor(99, 102, 241);
+        doc.setFont("helvetica", "bold");
+        const heading = note.reason === 'Salable Return' ? "SALES RETURN (CREDIT NOTE)" : (note.noteType === 'CN' ? "CREDIT NOTE" : "DEBIT NOTE");
+        doc.text(heading, 105, 12, { align: 'center' });
 
-    // Signature Area
-    doc.setFont("helvetica", "bold");
-    doc.text(`For ${companyProfile.name || 'EMYRIS BIOLIFESCIENCES'}`, 195, finalY + 20, { align: 'right' });
-    if (companyProfile.signatureImage) {
-        doc.addImage(companyProfile.signatureImage, 'PNG', 165, finalY + 22, 30, 12);
+        doc.setFontSize(7);
+        doc.setTextColor(150);
+        doc.text("ORIGINAL FOR RECIPIENT", 195, 7, { align: 'right' });
+
+        // 2. Company & Party Box
+        if (companyProfile.logoImage) {
+            try { doc.addImage(companyProfile.logoImage, 'PNG', 15, 15, 30, 15); } catch(e){}
+        }
+
+        doc.setFontSize(10);
+        doc.setTextColor(40);
+        doc.text(companyProfile.name || "EMYRIS BIOLIFESCIENCES", 15, 35);
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        const addr = doc.splitTextToSize(companyProfile.address || "", 80);
+        doc.text(addr, 15, 39);
+        let nextY = 39 + (addr.length * 4);
+        doc.setFont("helvetica", "bold");
+        doc.text(`GSTIN: ${companyProfile.gstNo || '-'}`, 15, nextY);
+        doc.text(`DL No: ${companyProfile.dlNo || '-'}`, 15, nextY + 4);
+
+        // Party Info (Right Side)
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(99, 102, 241);
+        doc.text("BILL TO / SHIP TO:", 115, 35);
+        doc.setTextColor(40);
+        doc.text(note.partyName || 'N/A', 115, 40);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        const pAddr = doc.splitTextToSize(party.address || 'N/A', 80);
+        doc.text(pAddr, 115, 44);
+        let pNextY = 44 + (pAddr.length * 4);
+        doc.setFont("helvetica", "bold");
+        doc.text(`GSTIN: ${party.gstNo || '-'}`, 115, pNextY);
+        doc.text(`DL No: ${party.dlNo || '-'}`, 115, pNextY + 4);
+
+        // Reference Info Bar
+        doc.setDrawColor(230);
+        doc.setFillColor(248, 250, 252);
+        doc.rect(15, pNextY + 10, 180, 15, 'F');
+        doc.setFontSize(8);
+        doc.setTextColor(100);
+        doc.text("Note No", 20, pNextY + 15);
+        doc.text("Date", 60, pNextY + 15);
+        doc.text("Ref Invoice", 100, pNextY + 15);
+        doc.text("Reason", 150, pNextY + 15);
+
+        doc.setTextColor(40);
+        doc.setFont("helvetica", "bold");
+        doc.text(note.noteNo, 20, pNextY + 21);
+        doc.text(new Date(note.createdAt).toLocaleDateString('en-GB'), 60, pNextY + 21);
+        doc.text(note.refInvoiceNo || '-', 100, pNextY + 21);
+        doc.text(note.reason || '-', 150, pNextY + 21);
+
+        // 3. Table Section
+        let tableStartY = pNextY + 30;
+        if (note.items && note.items.length > 0) {
+            doc.autoTable({
+                startY: tableStartY,
+                head: [['S.N', 'Description', 'HSN', 'Batch', 'Exp', 'Qty', 'Rate', 'GST%', 'Value']],
+                body: note.items.map((it, i) => [
+                    i + 1, it.name, it.hsn || '-', it.batchNo || '-', it.expDate || '-', it.qty, it.price.toFixed(2), it.gstPercent + '%', it.totalValue.toFixed(2)
+                ]),
+                theme: 'grid',
+                headStyles: { fillColor: [99, 102, 241], fontSize: 8, halign: 'center' },
+                styles: { fontSize: 8 },
+                columnStyles: { 8: { halign: 'right' }, 6: { halign: 'right' }, 5: { halign: 'center' } }
+            });
+        } else {
+            doc.autoTable({
+                startY: tableStartY,
+                head: [['Adjustment Details', 'Description', 'Amount']],
+                body: [[note.reason, note.description || 'General Adjustment', note.amount.toFixed(2)]],
+                theme: 'grid',
+                headStyles: { fillColor: [99, 102, 241] },
+                columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } }
+            });
+        }
+
+        let finalY = doc.lastAutoTable.finalY + 10;
+
+        // 4. GST Summary Table
+        const taxMap = {};
+        if (note.items && note.items.length > 0) {
+            note.items.forEach(it => {
+                const r = it.gstPercent;
+                if (!taxMap[r]) taxMap[r] = { taxable: 0, gst: 0 };
+                const taxable = it.totalValue / (1 + r/100);
+                taxMap[r].taxable += taxable;
+                taxMap[r].gst += (it.totalValue - taxable);
+            });
+
+            const taxRows = Object.keys(taxMap).sort((a,b)=>a-b).map(rate => {
+                const data = taxMap[rate];
+                if (isInterstate) {
+                    return [rate + '%', data.taxable.toFixed(2), '-', '-', data.gst.toFixed(2), data.gst.toFixed(2)];
+                } else {
+                    const half = data.gst / 2;
+                    return [rate + '%', data.taxable.toFixed(2), half.toFixed(2), half.toFixed(2), '-', data.gst.toFixed(2)];
+                }
+            });
+
+            doc.autoTable({
+                startY: finalY,
+                head: [['GST%', 'Taxable', 'CGST', 'SGST', 'IGST', 'Total Tax']],
+                body: taxRows,
+                theme: 'plain',
+                styles: { fontSize: 7, halign: 'right' },
+                headStyles: { fillColor: [240, 240, 240], textColor: 50, halign: 'right' },
+                margin: { left: 100 }
+            });
+            finalY = doc.lastAutoTable.finalY + 10;
+        }
+
+        // 5. Totals & Signature
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text(`GRAND TOTAL: Rs. ${note.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`, 195, finalY, { align: 'right' });
+        
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.text("Amount in Words:", 15, finalY);
+        doc.setFont("helvetica", "bold");
+        doc.text("(" + numberToWords(note.amount) + ")", 15, finalY + 5);
+
+        doc.text(`For ${companyProfile.name || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 20, { align: 'right' });
+        if (companyProfile.signatureImage) {
+            try { doc.addImage(companyProfile.signatureImage, 'PNG', 165, finalY + 22, 30, 12); } catch(e){}
+        }
+        doc.text("Authorised Signatory", 195, finalY + 40, { align: 'right' });
+
+        doc.setFontSize(7);
+        doc.setTextColor(150);
+        doc.text("Note: This is a computer generated document for Sales Return / Financial Adjustment.", 105, 285, { align: 'center' });
+
+        const fname = `${note.reason.replace(/\s+/g, '_')}_${note.noteNo}.pdf`;
+        doc.save(fname);
+    } catch (err) {
+        alert("PDF Error: " + err.message);
     }
-    doc.text("Authorized Signatory", 195, finalY + 40, { align: 'right' });
-
-    // Footer
-    doc.setFontSize(7);
-    doc.setTextColor(150);
-    doc.text("This is a computer-generated financial document and does not require a physical seal.", 105, 285, { align: 'center' });
-
-    doc.save(`Note_${note.noteNo}.pdf`);
+}
+    } catch (err) {
+        console.error("PDF Generation Error:", err);
+        alert("Failed to generate PDF. Error: " + err.message);
+    }
 }
 
 // --- LEDGER RE-INTEGRATION ---
@@ -2150,8 +2436,8 @@ async function downloadInvoicePDF(id) {
             idx + 1,
             { content: `${item.name}\n(Mfg: ${item.manufacturer || 'EMYRIS'})`, styles: { fontSize: style === 'compact' ? 6 : 7 } },
             item.hsn || '-',
-            item.batch || 'B2401',
-            item.exp || '12/25',
+            item.batch || '-',
+            item.exp || '-',
             `Rs. ${(item.mrp || 0).toFixed(2)}`,
             item.qty,
             'NOS',
@@ -2175,22 +2461,33 @@ async function downloadInvoicePDF(id) {
     const tableFinalY = doc.lastAutoTable.finalY + 10;
     
     // Dynamic Interstate / Intrastate GST Logic
-    const companyGST = companyProfile.gstNo || '36'; // Default Telangana code is 36
+    const companyGST = companyProfile.gstNo || '36'; 
     const buyerGST = party.gst || party.gstNo || '';
     const isInterstate = buyerGST.length > 2 && companyGST.substring(0, 2) !== buyerGST.substring(0, 2);
     
+    // Improved Tax Breakdown Logic: Group by GST Slab
+    const taxMap = {};
+    inv.items.forEach(item => {
+        const rate = item.gstPercent || 0;
+        if (!taxMap[rate]) taxMap[rate] = { taxable: 0, tax: 0 };
+        const itemTaxable = item.totalValue || 0;
+        taxMap[rate].taxable += itemTaxable;
+        taxMap[rate].tax += (itemTaxable * (rate / 100));
+    });
+
     let taxBody = [];
-    if (isInterstate) {
-        taxBody = [
-            ['IGST', `Rs. ${inv.subTotal.toFixed(2)}`, `${inv.items[0]?.gstPercent || 0}%`, `Rs. ${inv.gstAmount.toFixed(2)}`]
-        ];
-    } else {
-        const gstHalves = (inv.gstAmount / 2).toFixed(2);
-        taxBody = [
-            ['CGST', `Rs. ${inv.subTotal.toFixed(2)}`, `${(inv.items[0]?.gstPercent || 0)/2}%`, `Rs. ${gstHalves}`],
-            ['SGST', `Rs. ${inv.subTotal.toFixed(2)}`, `${(inv.items[0]?.gstPercent || 0)/2}%`, `Rs. ${gstHalves}`]
-        ];
-    }
+    Object.keys(taxMap).sort((a, b) => a - b).forEach(rate => {
+        const r = parseFloat(rate);
+        const data = taxMap[rate];
+        if (isInterstate) {
+            taxBody.push([`IGST @ ${r}%`, `Rs. ${data.taxable.toFixed(2)}`, `${r}%`, `Rs. ${data.tax.toFixed(2)}`]);
+        } else {
+            const halfRate = (r / 2).toFixed(1);
+            const halfTax = (data.tax / 2).toFixed(2);
+            taxBody.push([`CGST @ ${halfRate}%`, `Rs. ${data.taxable.toFixed(2)}`, `${halfRate}%`, `Rs. ${halfTax}`]);
+            taxBody.push([`SGST @ ${halfRate}%`, `Rs. ${data.taxable.toFixed(2)}`, `${halfRate}%`, `Rs. ${halfTax}`]);
+        }
+    });
 
     doc.autoTable({
         startY: tableFinalY,
@@ -2220,7 +2517,7 @@ async function downloadInvoicePDF(id) {
     doc.text("Amount in Words:", 15, finalY - 10);
     doc.setTextColor(40, 44, 52);
     doc.setFont("helvetica", "normal");
-    doc.text(numberToWords(inv.grandTotal), 15, finalY - 5);
+    doc.text("(" + numberToWords(inv.grandTotal) + ")", 15, finalY - 5);
 
     // Right Side: Sub Total, Round Off, Net Payable
     const unroundedTotal = Number((inv.subTotal + inv.gstAmount).toFixed(2));
@@ -2415,4 +2712,64 @@ function downloadExcel(data, filename) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Report");
     XLSX.writeFile(wb, `${filename}_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+// --- SYSTEM HEALTH & EMAIL RECOVERY ---
+async function loadFailedEmails() {
+    const tbody = document.getElementById('failedEmailTableBody');
+    if(!tbody) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/failed-emails`);
+        const failed = await res.json();
+        
+        if (failed.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #10b981; padding: 20px;">✅ All system emails delivered successfully.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = failed.map(e => `
+            <tr>
+                <td style="font-size: 0.8rem; font-weight: 700;">${e.to}</td>
+                <td style="font-size: 0.8rem;">${e.subject}</td>
+                <td style="color: #ef4444; font-size: 0.75rem;">${e.error}</td>
+                <td style="text-align: right;">
+                    <button class="btn btn-primary" style="padding: 5px 10px; font-size: 0.7rem;" onclick="retryEmail('${e._id}', this)">🔄 RETRY</button>
+                    <button class="btn btn-ghost" style="padding: 5px 10px; color: #ef4444;" onclick="deleteFailedEmail('${e._id}')">🗑️</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) { console.error("Load failed emails error:", e); }
+}
+
+async function retryEmail(id, btn) {
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `⏳`;
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/failed-emails/${id}/retry`, { method: 'POST' });
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ Email delivered successfully on retry!");
+            loadFailedEmails();
+        } else {
+            alert("❌ Retry failed: " + (result.message || "Unknown error"));
+        }
+    } catch (e) { alert("Retry failed"); }
+    finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
+async function deleteFailedEmail(id) {
+    if(!confirm("Are you sure you want to dismiss this failure log?")) return;
+    try {
+        const res = await fetch(`${API_BASE}/admin/failed-emails/${id}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (result.success) {
+            loadFailedEmails();
+        }
+    } catch (e) { alert("Delete failed"); }
 }
