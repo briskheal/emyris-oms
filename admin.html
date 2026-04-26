@@ -70,7 +70,7 @@
         .db-monitor { background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem; }
         .db-bar-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.05); border-radius: 10px; margin: 10px 0; overflow: hidden; }
         .db-bar-fill { height: 100%; background: var(--grad-primary); width: 0%; transition: 1s ease-out; }
-        .nav-logo { font-weight: 800; font-size: 1.6rem; letter-spacing: -0.5px; background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-logo { font-weight: 800; font-size: 1.25rem; letter-spacing: -0.5px; background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; }
         
         .main-container { display: flex; min-height: calc(100vh - 75px); }
         .sidebar { 
@@ -117,7 +117,7 @@
             transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .glass-card:hover { border-color: rgba(255, 255, 255, 0.15); }
-        .section-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 2rem; display: flex; align-items: center; gap: 12px; color: #fff; letter-spacing: -0.5px; }
+        .section-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 2rem; display: flex; align-items: center; gap: 12px; color: #fff; letter-spacing: -0.2px; text-transform: uppercase; }
 
         .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
         .stat-card { 
@@ -139,8 +139,8 @@
         .stat-card::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: var(--grad-primary); opacity: 0; transition: 0.3s; }
         .stat-card:hover::after { opacity: 1; }
 
-        .stat-label { color: var(--text-muted); font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 0.4rem; display: block; }
-        .stat-value { font-size: 1.8rem; font-weight: 900; color: #fff; letter-spacing: -1px; }
+        .stat-label { color: var(--text-muted); font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 0.4rem; display: block; }
+        .stat-value { font-size: 1.3rem; font-weight: 900; color: #fff; letter-spacing: -0.5px; }
 
         /* --- TABLES --- */
         .table-container { border-radius: 20px; overflow-x: auto; border: 1px solid var(--glass-border); background: rgba(15, 23, 42, 0.3); }
@@ -163,15 +163,15 @@
         th { 
             background: rgba(255,255,255,0.03); 
             text-align: left; 
-            padding: 1.25rem 1.5rem; 
-            font-size: 0.7rem; 
+            padding: 1rem 1.25rem; 
+            font-size: 0.65rem; 
             color: var(--text-muted); 
             font-weight: 800; 
             text-transform: uppercase; 
-            letter-spacing: 1.5px;
+            letter-spacing: 1.2px;
             border-bottom: 1px solid var(--glass-border);
         }
-        td { padding: 1.25rem 1.5rem; border-top: 1px solid var(--glass-border); font-size: 0.95rem; color: #cbd5e1; }
+        td { padding: 1rem 1.25rem; border-top: 1px solid var(--glass-border); font-size: 0.85rem; color: #cbd5e1; }
         tr { transition: 0.2s; }
         tr:hover { background: rgba(255,255,255,0.03); }
 
@@ -180,17 +180,17 @@
             width: 100%; 
             background: rgba(15, 23, 42, 0.6); 
             border: 1px solid var(--glass-border); 
-            border-radius: 16px; 
-            padding: 1rem 1.25rem; 
+            border-radius: 12px; 
+            padding: 0.75rem 1rem; 
             color: #fff; 
-            font-size: 1rem; 
+            font-size: 0.85rem; 
             transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2); background: rgba(15, 23, 42, 0.8); }
 
         .btn { 
-            padding: 1rem 2rem; 
-            border-radius: 16px; 
+            padding: 0.7rem 1.5rem; 
+            border-radius: 12px; 
             font-weight: 700; 
             cursor: pointer; 
             transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
@@ -198,8 +198,8 @@
             display: inline-flex; 
             align-items: center; 
             justify-content: center;
-            gap: 12px; 
-            font-size: 0.95rem; 
+            gap: 10px; 
+            font-size: 0.8rem; 
             letter-spacing: 0.5px;
         }
         .btn-primary { background: var(--grad-primary); color: #fff; box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4); position: relative; overflow: hidden; }
@@ -1194,7 +1194,7 @@
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
                     <div class="form-group">
                         <label>Login ID / User ID</label>
                         <input type="text" id="party-login" required>
@@ -1202,6 +1202,10 @@
                     <div class="form-group">
                         <label>Password (Secret)</label>
                         <input type="text" id="party-pass" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="party-email" required>
                     </div>
                 </div>
 

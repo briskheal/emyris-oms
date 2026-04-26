@@ -885,12 +885,12 @@ function renderStockists(list = null) {
             <td style="font-weight:600; color:#fff;">${s.name}</td>
             <td style="font-size:0.75rem; font-weight:700; color:var(--primary);">${s.partyType || 'STOCKIST'}</td>
             <td>${s.city || '-'}</td>
-            <td style="text-align:right; font-weight:700; color:${(s.outstandingBalance || 0) < 0 ? '#ef4444' : '#10b981'};">₹${(s.outstandingBalance || 0).toLocaleString('en-IN')}</td>
-            <td><span class="badge ${s.approved ? 'badge-approved' : 'badge-pending'}">${s.approved ? 'APPROVED' : 'PENDING'}</span></td>
-            <td style="text-align:right;">
-                <button class="btn btn-ghost" style="padding:5px 10px; color:var(--primary); font-size: 0.7rem; font-weight: 800;" onclick="viewLedger('${s._id}')">LEDGER</button>
-                <button class="btn btn-ghost" style="padding:5px 10px; font-size: 0.7rem; font-weight: 800;" onclick="openPartyModal('${s._id}')">EDIT</button>
-                <button class="btn btn-ghost" style="padding:5px 10px; color:#ef4444;" onclick="deleteStockist('${s._id}')">DELETE</button>
+            <td style="text-align:right; font-weight:700; color:${(s.outstandingBalance || 0) < 0 ? '#ef4444' : '#10b981'}; font-family:monospace;">₹${(s.outstandingBalance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+            <td><span class="badge ${s.approved ? 'badge-approved' : 'badge-pending'}" style="font-size:0.6rem;">${s.approved ? 'APPROVED' : 'PENDING'}</span></td>
+            <td style="text-align:right; white-space:nowrap;">
+                <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem; color:var(--primary);" onclick="viewLedger('${s._id}')">LEDGER</button>
+                <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem;" onclick="openPartyModal('${s._id}')">EDIT</button>
+                <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem; color:#ef4444;" onclick="deleteStockist('${s._id}')">DELETE</button>
             </td>
         </tr>
     `).join('');
@@ -915,8 +915,85 @@ function clearStockistSearch() {
     renderStockists(allStockists);
 }
 
+function openPartyModal(id = null) {
+    const modal = document.getElementById('partyModal');
+    const form = document.getElementById('partyForm');
+    if(!modal || !form) return;
+
+    form.reset();
+    document.getElementById('party-id').value = id || '';
+    
+    if (id) {
+        const s = allStockists.find(x => x._id === id);
+        if (s) {
+            document.getElementById('party-name').value = s.name || '';
+            document.getElementById('party-type').value = s.partyType || 'STOCKIST';
+            document.getElementById('party-login').value = s.loginId || '';
+            document.getElementById('party-pass').value = s.password || '';
+            document.getElementById('party-email').value = s.email || '';
+            document.getElementById('party-limit').value = s.creditLimit || 0;
+            document.getElementById('party-balance').value = s.outstandingBalance || 0;
+            document.getElementById('party-pan').value = s.panNo || '';
+            document.getElementById('party-gst').value = s.gstNo || '';
+            document.getElementById('party-dl').value = s.dlNo || '';
+            document.getElementById('party-fssai').value = s.fssaiNo || '';
+            document.getElementById('party-city').value = s.city || '';
+            document.getElementById('party-state').value = s.state || '';
+            document.getElementById('party-phone').value = s.phone || '';
+            document.getElementById('party-address').value = s.address || '';
+        }
+    }
+    modal.classList.remove('hidden');
+}
+
+function closePartyModal() {
+    document.getElementById('partyModal').classList.add('hidden');
+}
+
+async function saveParty(e) {
+    e.preventDefault();
+    const id = document.getElementById('party-id').value;
+    const data = {
+        name: document.getElementById('party-name').value,
+        partyType: document.getElementById('party-type').value,
+        loginId: document.getElementById('party-login').value,
+        password: document.getElementById('party-pass').value,
+        email: document.getElementById('party-email').value,
+        creditLimit: Number(document.getElementById('party-limit').value),
+        outstandingBalance: Number(document.getElementById('party-balance').value),
+        panNo: document.getElementById('party-pan').value,
+        gstNo: document.getElementById('party-gst').value,
+        dlNo: document.getElementById('party-dl').value,
+        fssaiNo: document.getElementById('party-fssai').value,
+        city: document.getElementById('party-city').value,
+        state: document.getElementById('party-state').value,
+        phone: document.getElementById('party-phone').value,
+        address: document.getElementById('party-address').value,
+        approved: true 
+    };
+
+    const url = id ? `${API_BASE}/admin/stockists/${id}` : `${API_BASE}/admin/stockists`;
+    const method = id ? 'PUT' : 'POST';
+
+    try {
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ Party record saved successfully!");
+            closePartyModal();
+            loadStockists();
+        } else {
+            alert("Save failed: " + (result.message || "Unknown error"));
+        }
+    } catch (e) { alert("Error saving party record."); }
+}
+
 function closeStockistModal() {
-    document.getElementById('stockistModal').classList.add('hidden');
+    document.getElementById('partyModal').classList.add('hidden');
 }
 
 async function approveStockist(id) {
@@ -991,7 +1068,7 @@ function renderOrderHistory(filter = '') {
             <td style="text-align:right; font-weight:700;">₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
             <td style="text-align:center;"><span class="badge ${o.status === 'approved' ? 'badge-approved' : (o.status === 'invoiced' ? 'badge-approved' : (o.status === 'rejected' ? 'badge-pending' : 'badge-pending'))}" style="${o.status === 'rejected' ? 'background:#ef4444; color:#fff;' : (o.status === 'invoiced' ? 'background:var(--accent); color:#fff;' : '')}">${o.status.toUpperCase()}</span></td>
             <td style="text-align:right;">
-                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewOrderDetails('${o._id}')">👁️ VIEW</button>
+                <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem; color:var(--primary);" onclick="viewOrderDetails('${o._id}')">VIEW ORDER</button>
             </td>
         </tr>
     `).join('');
@@ -1315,7 +1392,7 @@ function renderInvoices() {
             <td style="text-align:right;">₹${inv.gstAmount.toLocaleString('en-IN')}</td>
             <td style="text-align:right; font-weight:800; color:var(--primary);">₹${inv.grandTotal.toLocaleString('en-IN')}</td>
             <td style="text-align:right;">
-                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="downloadInvoicePDF('${inv._id}')">📥</button>
+                <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem; color:var(--primary);" onclick="downloadInvoicePDF('${inv._id}')">DOWNLOAD PDF</button>
             </td>
         </tr>
     `).join('');
@@ -1351,8 +1428,8 @@ function renderPurchaseEntries() {
             <td style="text-align:center;">${p.items.length}</td>
             <td style="text-align:right; font-weight:800; color:var(--primary);">₹${p.grandTotal.toLocaleString('en-IN')}</td>
             <td style="text-align:right; white-space:nowrap;">
-                <button class="btn btn-ghost" style="padding:5px 8px; font-size:1rem;" onclick="viewPurchaseDetails('${p._id}')" title="View">🔍</button>
-                <button class="btn btn-ghost" style="padding:5px 8px; font-size:1rem; color:var(--primary);" onclick="editPurchaseEntry('${p._id}')" title="Edit">✏️</button>
+                <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem;" onclick="viewPurchaseDetails('${p._id}')">VIEW</button>
+                <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem; color:var(--primary);" onclick="editPurchaseEntry('${p._id}')">EDIT</button>
             </td>
         </tr>
     `).join('');
