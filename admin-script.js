@@ -1817,67 +1817,71 @@ async function downloadInvoicePDF(id) {
         doc.text(`${companyProfile.name || 'EMYRIS BIOLIFESCIENCES'}`, 105, 30, { align: 'center' });
         doc.setTextColor(40, 44, 52);
     } else {
-        doc.setFontSize(style === 'compact' ? 18 : 22);
+        // 1. TAX INVOICE Title (Small & Centered)
+        doc.setFontSize(12);
         doc.setTextColor(99, 102, 241);
-        doc.text("TAX INVOICE", 105, 15, { align: 'center' });
-        
-        if (companyProfile.logoImage) {
-            doc.addImage(companyProfile.logoImage, 'PNG', 15, 10, 40, 20);
-        } else {
-            doc.setDrawColor(200);
-            doc.rect(15, 10, 40, 20); 
-            doc.setFontSize(8);
-            doc.text("LOGO", 35, 20, { align: 'center' });
-        }
+        doc.setFont("helvetica", "bold");
+        doc.text("TAX INVOICE", 105, 10, { align: 'center' });
 
+        // 2. Vertical Blue Separator Line
+        doc.setDrawColor(99, 102, 241);
+        doc.setLineWidth(0.5);
+        doc.line(105, 12, 105, 85); 
+
+        // 3. Company Info (Moved to LEFT)
+        if (companyProfile.logoImage) {
+            doc.addImage(companyProfile.logoImage, 'PNG', 15, 8, 30, 15);
+        }
+        
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(16, 185, 129);
-        doc.text(companyProfile.name || "EMYRIS BIOLIFESCIENCES PVT. LTD.", 140, 15);
+        doc.text(companyProfile.name || "EMYRIS BIOLIFESCIENCES PVT. LTD.", 15, 28);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(40, 44, 52);
         doc.setFontSize(8);
-        const addressLines = doc.splitTextToSize(companyProfile.address || "Sumadhura Pragati Chambers, Park Ln, Secunderabad, Telangana - 500003", 65);
-        doc.text(addressLines, 140, 20);
-        let currY = 20 + (addressLines.length * 4);
-        doc.text(`DL No: TS/SEC/2023-44281, 44282`, 140, currY);
-        doc.text(`GSTIN: 36AABCE1234F1Z5`, 140, currY + 4);
-        doc.text(`FSSAI: 13623011000123`, 140, currY + 8);
-        doc.text(`Contact: ${companyProfile.phones?.[0] || '7993163300'}`, 140, currY + 12);
-        doc.text(`Email: ${companyProfile.emails?.[0] || 'contact@emyrisbio.com'}`, 140, currY + 16);
+        const addressLines = doc.splitTextToSize(companyProfile.address || "Sumadhura Pragati Chambers, Park Ln, Secunderabad, Telangana - 500003", 80);
+        doc.text(addressLines, 15, 33);
+        let currY = 33 + (addressLines.length * 4);
+        doc.text(`DL No: ${companyProfile.dlNo || 'N/A'}`, 15, currY);
+        doc.text(`GSTIN: ${companyProfile.gstNo || 'N/A'}`, 15, currY + 4);
+        doc.text(`FSSAI: ${companyProfile.fssaiNo || 'N/A'}`, 15, currY + 8);
+        doc.text(`Contact: ${companyProfile.phones?.[0] || 'N/A'}`, 15, currY + 12);
+        doc.text(`Email: ${companyProfile.emails?.[0] || 'N/A'}`, 15, currY + 16);
     }
-
-    doc.setDrawColor(99, 102, 241);
-    doc.setLineWidth(0.5);
-    doc.line(15, 40, 195, 40);
-    doc.setDrawColor(200);
-    doc.setLineWidth(0.2);
 
     const party = allStockists.find(s => s.name === inv.stockistName) || {};
     
-    // BILL TO on the Left
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.text("BILL TO / SHIP TO:", 15, 48);
-    doc.setFont("helvetica", "normal");
-    doc.text(inv.stockistName || 'N/A', 15, 53);
-    const stockistAddressLines = doc.splitTextToSize(party.address || 'N/A', 80);
-    doc.text(stockistAddressLines, 15, 58);
-    let sY = 58 + (stockistAddressLines.length * 4);
-    doc.setFontSize(8);
-    doc.text(`DL No: ${party.dl || party.dlNo || 'N/A'}`, 15, sY);
-    doc.text(`GSTIN: ${party.gst || party.gstNo || 'N/A'}`, 15, sY + 4);
-    doc.text(`FSSAI: ${party.fssai || party.fssaiNo || 'N/A'}`, 15, sY + 8);
-    doc.text(`Contact: ${party.phone || party.phoneNo || 'N/A'}`, 15, sY + 12);
-    doc.text(`Email: ${party.email || 'N/A'}`, 15, sY + 16);
-
-    // Invoice Details on the Right
+    // 4. Party Info (Moved to RIGHT)
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(99, 102, 241);
-    doc.text(`Invoice No: ${inv.invoiceNo}`, 140, 48);
+    doc.text("BILL TO / SHIP TO:", 115, 15);
+    doc.setFont("helvetica", "normal");
     doc.setTextColor(40, 44, 52);
-    doc.text(`Date: ${new Date(inv.createdAt).toLocaleDateString('en-GB')}`, 140, 53);
+    doc.text(inv.stockistName || 'N/A', 115, 20);
+    const stockistAddressLines = doc.splitTextToSize(party.address || 'N/A', 80);
+    doc.text(stockistAddressLines, 115, 25);
+    let sY = 25 + (stockistAddressLines.length * 4);
+    doc.setFontSize(8);
+    doc.text(`DL No: ${party.dl || party.dlNo || 'N/A'}`, 115, sY);
+    doc.text(`GSTIN: ${party.gst || party.gstNo || 'N/A'}`, 115, sY + 4);
+    doc.text(`FSSAI: ${party.fssai || party.fssaiNo || 'N/A'}`, 115, sY + 8);
+    doc.text(`Contact: ${party.phone || party.phoneNo || 'N/A'}`, 115, sY + 12);
+    doc.text(`Email: ${party.email || 'N/A'}`, 115, sY + 16);
+
+    // 5. Invoice Details (Below Party Info)
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(99, 102, 241);
+    doc.text(`Invoice No: ${inv.invoiceNo}`, 115, sY + 22);
+    doc.setTextColor(40, 44, 52);
+    doc.text(`Date: ${new Date(inv.createdAt).toLocaleDateString('en-GB')}`, 115, sY + 27);
+
+    // Horizontal Separator Line before Table
+    doc.setDrawColor(99, 102, 241);
+    doc.setLineWidth(0.5);
+    doc.line(15, 90, 195, 90);
 
     doc.autoTable({
         startY: 95,
