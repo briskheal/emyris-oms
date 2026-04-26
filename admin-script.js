@@ -1843,6 +1843,8 @@ async function downloadInvoicePDF(id) {
         doc.text(`DL No: TS/SEC/2023-44281, 44282`, 140, currY);
         doc.text(`GSTIN: 36AABCE1234F1Z5`, 140, currY + 4);
         doc.text(`FSSAI: 13623011000123`, 140, currY + 8);
+        doc.text(`Contact: ${companyProfile.phones?.[0] || '7993163300'}`, 140, currY + 12);
+        doc.text(`Email: ${companyProfile.emails?.[0] || 'contact@emyrisbio.com'}`, 140, currY + 16);
     }
 
     doc.setDrawColor(99, 102, 241);
@@ -1866,6 +1868,8 @@ async function downloadInvoicePDF(id) {
     doc.text(`DL No: ${party.dl || party.dlNo || 'N/A'}`, 15, sY);
     doc.text(`GSTIN: ${party.gst || party.gstNo || 'N/A'}`, 15, sY + 4);
     doc.text(`FSSAI: ${party.fssai || party.fssaiNo || 'N/A'}`, 15, sY + 8);
+    doc.text(`Contact: ${party.phone || party.phoneNo || 'N/A'}`, 15, sY + 12);
+    doc.text(`Email: ${party.email || 'N/A'}`, 15, sY + 16);
 
     // Invoice Details on the Right
     doc.setFontSize(9);
@@ -1876,7 +1880,7 @@ async function downloadInvoicePDF(id) {
     doc.text(`Date: ${new Date(inv.createdAt).toLocaleDateString('en-GB')}`, 140, 53);
 
     doc.autoTable({
-        startY: 75,
+        startY: 95,
         head: [['S.No', 'Product Description', 'HSN', 'Batch', 'Exp', 'MRP', 'Qty', 'Unit', 'Price/Unit', 'Taxable', 'GST%', 'Amount']],
         body: inv.items.map((item, idx) => [
             idx + 1,
