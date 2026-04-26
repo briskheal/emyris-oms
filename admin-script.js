@@ -2200,7 +2200,7 @@ async function generateStandardPDF({
         doc.setFont("helvetica", "normal"); doc.setTextColor(40, 44, 52); doc.setFontSize(8);
         const addressLines = doc.splitTextToSize((companyProfile && companyProfile.address) || "Sumadhura Pragati Chambers, Park Ln, Secunderabad, Telangana - 500003", 80);
         doc.text(addressLines, 15, 33);
-        let cY = 33 + (addrLines.length * 4);
+        let cY = 33 + (addressLines.length * 4);
         doc.text(`DL No: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, 15, cY);
         doc.text(`GSTIN: ${(companyProfile && companyProfile.gstNo) || 'N/A'}`, 15, cY + 4);
         doc.text(`FSSAI: ${(companyProfile && companyProfile.fssaiNo) || 'N/A'}`, 15, cY + 8);
