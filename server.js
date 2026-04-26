@@ -402,7 +402,7 @@ app.put('/api/admin/orders/:orderId/items/:itemId/negotiate', async (req, res) =
         }
 
         // --- CRITICAL FIX: Update Item Total Value & Recalculate GST Product-wise ---
-        item.totalValue = Number(item.priceUsed || 0) * Number(item.qty || 0);
+        item.totalValue = Number((Number(item.priceUsed || 0) * Number(item.qty || 0)).toFixed(2));
 
         // Fetch products for all items to get their individual GST rates
         const productIds = order.items.map(i => i.product);
@@ -423,7 +423,7 @@ app.put('/api/admin/orders/:orderId/items/:itemId/negotiate', async (req, res) =
 
         order.subTotal = newSubTotal;
         order.gstAmount = newGstAmount;
-        order.grandTotal = newSubTotal + newGstAmount;
+        order.grandTotal = Math.round(newSubTotal + newGstAmount);
 
         await order.save();
         res.json({ success: true, order });

@@ -1962,21 +1962,31 @@ async function downloadInvoicePDF(id) {
     // Draw a top line for the footer block
     doc.setDrawColor(99, 102, 241);
     doc.setLineWidth(0.5);
-    doc.line(15, finalY - 5, 195, finalY - 5);
+    doc.line(15, finalY - 15, 195, finalY - 15);
     doc.setDrawColor(200);
     doc.setLineWidth(0.2);
 
     doc.setFont("helvetica", "bold");
     doc.setTextColor(99, 102, 241);
-    doc.text("Amount in Words:", 15, finalY);
+    doc.setFontSize(9);
+    doc.text("Amount in Words:", 15, finalY - 10);
     doc.setTextColor(40, 44, 52);
     doc.setFont("helvetica", "normal");
-    doc.text(numberToWords(inv.grandTotal), 15, finalY + 5);
+    doc.text(numberToWords(inv.grandTotal), 15, finalY - 5);
 
-    doc.setFontSize(13);
+    // Right Side: Sub Total, Round Off, Net Payable
+    const unroundedTotal = inv.subTotal + inv.gstAmount;
+    const roundOff = (inv.grandTotal - unroundedTotal).toFixed(2);
+    
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(40, 44, 52);
+    doc.text(`Sub Total: Rs. ${unroundedTotal.toFixed(2)}`, 195, finalY - 10, { align: 'right' });
+    doc.text(`Round Off: Rs. ${roundOff}`, 195, finalY - 5, { align: 'right' });
+    
     doc.setFont("helvetica", "bold");
     doc.setTextColor(99, 102, 241);
-    doc.text(`NET PAYABLE: Rs. ${inv.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`, 195, finalY, { align: 'right' });
+    doc.text(`NET PAYABLE: Rs. ${inv.grandTotal.toFixed(2)}`, 195, finalY, { align: 'right' });
     doc.setTextColor(40, 44, 52);
 
     doc.setFont("helvetica", "bold");
