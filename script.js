@@ -931,11 +931,15 @@ async function generateInvoicePDF(inv) {
         doc.text(`${companySettings?.name || 'EMYRIS BIOLIFESCIENCES'}`, 105, 30, { align: 'center' });
         doc.setTextColor(40, 44, 52);
     } else {
-        // 1. TAX INVOICE Title (Small & Centered)
         doc.setFontSize(12);
         doc.setTextColor(99, 102, 241);
         doc.setFont("helvetica", "bold");
         doc.text("TAX INVOICE", 105, 10, { align: 'center' });
+
+        // Original For Buyer Tag
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+        doc.text("Original For Buyer", 195, 7, { align: 'right' });
 
         // 2. Vertical Blue Separator Line
         doc.setDrawColor(99, 102, 241);
@@ -992,11 +996,7 @@ async function generateInvoicePDF(inv) {
     doc.setTextColor(40, 44, 52);
     doc.text(`Date: ${new Date(inv.createdAt).toLocaleDateString('en-GB')}`, 115, sY + 27);
 
-    // Horizontal Separator Line before Table
-    doc.setDrawColor(99, 102, 241);
-    doc.setLineWidth(0.5);
-    doc.line(15, 90, 195, 90);
-
+    // Horizontal Separator removed as per request
     doc.autoTable({
         startY: 95,
         head: [['S.No', 'Product Description', 'HSN', 'Batch', 'Exp', 'MRP', 'Qty', 'Unit', 'Price/Unit', 'Taxable', 'GST%', 'Amount']],
