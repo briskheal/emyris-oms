@@ -2200,6 +2200,9 @@ async function generateStandardPDF({
         let cY = 33 + (addrLines.length * 4);
         doc.text(`DL No: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, 15, cY);
         doc.text(`GSTIN: ${(companyProfile && companyProfile.gstNo) || 'N/A'}`, 15, cY + 4);
+        doc.text(`FSSAI: ${(companyProfile && companyProfile.fssaiNo) || 'N/A'}`, 15, cY + 8);
+        doc.text(`Contact: ${(companyProfile && companyProfile.phones?.[0]) || 'N/A'}`, 15, cY + 12);
+        doc.text(`Email: ${(companyProfile && companyProfile.emails?.[0]) || 'N/A'}`, 15, cY + 16);
     }
 
     // 2. Party Info
@@ -2213,11 +2216,14 @@ async function generateStandardPDF({
     
     if (style === 'classic') {
         let sY = infoY + 10 + (pAddr.length * 4);
-        doc.setFontSize(8); doc.text(`DL No: ${party.dl || 'N/A'}`, 115, sY); doc.text(`GSTIN: ${party.gst || 'N/A'}`, 115, sY + 4);
+        doc.setFontSize(8); 
+        doc.text(`DL No: ${party.dl || 'N/A'}`, 115, sY); 
+        doc.text(`GSTIN: ${party.gst || 'N/A'}`, 115, sY + 4);
+        doc.text(`FSSAI: ${party.fssai || 'N/A'}`, 115, sY + 8);
         doc.setFont("helvetica", "bold"); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
-        doc.text(`${docTypeLabel}: ${docNo}`, 115, sY + 12);
-        doc.setTextColor(40, 44, 52); doc.text(`Date: ${date}`, 115, sY + 16);
-        extraFields.forEach((f, i) => doc.text(`${f.label}: ${f.value}`, 115, sY + 20 + (i * 4)));
+        doc.text(`${docTypeLabel}: ${docNo}`, 115, sY + 16);
+        doc.setTextColor(40, 44, 52); doc.text(`Date: ${date}`, 115, sY + 20);
+        extraFields.forEach((f, i) => doc.text(`${f.label}: ${f.value}`, 115, sY + 24 + (i * 4)));
     }
 
     // 3. Items Table
@@ -2271,23 +2277,46 @@ async function generateStandardPDF({
     doc.setTextColor(40, 44, 52); doc.setFont("helvetica", "normal");
     doc.text("(" + numberToWords(grandTotal) + ")", 15, finalY - 5);
 
-    if (showBank && companyProfile.bankDetails) {
+    // 5. Total Block (Right Side)
+    const unroundedTotal = Number(items.reduce((s, it) => s + it.totalValue, 0).toFixed(2));
+    const roundOff = (grandTotal - unroundedTotal).toFixed(2);
+    
+    doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(40, 44, 52);
+    doc.text(`Sub Total: Rs. ${unroundedTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 10, { align: 'right' });
+    doc.text(`Round Off: Rs. ${roundOff}`, 195, finalY - 5, { align: 'right' });
+    
+    doc.setFont("helvetica", "bold"); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
+    doc.text(`NET PAYABLE: Rs. ${grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY, { align: 'right' });
+
+    // 6. Bank & QR Code
+    if (showBank && companyProfile && companyProfile.bankDetails) {
         doc.setFont("courier", "bold"); doc.setFontSize(style === 'compact' ? 7 : 8);
         doc.text("Bank Details:", 15, finalY + 15);
         doc.setFont("courier", "normal");
         const bD = companyProfile.bankDetails.split('\n');
         bD.forEach((line, i) => doc.text(line, 15, finalY + 19 + (i * 4)));
+
+        // QR Code Logic
+        let upiTarget = companyProfile.upiId;
+        if (!upiTarget && companyProfile.bankAccountNo && companyProfile.bankIfsc) {
+            upiTarget = `${companyProfile.bankAccountNo}@${companyProfile.bankIfsc.toUpperCase().trim()}.ifsc.npci`;
+        }
+        if (upiTarget && window.QRCode) {
+            try {
+                const upiUrl = `upi://pay?pa=${upiTarget}&pn=${encodeURIComponent(companyProfile.name || 'EMYRIS')}&am=${Math.round(grandTotal)}&cu=INR`;
+                const qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 150, margin: 1 });
+                doc.addImage(qrDataUrl, 'PNG', 100, finalY + 10, 30, 30);
+                doc.setFontSize(6); doc.text("Scan to Pay", 115, finalY + 42, { align: 'center' });
+            } catch(err) { console.error("QR Error", err); }
+        }
     }
 
-    doc.setFontSize(style === 'compact' ? 8 : 9); doc.setTextColor(40, 44, 52);
-    doc.text(`Total Payable: Rs. ${grandTotal.toFixed(2)}`, 195, finalY, { align: 'right' });
-    
-    doc.setFontSize(style === 'compact' ? 7 : 8); doc.setFont("helvetica", "italic");
-    const tC = terms.split('\n'); tC.forEach((line, i) => doc.text(line, 15, 280 + (i * 4)));
+    doc.setFontSize(style === 'compact' ? 7 : 8); doc.setFont("helvetica", "italic"); doc.setTextColor(40, 44, 52);
+    const tC = terms ? terms.split('\n') : []; tC.forEach((line, i) => doc.text(line, 15, 280 + (i * 4)));
 
     doc.setFont("helvetica", "bold");
-    doc.text(`For ${companyProfile.name || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 30, { align: 'right' });
-    if (companyProfile.signatureImage) { try { doc.addImage(companyProfile.signatureImage, 'PNG', 165, finalY + 32, 30, 12); } catch(e){} }
+    doc.text(`For ${(companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 30, { align: 'right' });
+    if (companyProfile && companyProfile.signatureImage) { try { doc.addImage(companyProfile.signatureImage, 'JPEG', 165, finalY + 32, 30, 12); } catch(e){} }
     doc.text("Authorised Signatory", 195, 280, { align: 'right' });
 
     doc.save(filename);
