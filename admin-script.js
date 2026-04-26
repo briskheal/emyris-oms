@@ -1984,7 +1984,7 @@ async function saveFinancialNote(e) {
     } catch (e) { alert("Failed to issue note"); }
 }
 
-function downloadNotePDF(id) {
+async function downloadNotePDF(id) {
     try {
         const note = allNotes.find(x => x._id === id);
         if (!note) return alert("Note not found");
@@ -2017,154 +2017,180 @@ function downloadNotePDF(id) {
         }
 
         const party = allStockists.find(s => s._id === (note.party?._id || note.party)) || {};
-        const isInterstate = companyProfile.gstNo && party.gstNo && companyProfile.gstNo.substring(0, 2) !== party.gstNo.substring(0, 2);
-
-        // 1. Header Area
-        doc.setFontSize(16);
+        
+        // 1. Header & Title (Premium Layout)
+        doc.setFontSize(14);
         doc.setTextColor(99, 102, 241);
         doc.setFont("helvetica", "bold");
-        const heading = note.reason === 'Salable Return' ? "SALES RETURN (CREDIT NOTE)" : (note.noteType === 'CN' ? "CREDIT NOTE" : "DEBIT NOTE");
+        const heading = note.reason === 'Salable Return' ? "CREDIT NOTE (SALES RETURN)" : (note.noteType === 'CN' ? "CREDIT NOTE" : "DEBIT NOTE");
         doc.text(heading, 105, 12, { align: 'center' });
 
         doc.setFontSize(7);
-        doc.setTextColor(150);
-        doc.text("ORIGINAL FOR RECIPIENT", 195, 7, { align: 'right' });
+        doc.setTextColor(150, 150, 150);
+        doc.text("Original For Recipient", 195, 7, { align: 'right' });
 
-        // 2. Company & Party Box
+        // 2. Vertical Blue Separator Line
+        doc.setDrawColor(99, 102, 241);
+        doc.setLineWidth(0.5);
+        doc.line(105, 15, 105, 65); 
+
+        // 3. Company Info (Left)
         if (companyProfile.logoImage) {
-            try { doc.addImage(companyProfile.logoImage, 'PNG', 15, 15, 30, 15); } catch(e){}
+            try { doc.addImage(companyProfile.logoImage, 'PNG', 15, 8, 30, 15); } catch(e){}
         }
-
-        doc.setFontSize(10);
-        doc.setTextColor(40);
-        doc.text(companyProfile.name || "EMYRIS BIOLIFESCIENCES", 15, 35);
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
-        const addr = doc.splitTextToSize(companyProfile.address || "", 80);
-        doc.text(addr, 15, 39);
-        let nextY = 39 + (addr.length * 4);
-        doc.setFont("helvetica", "bold");
-        doc.text(`GSTIN: ${companyProfile.gstNo || '-'}`, 15, nextY);
-        doc.text(`DL No: ${companyProfile.dlNo || '-'}`, 15, nextY + 4);
-
-        // Party Info (Right Side)
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(99, 102, 241);
-        doc.text("BILL TO / SHIP TO:", 115, 35);
-        doc.setTextColor(40);
-        doc.text(note.partyName || 'N/A', 115, 40);
+        doc.text(companyProfile.name || "EMYRIS BIOLIFESCIENCES", 15, 28);
         doc.setFont("helvetica", "normal");
+        doc.setTextColor(40, 44, 52);
         doc.setFontSize(8);
-        const pAddr = doc.splitTextToSize(party.address || 'N/A', 80);
-        doc.text(pAddr, 115, 44);
-        let pNextY = 44 + (pAddr.length * 4);
-        doc.setFont("helvetica", "bold");
-        doc.text(`GSTIN: ${party.gstNo || '-'}`, 115, pNextY);
-        doc.text(`DL No: ${party.dlNo || '-'}`, 115, pNextY + 4);
+        const addressLines = doc.splitTextToSize(companyProfile.address || "", 80);
+        doc.text(addressLines, 15, 33);
+        let currY = 33 + (addressLines.length * 4);
+        doc.text(`DL No: ${companyProfile.dlNo || 'N/A'}`, 15, currY);
+        doc.text(`GSTIN: ${companyProfile.gstNo || 'N/A'}`, 15, currY + 4);
+        doc.text(`Contact: ${companyProfile.phones?.[0] || 'N/A'}`, 15, currY + 8);
 
-        // Reference Info Bar
-        doc.setDrawColor(230);
-        doc.setFillColor(248, 250, 252);
-        doc.rect(15, pNextY + 10, 180, 15, 'F');
+        // 4. Party Info (Right)
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(99, 102, 241);
+        doc.text("BILL TO / SHIP TO:", 115, 15);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(40, 44, 52);
+        doc.text(note.partyName || 'N/A', 115, 20);
+        const stockistAddressLines = doc.splitTextToSize(party.address || 'N/A', 80);
+        doc.text(stockistAddressLines, 115, 25);
+        let sY = 25 + (stockistAddressLines.length * 4);
         doc.setFontSize(8);
-        doc.setTextColor(100);
-        doc.text("Note No", 20, pNextY + 15);
-        doc.text("Date", 60, pNextY + 15);
-        doc.text("Ref Invoice", 100, pNextY + 15);
-        doc.text("Reason", 150, pNextY + 15);
-
-        doc.setTextColor(40);
+        doc.text(`DL No: ${party.dlNo || party.dl || 'N/A'}`, 115, sY);
+        doc.text(`GSTIN: ${party.gstNo || party.gst || 'N/A'}`, 115, sY + 4);
+        
+        // 5. Note Details
+        doc.setFontSize(9);
         doc.setFont("helvetica", "bold");
-        doc.text(note.noteNo, 20, pNextY + 21);
-        doc.text(new Date(note.createdAt).toLocaleDateString('en-GB'), 60, pNextY + 21);
-        doc.text(note.refInvoiceNo || '-', 100, pNextY + 21);
-        doc.text(note.reason || '-', 150, pNextY + 21);
+        doc.setTextColor(99, 102, 241);
+        doc.text(`Note No: ${note.noteNo}`, 115, sY + 12);
+        doc.setTextColor(40, 44, 52);
+        doc.text(`Date: ${new Date(note.createdAt).toLocaleDateString('en-GB')}`, 115, sY + 16);
+        doc.text(`Ref Invoice: ${note.refInvoiceNo || 'N/A'}`, 115, sY + 20);
 
-        // 3. Table Section
-        let tableStartY = pNextY + 30;
-        if (note.items && note.items.length > 0) {
-            doc.autoTable({
-                startY: tableStartY,
-                head: [['S.N', 'Description', 'HSN', 'Batch', 'Exp', 'Qty', 'Rate', 'GST%', 'Value']],
-                body: note.items.map((it, i) => [
-                    i + 1, it.name, it.hsn || '-', it.batchNo || '-', it.expDate || '-', it.qty, it.price.toFixed(2), it.gstPercent + '%', it.totalValue.toFixed(2)
-                ]),
-                theme: 'grid',
-                headStyles: { fillColor: [99, 102, 241], fontSize: 8, halign: 'center' },
-                styles: { fontSize: 8 },
-                columnStyles: { 8: { halign: 'right' }, 6: { halign: 'right' }, 5: { halign: 'center' } }
-            });
-        } else {
-            doc.autoTable({
-                startY: tableStartY,
-                head: [['Adjustment Details', 'Description', 'Amount']],
-                body: [[note.reason, note.description || 'General Adjustment', note.amount.toFixed(2)]],
-                theme: 'grid',
-                headStyles: { fillColor: [99, 102, 241] },
-                columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } }
-            });
-        }
+        // 6. Items Table (Mirroring main invoice structure)
+        const tableBody = note.items && note.items.length > 0 ? 
+            note.items.map((it, idx) => [
+                idx + 1,
+                { content: `${it.name}\n(Mfg: ${it.manufacturer || 'EMYRIS'})`, styles: { fontSize: 7 } },
+                it.hsn || '-',
+                it.batchNo || '-',
+                it.expDate || '-',
+                `Rs. ${(it.price || 0).toFixed(2)}`,
+                it.qty,
+                'NOS',
+                it.price.toFixed(2),
+                (it.qty * it.price).toFixed(2),
+                it.gstPercent + '%',
+                it.totalValue.toFixed(2)
+            ]) : 
+            [[1, note.reason, '-', '-', '-', '-', 1, 'NOS', note.amount.toFixed(2), note.amount.toFixed(2), '0%', note.amount.toFixed(2)]];
 
-        let finalY = doc.lastAutoTable.finalY + 10;
+        doc.autoTable({
+            startY: 70,
+            head: [['S.No', 'Description', 'HSN', 'Batch', 'Exp', 'MRP', 'Qty', 'Unit', 'Rate', 'Taxable', 'GST%', 'Total']],
+            body: tableBody,
+            theme: 'grid',
+            headStyles: { fillColor: [99, 102, 241], fontSize: 7, halign: 'center' },
+            styles: { fontSize: 7, cellPadding: 2 },
+            columnStyles: {
+                0: { cellWidth: 10 },
+                1: { cellWidth: 40 },
+                9: { halign: 'right' },
+                11: { halign: 'right' }
+            },
+            margin: { left: 15, right: 15 }
+        });
 
-        // 4. GST Summary Table
+        let tableFinalY = doc.lastAutoTable.finalY + 10;
+
+        // 7. Tax Summary Block
+        const companyGST = companyProfile.gstNo || '36'; 
+        const buyerGST = party.gstNo || party.gst || '';
+        const isInterstate = buyerGST.length > 2 && companyGST.substring(0, 2) !== buyerGST.substring(0, 2);
+
         const taxMap = {};
         if (note.items && note.items.length > 0) {
-            note.items.forEach(it => {
-                const r = it.gstPercent;
-                if (!taxMap[r]) taxMap[r] = { taxable: 0, gst: 0 };
-                const taxable = it.totalValue / (1 + r/100);
-                taxMap[r].taxable += taxable;
-                taxMap[r].gst += (it.totalValue - taxable);
+            note.items.forEach(item => {
+                const rate = item.gstPercent || 0;
+                if (!taxMap[rate]) taxMap[rate] = { taxable: 0, tax: 0 };
+                const taxable = item.qty * item.price;
+                taxMap[rate].taxable += taxable;
+                taxMap[rate].tax += (item.totalValue - taxable);
             });
-
-            const taxRows = Object.keys(taxMap).sort((a,b)=>a-b).map(rate => {
-                const data = taxMap[rate];
-                if (isInterstate) {
-                    return [rate + '%', data.taxable.toFixed(2), '-', '-', data.gst.toFixed(2), data.gst.toFixed(2)];
-                } else {
-                    const half = data.gst / 2;
-                    return [rate + '%', data.taxable.toFixed(2), half.toFixed(2), half.toFixed(2), '-', data.gst.toFixed(2)];
-                }
-            });
-
-            doc.autoTable({
-                startY: finalY,
-                head: [['GST%', 'Taxable', 'CGST', 'SGST', 'IGST', 'Total Tax']],
-                body: taxRows,
-                theme: 'plain',
-                styles: { fontSize: 7, halign: 'right' },
-                headStyles: { fillColor: [240, 240, 240], textColor: 50, halign: 'right' },
-                margin: { left: 100 }
-            });
-            finalY = doc.lastAutoTable.finalY + 10;
         }
 
-        // 5. Totals & Signature
-        doc.setFontSize(10);
+        let taxBody = [];
+        Object.keys(taxMap).sort((a, b) => a - b).forEach(rate => {
+            const r = parseFloat(rate);
+            const data = taxMap[rate];
+            if (isInterstate) {
+                taxBody.push([`IGST @ ${r}%`, `Rs. ${data.taxable.toFixed(2)}`, `${r}%`, `Rs. ${data.tax.toFixed(2)}`]);
+            } else {
+                const halfRate = (r / 2).toFixed(1);
+                const halfTax = (data.tax / 2).toFixed(2);
+                taxBody.push([`CGST @ ${halfRate}%`, `Rs. ${data.taxable.toFixed(2)}`, `${halfRate}%`, `Rs. ${halfTax}`]);
+                taxBody.push([`SGST @ ${halfRate}%`, `Rs. ${data.taxable.toFixed(2)}`, `${halfRate}%`, `Rs. ${halfTax}`]);
+            }
+        });
+
+        if (taxBody.length > 0) {
+            doc.autoTable({
+                startY: tableFinalY,
+                head: [['Tax Type', 'Taxable Amount', 'Tax Rate', 'Tax Amount']],
+                body: taxBody,
+                theme: 'plain',
+                headStyles: { fillColor: false, textColor: [99, 102, 241], fontStyle: 'bold', fontSize: 8, halign: 'right' },
+                styles: { fontSize: 8, halign: 'right', cellPadding: 1, textColor: [40, 44, 52] },
+                margin: { left: 110, right: 15 },
+                tableWidth: 85
+            });
+        }
+
+        // 8. Fixed Footer (No Bank Details as requested)
+        const finalY = 240;
+        doc.setDrawColor(99, 102, 241);
+        doc.setLineWidth(0.5);
+        doc.line(15, finalY - 15, 195, finalY - 15);
+
         doc.setFont("helvetica", "bold");
-        doc.text(`GRAND TOTAL: Rs. ${note.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`, 195, finalY, { align: 'right' });
+        doc.setTextColor(99, 102, 241);
+        doc.setFontSize(9);
+        doc.text("Amount in Words:", 15, finalY - 10);
+        doc.setTextColor(40, 44, 52);
+        doc.setFont("helvetica", "normal");
+        doc.text("(" + numberToWords(note.amount) + ")", 15, finalY - 5);
+
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(99, 102, 241);
+        doc.text(`TOTAL ADJUSTMENT: Rs. ${note.amount.toFixed(2)}`, 195, finalY, { align: 'right' });
         
         doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
-        doc.text("Amount in Words:", 15, finalY);
+        doc.setFont("helvetica", "italic");
+        doc.setTextColor(40, 44, 52);
+        doc.text("Reason: " + (note.reason || "General Adjustment"), 15, finalY + 10);
+        doc.text("Remarks: " + (note.description || "N/A"), 15, finalY + 14);
+
         doc.setFont("helvetica", "bold");
-        doc.text("(" + numberToWords(note.amount) + ")", 15, finalY + 5);
-
-        doc.text(`For ${companyProfile.name || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 20, { align: 'right' });
+        doc.text(`For ${companyProfile.name || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 30, { align: 'right' });
         if (companyProfile.signatureImage) {
-            try { doc.addImage(companyProfile.signatureImage, 'PNG', 165, finalY + 22, 30, 12); } catch(e){}
+            try { doc.addImage(companyProfile.signatureImage, 'PNG', 165, finalY + 32, 30, 12); } catch(e){}
         }
-        doc.text("Authorised Signatory", 195, finalY + 40, { align: 'right' });
-
-        doc.setFontSize(7);
-        doc.setTextColor(150);
-        doc.text("Note: This is a computer generated document for Sales Return / Financial Adjustment.", 105, 285, { align: 'center' });
+        doc.text("Authorised Signatory", 195, 280, { align: 'right' });
 
         const fname = `${note.reason.replace(/\s+/g, '_')}_${note.noteNo}.pdf`;
         doc.save(fname);
     } catch (err) {
+        console.error("PDF Note Error:", err);
         alert("PDF Error: " + err.message);
     }
 }
