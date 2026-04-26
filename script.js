@@ -941,10 +941,10 @@ async function generateInvoicePDF(inv) {
         doc.setTextColor(150, 150, 150);
         doc.text("Original For Buyer", 195, 7, { align: 'right' });
 
-        // 2. Vertical Blue Separator Line
+        // 2. Vertical Blue Separator Line (Shorter)
         doc.setDrawColor(99, 102, 241);
         doc.setLineWidth(0.5);
-        doc.line(105, 12, 105, 85); 
+        doc.line(105, 15, 105, 75); 
 
         // 3. Company Info (Moved to LEFT)
         if (companySettings?.logoImage) {
@@ -998,7 +998,7 @@ async function generateInvoicePDF(inv) {
 
     // Horizontal Separator removed as per request
     doc.autoTable({
-        startY: 95,
+        startY: 85,
         head: [['S.No', 'Product Description', 'HSN', 'Batch', 'Exp', 'MRP', 'Qty', 'Unit', 'Price/Unit', 'Taxable', 'GST%', 'Amount']],
         body: inv.items.map((item, idx) => [
             idx + 1,
