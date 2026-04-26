@@ -2299,28 +2299,28 @@ async function generateStandardPDF({
     doc.setFont("helvetica", "bold"); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]); doc.setFontSize(9);
     doc.text("Amount in Words:", 15, finalY - 10);
     doc.setTextColor(40, 44, 52); doc.setFont("helvetica", "normal");
-    doc.text("(" + numberToWords(grandTotal) + ")", 15, finalY - 5);
+    doc.text("(" + numberToWords(grandTotal) + ")", 15, finalY + 5);
 
     // 5. Total Block (Right Side)
     const unroundedNet = Number((totalTaxable + totalGST).toFixed(2));
     const roundOffValue = (grandTotal - unroundedNet).toFixed(2);
     
     doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(40, 44, 52);
-    doc.text(`Sub Total (Taxable): Rs. ${totalTaxable.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 15, { align: 'right' });
-    doc.text(`GST Amount: Rs. ${totalGST.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 10, { align: 'right' });
-    doc.text(`Round Off: Rs. ${roundOffValue}`, 195, finalY - 5, { align: 'right' });
+    doc.text(`Sub Total (Taxable): Rs. ${totalTaxable.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 5, { align: 'right' });
+    doc.text(`GST Amount: Rs. ${totalGST.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY, { align: 'right' });
+    doc.text(`Round Off: Rs. ${roundOffValue}`, 195, finalY + 5, { align: 'right' });
     
     doc.setFont("helvetica", "bold"); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
-    doc.text(`NET PAYABLE: Rs. ${grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY, { align: 'right' });
+    doc.text(`NET PAYABLE: Rs. ${grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY + 10, { align: 'right' });
 
     // 6. Bank & QR Code
     if (showBank && companyProfile && companyProfile.bankDetails) {
         doc.setTextColor(0, 0, 0); // BLACK COLOR FOR BANK DETAILS
         doc.setFont("courier", "bold"); doc.setFontSize(style === 'compact' ? 7 : 8);
-        doc.text("Bank Details:", 15, finalY + 15);
+        doc.text("Bank Details:", 15, finalY + 25);
         doc.setFont("courier", "normal");
         const bD = companyProfile.bankDetails.split('\n');
-        bD.forEach((line, i) => doc.text(line, 15, finalY + 19 + (i * 4)));
+        bD.forEach((line, i) => doc.text(line, 15, finalY + 29 + (i * 4)));
 
         // QR Code Logic
         let upiTarget = companyProfile.upiId;
@@ -2331,8 +2331,8 @@ async function generateStandardPDF({
             try {
                 const upiUrl = `upi://pay?pa=${upiTarget}&pn=${encodeURIComponent(companyProfile.name || 'EMYRIS')}&am=${Math.round(grandTotal)}&cu=INR`;
                 const qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 150, margin: 1 });
-                doc.addImage(qrDataUrl, 'PNG', 100, finalY + 10, 30, 30);
-                doc.setFontSize(6); doc.text("Scan to Pay", 115, finalY + 42, { align: 'center' });
+                doc.addImage(qrDataUrl, 'PNG', 100, finalY + 20, 30, 30);
+                doc.setFontSize(6); doc.text("Scan to Pay", 115, finalY + 52, { align: 'center' });
             } catch(err) { console.error("QR Error", err); }
         }
     }
@@ -2341,8 +2341,8 @@ async function generateStandardPDF({
     const tC = terms ? terms.split('\n') : []; tC.forEach((line, i) => doc.text(line, 15, 280 + (i * 4)));
 
     doc.setFont("helvetica", "bold");
-    doc.text(`For ${(companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 30, { align: 'right' });
-    if (companyProfile && companyProfile.signatureImage) { try { doc.addImage(companyProfile.signatureImage, 'JPEG', 165, finalY + 32, 30, 12); } catch(e){} }
+    doc.text(`For ${(companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 40, { align: 'right' });
+    if (companyProfile && companyProfile.signatureImage) { try { doc.addImage(companyProfile.signatureImage, 'JPEG', 165, finalY + 42, 30, 12); } catch(e){} }
     doc.text("Authorised Signatory", 195, 280, { align: 'right' });
 
     doc.save(filename);
