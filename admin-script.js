@@ -2223,10 +2223,12 @@ async function generateStandardPDF({
         doc.text(`DL No: ${party.dl || 'N/A'}`, 115, sY); 
         doc.text(`GSTIN: ${party.gst || 'N/A'}`, 115, sY + 4);
         doc.text(`FSSAI: ${party.fssai || 'N/A'}`, 115, sY + 8);
+        doc.text(`Contact: ${party.phone || 'N/A'}`, 115, sY + 12);
+        doc.text(`Email: ${party.email || 'N/A'}`, 115, sY + 16);
         doc.setFont("helvetica", "bold"); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
-        doc.text(`${docTypeLabel}: ${docNo}`, 115, sY + 16);
-        doc.setTextColor(40, 44, 52); doc.text(`Date: ${date}`, 115, sY + 20);
-        extraFields.forEach((f, i) => doc.text(`${f.label}: ${f.value}`, 115, sY + 24 + (i * 4)));
+        doc.text(`${docTypeLabel}: ${docNo}`, 115, sY + 24);
+        doc.setTextColor(40, 44, 52); doc.text(`Date: ${date}`, 115, sY + 28);
+        extraFields.forEach((f, i) => doc.text(`${f.label}: ${f.value}`, 115, sY + 32 + (i * 4)));
     }
 
     // 3. Items Table
@@ -2257,11 +2259,20 @@ async function generateStandardPDF({
 
     // 4. Tax Summary
     const taxMap = {};
+    let totalTaxable = 0;
+    let totalGST = 0;
+
     items.forEach(it => {
-        const r = it.gstPercent || 0;
-        if (!taxMap[r]) taxMap[r] = { taxable: 0, tax: 0 };
-        const tx = it.qty * it.price;
-        taxMap[r].taxable += tx; taxMap[r].tax += (it.totalValue - tx);
+        const rate = parseFloat(it.gstPercent) || 0;
+        const taxable = it.qty * it.price;
+        const gst = (taxable * rate) / 100;
+        
+        if (!taxMap[rate]) taxMap[rate] = { taxable: 0, tax: 0 };
+        taxMap[rate].taxable += taxable;
+        taxMap[rate].tax += gst;
+        
+        totalTaxable += taxable;
+        totalGST += gst;
     });
 
     const isInter = party.gst && companyProfile.gstNo && companyProfile.gstNo.substring(0,2) !== party.gst.substring(0,2);
@@ -2291,18 +2302,20 @@ async function generateStandardPDF({
     doc.text("(" + numberToWords(grandTotal) + ")", 15, finalY - 5);
 
     // 5. Total Block (Right Side)
-    const unroundedTotal = Number(items.reduce((s, it) => s + it.totalValue, 0).toFixed(2));
-    const roundOff = (grandTotal - unroundedTotal).toFixed(2);
+    const unroundedNet = Number((totalTaxable + totalGST).toFixed(2));
+    const roundOffValue = (grandTotal - unroundedNet).toFixed(2);
     
     doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(40, 44, 52);
-    doc.text(`Sub Total: Rs. ${unroundedTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 10, { align: 'right' });
-    doc.text(`Round Off: Rs. ${roundOff}`, 195, finalY - 5, { align: 'right' });
+    doc.text(`Sub Total (Taxable): Rs. ${totalTaxable.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 15, { align: 'right' });
+    doc.text(`GST Amount: Rs. ${totalGST.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 10, { align: 'right' });
+    doc.text(`Round Off: Rs. ${roundOffValue}`, 195, finalY - 5, { align: 'right' });
     
     doc.setFont("helvetica", "bold"); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
     doc.text(`NET PAYABLE: Rs. ${grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY, { align: 'right' });
 
     // 6. Bank & QR Code
     if (showBank && companyProfile && companyProfile.bankDetails) {
+        doc.setTextColor(0, 0, 0); // BLACK COLOR FOR BANK DETAILS
         doc.setFont("courier", "bold"); doc.setFontSize(style === 'compact' ? 7 : 8);
         doc.text("Bank Details:", 15, finalY + 15);
         doc.setFont("courier", "normal");
@@ -2324,7 +2337,7 @@ async function generateStandardPDF({
         }
     }
 
-    doc.setFontSize(style === 'compact' ? 7 : 8); doc.setFont("helvetica", "italic"); doc.setTextColor(40, 44, 52);
+    doc.setFontSize(style === 'compact' ? 7 : 8); doc.setFont("helvetica", "italic"); doc.setTextColor(0, 0, 0); // BLACK COLOR FOR TERMS
     const tC = terms ? terms.split('\n') : []; tC.forEach((line, i) => doc.text(line, 15, 280 + (i * 4)));
 
     doc.setFont("helvetica", "bold");
@@ -2345,7 +2358,15 @@ async function downloadNotePDF(id) {
             title: note.reason === 'Salable Return' ? "CREDIT NOTE (SALES RETURN)" : (isCN ? "CREDIT NOTE" : "DEBIT NOTE"),
             subTitle: "Original For Recipient", docNo: note.noteNo, docTypeLabel: isCN ? "CN No" : "DN No",
             date: new Date(note.createdAt).toLocaleDateString('en-GB'),
-            party: { name: note.partyName, address: party.address, dl: party.dlNo || party.dl, gst: party.gstNo || party.gst },
+            party: { 
+                name: note.partyName, 
+                address: party.address, 
+                dl: party.dlNo || party.dl || 'N/A', 
+                gst: party.gstNo || party.gst || 'N/A',
+                fssai: party.fssaiNo || party.fssai || 'N/A',
+                phone: party.phoneNo || party.phone || 'N/A',
+                email: party.email || 'N/A'
+            },
             items: note.items && note.items.length > 0 ? note.items.map(it => ({
                 name: it.name, manufacturer: it.manufacturer, hsn: it.hsn, batch: it.batchNo, exp: it.expDate,
                 mrp: it.mrp || it.price, qty: it.qty, price: it.price, gstPercent: it.gstPercent, totalValue: it.totalValue
@@ -2370,7 +2391,15 @@ async function downloadInvoicePDF(id) {
             docNo: inv.invoiceNo,
             docTypeLabel: "Invoice No",
             date: new Date(inv.createdAt).toLocaleDateString('en-GB'),
-            party: { name: inv.stockistName, address: party.address, dl: party.dl || party.dlNo, gst: party.gst || party.gstNo },
+            party: { 
+                name: inv.stockistName, 
+                address: party.address, 
+                dl: party.dl || party.dlNo || 'N/A', 
+                gst: party.gst || party.gstNo || 'N/A',
+                fssai: party.fssai || party.fssaiNo || 'N/A',
+                phone: party.phone || party.phoneNo || 'N/A',
+                email: party.email || 'N/A'
+            },
             items: inv.items.map(it => ({
                 name: it.name, manufacturer: it.manufacturer, hsn: it.hsn, batch: it.batch, exp: it.expDate || it.exp || '-',
                 mrp: it.mrp || 0, qty: it.qty, price: it.priceUsed || it.price || 0, gstPercent: it.gstPercent || 12, totalValue: it.totalValue || 0
