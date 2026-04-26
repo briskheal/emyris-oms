@@ -1146,8 +1146,12 @@ function viewOrderDetails(id) {
         `;
     }).join('');
 
+    const unroundedTotal = o.subTotal + o.gstAmount;
+    const roundOffValue = (o.grandTotal - unroundedTotal).toFixed(2);
+
     document.getElementById('detail-subtotal').innerText = `₹${o.subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     document.getElementById('detail-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('detail-roundoff').innerText = `₹${roundOffValue}`;
     document.getElementById('detail-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
     const rejectBtn = document.getElementById('detail-reject-btn');

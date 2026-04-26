@@ -418,7 +418,7 @@ app.put('/api/admin/orders/:orderId/items/:itemId/negotiate', async (req, res) =
             const rate = p ? (p.gstPercent || 0) : 12; // Fallback to 12 if not found
             const itemValue = i.totalValue || 0;
             newSubTotal += itemValue;
-            newGstAmount += (itemValue * rate) / 100;
+            newGstAmount += Number(((itemValue * rate) / 100).toFixed(2));
         });
 
         order.subTotal = newSubTotal;

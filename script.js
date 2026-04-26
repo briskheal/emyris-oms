@@ -574,7 +574,7 @@ function updateFooter() {
         const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : (p.pts || p.ptr || 0)));
         
         const itemVal = qty * rate;
-        const itemGst = (itemVal * (p.gstPercent || 12)) / 100;
+        const itemGst = Number(((itemVal * (p.gstPercent || 12)) / 100).toFixed(2));
         
         taxableValue += itemVal;
         gstTotal += itemGst;
@@ -582,16 +582,19 @@ function updateFooter() {
     });
 
     const netAmount = taxableValue + gstTotal;
-    const grandTotal = Math.round(netAmount); // Standard Rounding Logic Applied (.50+ up, else down)
+    const grandTotal = Math.round(netAmount);
+    const roundOff = (grandTotal - netAmount).toFixed(2);
 
     // Update UI elements
     const taxableEl = document.getElementById('footer-subtotal');
     const gstEl = document.getElementById('footer-gst');
+    const roundEl = document.getElementById('footer-roundoff');
     const netEl = document.getElementById('footer-net');
     const totalEl = document.getElementById('footer-total');
 
     if (taxableEl) taxableEl.innerText = `₹${taxableValue.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     if (gstEl) gstEl.innerText = `₹${gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (roundEl) roundEl.innerText = `₹${roundOff}`;
     if (netEl) netEl.innerText = `₹${netAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     if (totalEl) totalEl.innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
@@ -652,7 +655,7 @@ async function placeOrder() {
     orderItems.forEach(item => {
         const p = allProducts.find(x => x._id === item.product);
         if (p) {
-            gstAmt += ((item.totalValue || 0) * (p.gstPercent || 12)) / 100;
+            gstAmt += Number(((item.totalValue || 0) * (p.gstPercent || 12) / 100).toFixed(2));
         }
     });
     
@@ -839,9 +842,13 @@ function viewOrderDetails(orderId) {
         `;
     }).join('');
 
-    document.getElementById('detail-subtotal').innerText = `₹${o.subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    document.getElementById('detail-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    document.getElementById('detail-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    const unroundedTotal = o.subTotal + o.gstAmount;
+    const roundOffValue = (o.roundOff || (o.grandTotal - unroundedTotal)).toFixed(2);
+
+    document.getElementById('detail-subtotal').innerText = `₹${o.subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('detail-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('detail-roundoff').innerText = `₹${roundOffValue}`;
+    document.getElementById('detail-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
     document.getElementById('orderDetailModal').style.display = 'flex';
 }

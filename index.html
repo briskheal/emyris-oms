@@ -354,7 +354,8 @@
         <div style="display: flex; gap: 2rem;">
             <div><span style="font-size: 0.6rem; opacity: 0.5;">TAXABLE</span><div id="footer-subtotal" style="font-weight: 800;">₹0.00</div></div>
             <div><span style="font-size: 0.6rem; opacity: 0.5;">GST</span><div id="footer-gst" style="font-weight: 800;">₹0.00</div></div>
-            <div style="padding-left: 1rem; border-left: 1px solid var(--glass-border);"><span style="font-size: 0.6rem; opacity: 0.5;">NET AMOUNT</span><div id="footer-net" style="font-weight: 800; color: var(--accent);">₹0.00</div></div>
+            <div><span style="font-size: 0.6rem; opacity: 0.5;">ROUND OFF</span><div id="footer-roundoff" style="font-weight: 800;">₹0.00</div></div>
+            <div style="padding-left: 1rem; border-left: 1px solid var(--glass-border);"><span style="font-size: 0.6rem; opacity: 0.5;">SUB TOTAL (INCL. GST)</span><div id="footer-net" style="font-weight: 800; color: var(--accent);">₹0.00</div></div>
         </div>
         <div style="display: flex; align-items: center; gap: 2rem;">
             <div style="text-align: right;"><span style="color: var(--primary); font-size: 0.65rem; font-weight: 800;">GRAND TOTAL</span><div id="footer-total" style="font-size: 1.4rem; font-weight: 900;">₹0.00</div></div>
@@ -419,9 +420,13 @@
                             <span style="color:var(--text-muted); font-weight: 600;">Taxable Value</span>
                             <span id="detail-subtotal" style="font-weight:700; color: #fff;">₹0.00</span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px dashed rgba(255,255,255,0.1); font-size: 0.9rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem; font-size: 0.9rem;">
                             <span style="color:var(--text-muted); font-weight: 600;">GST Amount</span>
                             <span id="detail-gst" style="font-weight:700; color: #fff;">₹0.00</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px dashed rgba(255,255,255,0.1); font-size: 0.9rem;">
+                            <span style="color:var(--text-muted); font-weight: 600;">Round Off</span>
+                            <span id="detail-roundoff" style="font-weight:700; color: #fff;">₹0.00</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-weight: 800; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Net Payable</span>
