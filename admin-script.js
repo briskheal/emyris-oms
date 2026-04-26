@@ -1,6 +1,70 @@
 // EMYRIS OMS - Admin Logic
 const API_BASE = '/api';
 let allProducts = [];
+let currentProductBatches = [];
+
+function renderProductBatches() {
+    const tbody = document.getElementById('prod-batch-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    let totalQty = 0;
+    
+    if (currentProductBatches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 1.5rem; color: rgba(255,255,255,0.3); font-style: italic;">No batches added yet.</td></tr>';
+    } else {
+        currentProductBatches.forEach((b, i) => {
+            totalQty += Number(b.qtyAvailable || 0);
+            tbody.innerHTML += `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s;">
+                    <td style="padding: 8px 12px; font-weight: 700; color: #fff;">${b.batchNo}</td>
+                    <td style="padding: 8px 12px; text-align: center;">${b.expDate || '-'}</td>
+                    <td style="padding: 8px 12px; text-align: right;">₹${Number(b.mrp||0).toFixed(2)}</td>
+                    <td style="padding: 8px 12px; text-align: right;">₹${Number(b.pts||0).toFixed(2)}</td>
+                    <td style="padding: 8px 12px; text-align: right;">₹${Number(b.ptr||0).toFixed(2)}</td>
+                    <td style="padding: 8px 12px; text-align: center; font-weight: 800; color: var(--accent); background: rgba(16, 185, 129, 0.05);">${b.qtyAvailable}</td>
+                    <td style="padding: 8px 12px; text-align: center;"><button type="button" class="btn btn-ghost" style="padding: 4px 8px; border-radius: 6px; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);" onclick="removeProductBatch(${i})">✕</button></td>
+                </tr>
+            `;
+        });
+    }
+    
+    document.getElementById('prod-total-qty-display').textContent = totalQty;
+    document.getElementById('prod-qty').value = totalQty;
+}
+
+function addProductBatch() {
+    const bNo = document.getElementById('new-batch-no').value;
+    if (!bNo) return alert('Batch Number is required');
+    
+    const bExp = document.getElementById('new-batch-exp').value;
+    const bMrp = document.getElementById('new-batch-mrp').value;
+    const bPts = document.getElementById('new-batch-pts').value;
+    const bPtr = document.getElementById('new-batch-ptr').value;
+    const bQty = document.getElementById('new-batch-qty').value;
+    
+    currentProductBatches.push({
+        batchNo: bNo.toUpperCase(),
+        expDate: bExp,
+        mrp: Number(bMrp || document.getElementById('prod-mrp').value || 0),
+        pts: Number(bPts || document.getElementById('prod-pts').value || 0),
+        ptr: Number(bPtr || document.getElementById('prod-ptr').value || 0),
+        qtyAvailable: Number(bQty || 0)
+    });
+    
+    document.getElementById('new-batch-no').value = '';
+    document.getElementById('new-batch-exp').value = '';
+    document.getElementById('new-batch-mrp').value = '';
+    document.getElementById('new-batch-pts').value = '';
+    document.getElementById('new-batch-ptr').value = '';
+    document.getElementById('new-batch-qty').value = '';
+    
+    renderProductBatches();
+}
+
+function removeProductBatch(i) {
+    currentProductBatches.splice(i, 1);
+    renderProductBatches();
+}
 let allStockists = [];
 let allOrders = [];
 let allInvoices = [];
@@ -508,6 +572,8 @@ function renderProducts() {
 function openProductModal() {
     document.getElementById('productForm').reset();
     document.getElementById('prod-id').value = '';
+    currentProductBatches = [];
+    renderProductBatches();
     document.getElementById('productModal').classList.remove('hidden');
 }
 
@@ -530,6 +596,7 @@ async function saveProduct(e) {
         ptr: Number(document.getElementById('prod-ptr').value),
         pts: Number(document.getElementById('prod-pts').value),
         qtyAvailable: Number(document.getElementById('prod-qty').value),
+        batches: currentProductBatches,
         bonusScheme: {
             buy: Number(document.getElementById('prod-buy').value),
             get: Number(document.getElementById('prod-get').value)
@@ -588,6 +655,10 @@ function editProduct(id) {
     document.getElementById('prod-qty').value = p.qtyAvailable;
     document.getElementById('prod-buy').value = p.bonusScheme ? p.bonusScheme.buy : 0;
     document.getElementById('prod-get').value = p.bonusScheme ? p.bonusScheme.get : 0;
+    
+    currentProductBatches = p.batches || [];
+    renderProductBatches();
+    
     document.getElementById('productModal').classList.remove('hidden');
 }
 
