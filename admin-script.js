@@ -1851,25 +1851,29 @@ async function downloadInvoicePDF(id) {
     doc.setDrawColor(200);
     doc.setLineWidth(0.2);
 
+    const party = allStockists.find(s => s.name === inv.stockistName) || {};
+    
+    // BILL TO on the Left
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("BILL TO / SHIP TO:", 15, 48);
+    doc.setFont("helvetica", "normal");
+    doc.text(inv.stockistName || 'N/A', 15, 53);
+    const stockistAddressLines = doc.splitTextToSize(party.address || 'N/A', 80);
+    doc.text(stockistAddressLines, 15, 58);
+    let sY = 58 + (stockistAddressLines.length * 4);
+    doc.setFontSize(8);
+    doc.text(`DL No: ${party.dl || party.dlNo || 'N/A'}`, 15, sY);
+    doc.text(`GSTIN: ${party.gst || party.gstNo || 'N/A'}`, 15, sY + 4);
+    doc.text(`FSSAI: ${party.fssai || party.fssaiNo || 'N/A'}`, 15, sY + 8);
+
+    // Invoice Details on the Right
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(99, 102, 241);
-    doc.text(`Invoice No: ${inv.invoiceNo}`, 15, 48);
+    doc.text(`Invoice No: ${inv.invoiceNo}`, 140, 48);
     doc.setTextColor(40, 44, 52);
-    doc.text(`Date: ${new Date(inv.createdAt).toLocaleDateString('en-GB')}`, 15, 53);
-    
-    const party = allStockists.find(s => s.name === inv.stockistName) || {};
-    doc.setFont("helvetica", "bold");
-    doc.text("BILL TO / SHIP TO:", 110, 48);
-    doc.setFont("helvetica", "normal");
-    doc.text(inv.stockistName || 'N/A', 110, 53);
-    const stockistAddressLines = doc.splitTextToSize(party.address || 'N/A', 80);
-    doc.text(stockistAddressLines, 110, 58);
-    let sY = 58 + (stockistAddressLines.length * 4);
-    doc.setFontSize(8);
-    doc.text(`DL No: ${party.dl || party.dlNo || 'N/A'}`, 110, sY);
-    doc.text(`GSTIN: ${party.gst || party.gstNo || 'N/A'}`, 110, sY + 4);
-    doc.text(`FSSAI: ${party.fssai || party.fssaiNo || 'N/A'}`, 110, sY + 8);
+    doc.text(`Date: ${new Date(inv.createdAt).toLocaleDateString('en-GB')}`, 140, 53);
 
     doc.autoTable({
         startY: 75,
@@ -1902,20 +1906,34 @@ async function downloadInvoicePDF(id) {
 
     const tableFinalY = doc.lastAutoTable.finalY + 10;
     
-    const gstHalves = (inv.gstAmount / 2).toFixed(2);
+    // Dynamic Interstate / Intrastate GST Logic
+    const companyGST = companyProfile.gstNo || '36'; // Default Telangana code is 36
+    const buyerGST = party.gst || party.gstNo || '';
+    const isInterstate = buyerGST.length > 2 && companyGST.substring(0, 2) !== buyerGST.substring(0, 2);
+    
+    let taxBody = [];
+    if (isInterstate) {
+        taxBody = [
+            ['IGST', `Rs. ${inv.subTotal.toFixed(2)}`, `${inv.items[0]?.gstPercent || 0}%`, `Rs. ${inv.gstAmount.toFixed(2)}`]
+        ];
+    } else {
+        const gstHalves = (inv.gstAmount / 2).toFixed(2);
+        taxBody = [
+            ['CGST', `Rs. ${inv.subTotal.toFixed(2)}`, `${(inv.items[0]?.gstPercent || 0)/2}%`, `Rs. ${gstHalves}`],
+            ['SGST', `Rs. ${inv.subTotal.toFixed(2)}`, `${(inv.items[0]?.gstPercent || 0)/2}%`, `Rs. ${gstHalves}`]
+        ];
+    }
+
     doc.autoTable({
         startY: tableFinalY,
         head: [['Tax Type', 'Taxable Amount', 'Tax Rate', 'Tax Amount']],
-        body: [
-            ['CGST', `Rs. ${inv.subTotal.toFixed(2)}`, `${inv.items[0]?.gstPercent/2}%`, `Rs. ${gstHalves}`],
-            ['SGST', `Rs. ${inv.subTotal.toFixed(2)}`, `${inv.items[0]?.gstPercent/2}%`, `Rs. ${gstHalves}`]
-        ],
+        body: taxBody,
         theme: 'plain',
         headStyles: { fillColor: false, textColor: [99, 102, 241], fontStyle: 'bold', fontSize: 8, halign: 'right' },
         styles: { fontSize: 8, halign: 'right', cellPadding: 1, textColor: [40, 44, 52] },
-        columnStyles: { 0: { fontStyle: 'bold', halign: 'left' } },
-        margin: { left: 90, right: 15 },
-        tableWidth: 105
+        columnStyles: { 0: { fontStyle: 'bold', halign: 'center' } },
+        margin: { left: 110, right: 15 },
+        tableWidth: 85
     });
 
     // STANDARDISED FIXED FOOTER
