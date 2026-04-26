@@ -1222,40 +1222,40 @@
                 <div style="padding: 1.25rem 1.5rem; display: grid; grid-template-columns: 360px 1fr; gap: 1.5rem; align-items: stretch; height: 100%;">
                     
                     <!-- LEFT COLUMN: Core Details & Defaults -->
-                    <div style="display: flex; flex-direction: column; gap: 1.5rem; overflow-y: auto; padding-right: 0.5rem;">
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem; overflow-y: auto; padding-right: 0.5rem;">
                         
                         <!-- SECTION 1: CORE DETAILS -->
                         <div>
-                            <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px;"><span style="color: var(--primary);">●</span> Core Identifiers</h4>
-                            <div style="background: rgba(15,23,42,0.3); padding: 1.25rem; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); display: grid; gap: 1rem;">
-                                <div class="form-group" style="margin:0;"><label style="margin-bottom:0.4rem;">Product Name</label><input type="text" id="prod-name" required></div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.4rem;">Manufacturer</label><input type="text" id="prod-manufacturer" placeholder="Mfg Co."></div>
-                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.4rem;">HSN Code</label><input type="text" id="prod-hsn" list="hsn-list"></div>
+                            <h4 style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 0.4rem; display: flex; align-items: center; gap: 8px;"><span style="color: var(--primary);">●</span> Core Identifiers</h4>
+                            <div style="background: rgba(15,23,42,0.3); padding: 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: grid; gap: 0.5rem;">
+                                <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">Product Name</label><input type="text" id="prod-name" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" required></div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">Manufacturer</label><input type="text" id="prod-manufacturer" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" placeholder="Mfg Co."></div>
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">HSN Code</label><input type="text" id="prod-hsn" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" list="hsn-list"></div>
                                 </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.4rem;">Category</label><input type="text" id="prod-cat" list="category-list"></div>
-                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.4rem;">Group</label><input type="text" id="prod-group" list="group-list"></div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">Category</label><input type="text" id="prod-cat" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" list="category-list"></div>
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">Group</label><input type="text" id="prod-group" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" list="group-list"></div>
                                 </div>
-                                <div class="form-group" style="margin:0;"><label style="margin-bottom:0.4rem;">Packing</label><input type="text" id="prod-packing" placeholder="10x10" required></div>
+                                <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">Packing</label><input type="text" id="prod-packing" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" placeholder="10x10" required></div>
                             </div>
                         </div>
 
                         <!-- SECTION 2: DEFAULTS -->
                         <div>
-                            <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px;"><span style="color: var(--accent);">●</span> Defaults & Schemes</h4>
-                            <div style="background: rgba(15,23,42,0.3); padding: 1.25rem; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); display: grid; gap: 1rem;">
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.4rem;">MRP</label><input type="number" id="prod-mrp" step="0.01" required></div>
-                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.4rem;">GST %</label><input type="number" id="prod-gst" list="gst-rate-list" value="12"></div>
+                            <h4 style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 0.4rem; display: flex; align-items: center; gap: 8px;"><span style="color: var(--accent);">●</span> Defaults & Schemes</h4>
+                            <div style="background: rgba(15,23,42,0.3); padding: 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: grid; gap: 0.5rem;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">MRP</label><input type="number" id="prod-mrp" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" step="0.01" required></div>
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">GST %</label><input type="number" id="prod-gst" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" list="gst-rate-list" value="12"></div>
                                 </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.4rem;">PTR</label><input type="number" id="prod-ptr" step="0.01"></div>
-                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.4rem;">PTS</label><input type="number" id="prod-pts" step="0.01"></div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">PTR</label><input type="number" id="prod-ptr" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" step="0.01"></div>
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">PTS</label><input type="number" id="prod-pts" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" step="0.01"></div>
                                 </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 1rem; margin-top: 0.25rem;">
-                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.4rem;">Bonus Buy (X)</label><input type="number" id="prod-buy" placeholder="10"></div>
-                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.4rem;">Free (Y)</label><input type="number" id="prod-get" placeholder="1"></div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 0.5rem; margin-top: 0;">
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">Bonus Buy (X)</label><input type="number" id="prod-buy" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" placeholder="10"></div>
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">Free (Y)</label><input type="number" id="prod-get" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" placeholder="1"></div>
                                 </div>
                             </div>
                         </div>
