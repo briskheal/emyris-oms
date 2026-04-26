@@ -79,7 +79,7 @@ function switchTab(tabId, el, subType = null) {
             const typeFilter = document.getElementById('note-type-filter');
             if (typeFilter) {
                 typeFilter.value = subType;
-                filterNotes(subType);
+                filterNotes();
             }
         }
     }
@@ -1675,12 +1675,19 @@ async function loadFinancialNotes() {
 
 function filterNotes() {
     const query = document.getElementById('noteSearch').value.toLowerCase();
-    const type = document.getElementById('note-filter-type').value;
+    const reasonFilter = document.getElementById('note-type-filter').value;
     
+    // Update dynamic title
+    const titleEl = document.getElementById('notes-page-title');
+    if (titleEl) {
+        if (reasonFilter === 'ALL') titleEl.innerText = "📝 Global Financial Adjustments";
+        else titleEl.innerText = `📝 ${reasonFilter} Records`;
+    }
+
     const filtered = allNotes.filter(n => {
         const matchesQuery = n.noteNo.toLowerCase().includes(query) || n.partyName.toLowerCase().includes(query);
-        const matchesType = type === 'ALL' || n.noteType === type;
-        return matchesQuery && matchesType;
+        const matchesReason = reasonFilter === 'ALL' || n.reason === reasonFilter;
+        return matchesQuery && matchesReason;
     });
     
     renderFinancialNotes(filtered);

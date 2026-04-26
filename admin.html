@@ -283,11 +283,16 @@
                 <div class="nav-item" onclick="toggleSubmenu('sub-notes', this)">
                     <span>📝</span> Financial Notes <i style="margin-left: auto; font-size: 0.7rem; opacity: 0.5;">▼</i>
                 </div>
-                <div id="sub-notes" class="hidden" style="padding-left: 2.5rem; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Exp/Brk/Damg CN')">Exp/Brk/Damg CN</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Price Diff DN')">Price Diff DN</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Brk/Dmg/Loss DN')">Brk/Dmg/Loss DN</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Price Diff CN')">Price Diff CN</div>
+                <div id="sub-notes" class="hidden" style="padding-left: 2.5rem; display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer; font-weight: 700; color: var(--primary);" onclick="switchTab('notes', null, 'Salable Return')">● Sale Return (CN)</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Exp/Brk/Damg CN')">● Exp/Brk/Damg CN</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Price Diff CN')">● Price Diff CN</div>
+                    
+                    <div style="margin: 5px 0; border-top: 1px dashed rgba(255,255,255,0.05);"></div>
+
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer; font-weight: 700; color: #ef4444;" onclick="switchTab('notes', null, 'Purchase Return')">● Purchase Return (DN)</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Price Diff DN')">● Price Diff DN</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Brk/Dmg/Loss DN')">● Brk/Dmg/Loss DN</div>
                 </div>
             </div>
 
@@ -615,15 +620,19 @@
             <!-- FINANCIAL NOTES TAB -->
             <div id="tab-notes" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <h2 class="section-title" style="margin: 0;">📝 Financial Credit/Debit Notes</h2>
+                    <h2 class="section-title" id="notes-page-title" style="margin: 0;">📝 Global Financial Adjustments</h2>
                     <div style="display: flex; gap: 1rem; align-items: center;">
                         <input type="text" id="noteSearch" placeholder="Search by Party or Note No..." 
                             onkeyup="filterNotes()"
                             style="width: 250px; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; color: #fff;">
-                        <select id="note-filter-type" onchange="filterNotes()" style="width: 150px;">
-                            <option value="ALL">All Types</option>
-                            <option value="CN">Credit Notes</option>
-                            <option value="DN">Debit Notes</option>
+                        <select id="note-type-filter" onchange="filterNotes(this.value)" style="width: 200px;">
+                            <option value="ALL">All Adjustment Notes</option>
+                            <option value="Salable Return">Sale Return (CN)</option>
+                            <option value="Exp/Brk/Damg CN">Exp/Brk/Damg CN</option>
+                            <option value="Price Diff CN">Price Diff CN</option>
+                            <option value="Purchase Return">Purchase Return (DN)</option>
+                            <option value="Price Diff DN">Price Diff DN</option>
+                            <option value="Brk/Dmg/Loss DN">Brk/Dmg/Loss DN</option>
                         </select>
                         <button class="btn btn-primary" onclick="openNoteModal()">+ ISSUE NEW NOTE</button>
                     </div>
