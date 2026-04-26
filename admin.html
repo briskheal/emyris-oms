@@ -274,7 +274,7 @@
         <aside class="sidebar">
             <div class="nav-item active" onclick="switchTab('dashboard', this)"><span>📊</span> Dashboard</div>
             <div class="nav-item" onclick="switchTab('products', this)"><span>💊</span> Product Master</div>
-            <div class="nav-item" onclick="switchTab('stockists', this)"><span>🤝</span> Stockist Management</div>
+            <div class="nav-item" onclick="switchTab('stockists', this)"><span>🤝</span> Party Master</div>
             <div class="nav-item" onclick="switchTab('masters', this)"><span>📦</span> Global Masters</div>
             <div class="nav-item" onclick="switchTab('orders', this)"><span>📦</span> Order History</div>
             <div class="nav-item" onclick="switchTab('invoices', this)"><span>🧾</span> Accounting & Invoices</div>
@@ -422,8 +422,29 @@
                             <option value="STOCKIST">Stockists Only</option>
                             <option value="SUPPLIER">Suppliers Only</option>
                         </select>
-                        <button class="btn btn-primary" onclick="openPartyModal()">+ Create Party</button>
+                        <button class="btn btn-ghost" onclick="exportParties()">📥 EXPORT PARTIES</button>
+                        <button class="btn btn-primary" onclick="openPartyModal()">+ Create Party Master</button>
                         <button class="btn btn-ghost" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteAllStockists()">🗑️ DELETE ALL</button>
+                    </div>
+                </div>
+
+                <!-- PARTY MASTER STATS -->
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                    <div class="glass-card" style="margin-bottom:0; padding: 1rem;">
+                        <span class="stat-label">Total Parties</span>
+                        <div id="stat-total-parties" class="stat-value" style="font-size: 1.1rem;">0</div>
+                    </div>
+                    <div class="glass-card" style="margin-bottom:0; padding: 1rem;">
+                        <span class="stat-label">Stockists</span>
+                        <div id="stat-total-stockists" class="stat-value" style="color: var(--primary); font-size: 1.1rem;">0</div>
+                    </div>
+                    <div class="glass-card" style="margin-bottom:0; padding: 1rem;">
+                        <span class="stat-label">Suppliers</span>
+                        <div id="stat-total-suppliers" class="stat-value" style="color: var(--accent); font-size: 1.1rem;">0</div>
+                    </div>
+                    <div class="glass-card" style="margin-bottom:0; padding: 1rem;">
+                        <span class="stat-label">Active Approval</span>
+                        <div id="stat-pending-approval" class="stat-value" style="color: #f59e0b; font-size: 1.1rem;">0</div>
                     </div>
                 </div>
                 <div class="glass-card">
@@ -1274,7 +1295,25 @@
 
                 <div class="form-group">
                     <label>Full Address</label>
-                    <textarea id="party-address" style="min-height: 80px;"></textarea>
+                    <textarea id="party-address" style="min-height: 60px;"></textarea>
+                </div>
+
+                <div style="margin-top: 1.5rem; padding: 1.5rem; background: rgba(255,255,255,0.03); border-radius: 16px; border: 1px dashed var(--glass-border);">
+                    <p style="font-size: 0.7rem; color: var(--primary); margin-bottom: 1rem; font-weight: 700; text-transform: uppercase;">🏦 Banking Information (Party Master)</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Bank Name</label>
+                            <input type="text" id="party-bank-name" placeholder="e.g. HDFC Bank">
+                        </div>
+                        <div class="form-group">
+                            <label>Account Number</label>
+                            <input type="text" id="party-bank-acc" placeholder="Account No">
+                        </div>
+                        <div class="form-group">
+                            <label>IFSC Code</label>
+                            <input type="text" id="party-bank-ifsc" placeholder="IFSC000XXXX">
+                        </div>
+                    </div>
                 </div>
 
                 <div style="margin-top: 2rem; display: flex; gap: 1rem;">
@@ -1312,6 +1351,9 @@
                     <div id="detail-status" style="display: inline-block; padding: 6px 15px; border-radius: 99px; font-weight: 800; font-size: 0.8rem;">PENDING</div>
                 </div>
             </div>
+        </div>
+    </div>
+
     <!-- MODAL (Financial Note) -->
     <div id="noteModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(15px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
         <div class="glass-card" style="width: 600px; padding: 2.5rem; border: 1px solid rgba(255,255,255,0.15);">
@@ -1343,14 +1385,35 @@
 
                 <div class="form-group" style="margin-top:1.5rem;">
                     <label>Reason for Adjustment</label>
-                    <select id="note-reason" required>
-                        <option value="Price Difference">Price Difference / Rate Variance</option>
-                        <option value="Expiry Return">Expiry Return (Short Dated)</option>
-                        <option value="Breakage/Damage">Breakage or Physical Damage</option>
+                    <select id="note-reason" required onchange="toggleNoteInventoryFields(this.value)">
+                        <option value="Price Diff CN">Price Diff CN (Overcharged)</option>
+                        <option value="Price Diff DN">Price Diff DN (Undercharged)</option>
+                        <option value="Exp/Brk/Damg CN">Exp/Brk/Damg CN (Non-Salable Return)</option>
+                        <option value="Brk/Dmg/Loss DN">Brk/Dmg/Loss DN (Stock Adjustment)</option>
+                        <option value="Salable Return">Salable Return (Add to Inventory + CN)</option>
+                        <option value="Purchase Return">Purchase Return (Remove from Inventory + DN)</option>
                         <option value="Promotional Discount">Special Promotional Discount</option>
-                        <option value="Scheme Benefit">Scheme / Bonus Settlement</option>
                         <option value="Other">Other Adjustment</option>
                     </select>
+                </div>
+
+                <!-- INVENTORY LINK FIELDS (Hidden by default) -->
+                <div id="note-inventory-fields" class="hidden" style="margin-top: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px dashed var(--glass-border);">
+                    <p style="font-size: 0.7rem; color: var(--primary); margin-bottom: 10px; font-weight: 700;">📦 INVENTORY IMPACT DETAILS</p>
+                    <div class="form-group">
+                        <label>Select Product</label>
+                        <select id="note-product" onchange="updateNoteBatches(this.value)"></select>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group">
+                            <label>Batch No</label>
+                            <input type="text" id="note-batch" placeholder="e.g. B24001">
+                        </div>
+                        <div class="form-group">
+                            <label>Quantity</label>
+                            <input type="number" id="note-qty" placeholder="0">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="form-group" style="margin-top:1.5rem;">

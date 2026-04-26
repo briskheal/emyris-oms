@@ -230,6 +230,9 @@ const stockistSchema = new mongoose.Schema({
     loginPin: String,
     registeredAt: { type: Date, default: Date.now },
     partyType: { type: String, enum: ['STOCKIST', 'SUPPLIER'], default: 'STOCKIST' },
+    bankName: String,
+    bankAccountNo: String,
+    bankIfsc: String,
     creditLimit: { type: Number, default: 0 },
     outstandingBalance: { type: Number, default: 0 },
     city: String,
@@ -335,8 +338,13 @@ const financialNoteSchema = new mongoose.Schema({
     party: { type: mongoose.Schema.Types.ObjectId, ref: 'Stockist', required: true },
     partyName: String,
     amount: { type: Number, required: true },
-    reason: { type: String, required: true }, // Price Difference, Expiry, Damage, etc.
+    reason: { type: String, required: true },
     description: String,
+    // Inventory Link (Optional)
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    productName: String,
+    batchNo: String,
+    qty: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -1227,7 +1235,7 @@ app.get('/api/admin/financial-notes', async (req, res) => {
 
 app.post('/api/admin/financial-notes', async (req, res) => {
     try {
-        const { noteType, party, amount, reason, description } = req.body;
+        const { noteType, party, amount, reason, description, productId, batchNo, qty } = req.body;
         
         // Generate Note No (EMY-CN-YYYYMMDD-XXXX or EMY-DN-...)
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -1243,8 +1251,27 @@ app.post('/api/admin/financial-notes', async (req, res) => {
             partyName: partyObj ? partyObj.name : 'Unknown',
             amount,
             reason,
-            description
+            description,
+            productId,
+            batchNo,
+            qty: qty || 0
         });
+
+        // INVENTORY LOGIC
+        if (productId && batchNo && qty > 0) {
+            const product = await Product.findById(productId);
+            if (product) {
+                newNote.productName = product.name;
+                
+                if (reason === 'Salable Return') {
+                    // Credit Note to Stockist + Stock Added Back to Inventory
+                    await Product.findByIdAndUpdate(productId, { $inc: { qtyAvailable: qty } });
+                } else if (reason === 'Purchase Return') {
+                    // Debit Note to Supplier + Stock Removed from Inventory
+                    await Product.findByIdAndUpdate(productId, { $inc: { qtyAvailable: -qty } });
+                }
+            }
+        }
 
         await newNote.save();
 

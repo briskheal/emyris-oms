@@ -884,6 +884,15 @@ function renderStockists(list = null) {
 
     const data = list || allStockists;
 
+    // Update Party Stats
+    const totalEl = document.getElementById('stat-total-parties');
+    if (totalEl) {
+        totalEl.innerText = allStockists.length;
+        document.getElementById('stat-total-stockists').innerText = allStockists.filter(s => (s.partyType || 'STOCKIST') === 'STOCKIST').length;
+        document.getElementById('stat-total-suppliers').innerText = allStockists.filter(s => s.partyType === 'SUPPLIER').length;
+        document.getElementById('stat-pending-approval').innerText = allStockists.filter(s => !s.approved).length;
+    }
+
     tbody.innerHTML = data.map(s => `
         <tr>
             <td style="font-weight:600; color:#fff;">${s.name}</td>
@@ -945,6 +954,9 @@ function openPartyModal(id = null) {
             document.getElementById('party-state').value = s.state || '';
             document.getElementById('party-phone').value = s.phone || '';
             document.getElementById('party-address').value = s.address || '';
+            document.getElementById('party-bank-name').value = s.bankName || '';
+            document.getElementById('party-bank-acc').value = s.bankAccountNo || '';
+            document.getElementById('party-bank-ifsc').value = s.bankIfsc || '';
         }
     }
     modal.classList.remove('hidden');
@@ -973,6 +985,9 @@ async function saveParty(e) {
         state: document.getElementById('party-state').value,
         phone: document.getElementById('party-phone').value,
         address: document.getElementById('party-address').value,
+        bankName: document.getElementById('party-bank-name').value,
+        bankAccountNo: document.getElementById('party-bank-acc').value,
+        bankIfsc: document.getElementById('party-bank-ifsc').value,
         approved: true 
     };
 
@@ -998,6 +1013,27 @@ async function saveParty(e) {
 
 function closeStockistModal() {
     document.getElementById('partyModal').classList.add('hidden');
+}
+
+function exportParties() {
+    const data = allStockists.map(s => ({
+        "Party Name": s.name,
+        "Type": s.partyType || 'STOCKIST',
+        "Login ID": s.loginId,
+        "Email": s.email || '-',
+        "Phone": s.phone || '-',
+        "City": s.city || '-',
+        "State": s.state || '-',
+        "GST No": s.gstNo || '-',
+        "PAN No": s.panNo || '-',
+        "DL No": s.dlNo || '-',
+        "FSSAI No": s.fssaiNo || '-',
+        "Bank": s.bankName || '-',
+        "Acc No": s.bankAccountNo || '-',
+        "IFSC": s.bankIfsc || '-',
+        "Outstanding": s.outstandingBalance
+    }));
+    downloadExcel(data, "Emyris_Party_Master");
 }
 
 async function approveStockist(id) {
@@ -1669,7 +1705,10 @@ function renderFinancialNotes(data = allNotes) {
             <td style="font-family:monospace; font-weight:700; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">${n.noteNo}</td>
             <td><span class="badge ${n.noteType === 'CN' ? 'badge-approved' : 'badge-pending'}">${n.noteType === 'CN' ? 'CREDIT' : 'DEBIT'}</span></td>
             <td style="font-weight:600;">${n.partyName}</td>
-            <td>${n.reason}</td>
+            <td>
+                <div>${n.reason}</div>
+                ${n.productName ? `<div style="font-size:0.7rem; color:var(--text-muted);">📦 ${n.productName} | ${n.batchNo} | Qty: ${n.qty}</div>` : ''}
+            </td>
             <td style="text-align:right; font-weight:800; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">₹${n.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             <td>${new Date(n.createdAt).toLocaleDateString('en-GB')}</td>
             <td style="text-align:right;">
@@ -1685,10 +1724,44 @@ function openNoteModal() {
         select.innerHTML = '<option value="">-- Select Party --</option>' + 
             allStockists.map(s => `<option value="${s._id}">${s.name} (${s.partyType || 'STOCKIST'})</option>`).join('');
     }
+
+    const prodSelect = document.getElementById('note-product');
+    if(prodSelect) {
+        prodSelect.innerHTML = '<option value="">-- Select Product --</option>' + 
+            allProducts.map(p => `<option value="${p._id}">${p.name} (${p.packing})</option>`).join('');
+    }
     
     const form = document.getElementById('noteForm');
     if(form) form.reset();
+    document.getElementById('note-inventory-fields').classList.add('hidden');
     document.getElementById('noteModal').classList.remove('hidden');
+}
+
+function toggleNoteInventoryFields(reason) {
+    const fields = document.getElementById('note-inventory-fields');
+    const typeSelect = document.getElementById('note-type');
+    
+    // Auto-set Note Type based on common patterns
+    if (reason.includes('CN') || reason === 'Salable Return') {
+        typeSelect.value = 'CN';
+    } else if (reason.includes('DN') || reason === 'Purchase Return') {
+        typeSelect.value = 'DN';
+    }
+
+    if (reason === 'Salable Return' || reason === 'Purchase Return' || reason === 'Exp/Brk/Damg CN') {
+        fields.classList.remove('hidden');
+    } else {
+        fields.classList.add('hidden');
+    }
+}
+
+function updateNoteBatches(productId) {
+    const p = allProducts.find(x => x._id === productId);
+    if (!p) return;
+    // We could make this a select, but for now we'll let them type or auto-fill first available
+    if (p.batches && p.batches.length > 0) {
+        document.getElementById('note-batch').value = p.batches[0].batchNo;
+    }
 }
 
 function closeNoteModal() {
@@ -1702,7 +1775,10 @@ async function saveFinancialNote(e) {
         party: document.getElementById('note-party').value,
         amount: Number(document.getElementById('note-amount').value),
         reason: document.getElementById('note-reason').value,
-        description: document.getElementById('note-desc').value
+        description: document.getElementById('note-desc').value,
+        productId: document.getElementById('note-product').value,
+        batchNo: document.getElementById('note-batch').value,
+        qty: Number(document.getElementById('note-qty').value)
     };
 
     try {
@@ -1716,6 +1792,7 @@ async function saveFinancialNote(e) {
             alert("✅ Financial Note Issued Successfully!");
             await loadFinancialNotes();
             await loadStockists();
+            await loadProducts(); // Refresh stock if changed
             renderFinancialNotes();
             closeNoteModal();
         }
