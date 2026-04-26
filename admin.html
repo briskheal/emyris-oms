@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <style>
         :root {
             --primary: #6366f1;
@@ -742,6 +743,12 @@
                                 <label>Registered Office Address</label>
                                 <textarea id="set-address" style="width: 100%; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; color: #fff; min-height: 100px;"></textarea>
                             </div>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>Company Logo (Optional)</label>
+                                <input type="file" id="set-logo" accept="image/png, image/jpeg" onchange="convertLogoToBase64(this)">
+                                <input type="hidden" id="set-logo-b64">
+                                <img id="logo-preview" src="" style="max-height: 40px; margin-top: 10px; display: none; border: 1px dashed var(--glass-border); padding: 2px;">
+                            </div>
                         </div>
 
                         <!-- Card 2: Hotlines & Communication -->
@@ -832,6 +839,10 @@
                                 <div class="form-group">
                                     <label>Terms & Conditions (Prints on Invoice)</label>
                                     <textarea id="set-terms" rows="3" placeholder="1. Goods once sold will not be taken back.&#10;2. Subject to local jurisdiction." style="font-family: monospace;"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>UPI ID (For Invoice QR Code)</label>
+                                    <input type="text" id="set-upi-id" placeholder="company@upi">
                                 </div>
                                 <div class="form-group" style="grid-column: span 2;">
                                     <label>Digital Signature (Optional)</label>

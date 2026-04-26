@@ -805,6 +805,7 @@ function viewOrderDetails(orderId) {
         console.error("❌ Order not found in history:", orderId);
         return;
     }
+    currentViewOrderId = orderId;
     console.log("📂 Opening Order/Invoice Details:", orderId, o);
     
     document.getElementById('detail-order-no').innerText = o.status === 'invoiced' ? `Invoice Details (${o.orderNo})` : `Order Details (${o.orderNo})`;
@@ -827,13 +828,13 @@ function viewOrderDetails(orderId) {
         const lineTotal = Number(approved) * Number(i.qty);
         
         return `
-            <tr>
-                <td style="font-weight: 700; color: #fff;">${i.name}</td>
-                <td style="text-align: right; color: var(--text-muted); font-size: 0.85rem;">₹${requested.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                <td style="text-align: right; color: var(--accent); font-weight: 800;">₹${approved.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                <td style="text-align: center; font-weight: 900; color: #10b981; font-size: 1.1rem;">${i.qty}</td>
-                <td style="text-align: center; color: var(--accent); font-weight: 700;">+${i.bonusQty || 0}</td>
-                <td style="text-align: right; font-weight: 900; color: #fff; font-size: 1rem;">₹${lineTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+                <td style="padding: 1rem 1.25rem; font-weight: 700; color: #fff; font-size: 0.9rem;">${i.name}</td>
+                <td style="padding: 1rem 1.25rem; text-align: right; color: var(--text-muted); font-size: 0.85rem;">₹${requested.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td style="padding: 1rem 1.25rem; text-align: right; color: var(--accent); font-weight: 800; font-size: 0.9rem;">₹${approved.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td style="padding: 1rem 1.25rem; text-align: center; font-weight: 800; color: #fff; font-size: 0.9rem;">${i.qty}</td>
+                <td style="padding: 1rem 1.25rem; text-align: center; color: var(--accent); font-weight: 700; font-size: 0.9rem;">+${i.bonusQty || 0}</td>
+                <td style="padding: 1rem 1.25rem; text-align: right; font-weight: 900; color: #fff; font-size: 0.95rem;">₹${lineTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             </tr>
         `;
     }).join('');
@@ -882,7 +883,7 @@ async function downloadStockistInvoice() {
     }
 }
 
-function generateInvoicePDF(inv) {
+async function generateInvoicePDF(inv) {
     function numberToWords(num) {
         const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
         const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
@@ -931,18 +932,24 @@ function generateInvoicePDF(inv) {
         doc.setTextColor(40, 44, 52);
     } else {
         doc.setFontSize(style === 'compact' ? 18 : 22);
-        doc.setTextColor(40, 44, 52);
+        doc.setTextColor(99, 102, 241);
         doc.text("TAX INVOICE", 105, 15, { align: 'center' });
         
-        doc.setDrawColor(200);
-        doc.rect(15, 10, 40, 20); 
-        doc.setFontSize(8);
-        doc.text("LOGO", 35, 20, { align: 'center' });
+        if (companySettings?.logoImage) {
+            doc.addImage(companySettings.logoImage, 'PNG', 15, 10, 40, 20);
+        } else {
+            doc.setDrawColor(200);
+            doc.rect(15, 10, 40, 20); 
+            doc.setFontSize(8);
+            doc.text("LOGO", 35, 20, { align: 'center' });
+        }
 
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
+        doc.setTextColor(16, 185, 129);
         doc.text(companySettings?.name || "EMYRIS BIOLIFESCIENCES PVT. LTD.", 140, 15);
         doc.setFont("helvetica", "normal");
+        doc.setTextColor(40, 44, 52);
         doc.setFontSize(8);
         doc.text(companySettings?.address || "Sumadhura Pragati Chambers, Park Ln, Secunderabd,", 140, 20);
         doc.text("Hyderabad, Telangana - 500003", 140, 24);
@@ -951,11 +958,17 @@ function generateInvoicePDF(inv) {
         doc.text(`FSSAI: 13623011000123`, 140, 36);
     }
 
+    doc.setDrawColor(99, 102, 241);
+    doc.setLineWidth(0.5);
     doc.line(15, 40, 195, 40);
+    doc.setDrawColor(200);
+    doc.setLineWidth(0.2);
 
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(99, 102, 241);
     doc.text(`Invoice No: ${inv.invoiceNo}`, 15, 48);
+    doc.setTextColor(40, 44, 52);
     doc.text(`Date: ${new Date(inv.createdAt).toLocaleDateString('en-GB')}`, 15, 53);
     
     const party = currentUser || {};
@@ -983,7 +996,7 @@ function generateInvoicePDF(inv) {
             (item.totalValue * (1 + item.gstPercent/100)).toFixed(2)
         ]),
         theme: style === 'modern' ? 'striped' : 'grid',
-        headStyles: { fillColor: style === 'modern' ? [99, 102, 241] : [40, 44, 52], fontSize: style === 'compact' ? 6 : 7, halign: 'center' },
+        headStyles: { fillColor: style === 'compact' ? [40, 44, 52] : [99, 102, 241], fontSize: style === 'compact' ? 6 : 7, halign: 'center' },
         styles: { fontSize: style === 'compact' ? 6 : 7, cellPadding: style === 'compact' ? 1 : 2 },
         columnStyles: {
             0: { cellWidth: 10 },
@@ -996,16 +1009,23 @@ function generateInvoicePDF(inv) {
 
     const finalY = 240; 
     
-    doc.setDrawColor(200);
+    doc.setDrawColor(99, 102, 241);
+    doc.setLineWidth(0.5);
     doc.line(15, finalY - 5, 195, finalY - 5);
+    doc.setDrawColor(200);
+    doc.setLineWidth(0.2);
 
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(99, 102, 241);
     doc.text("Amount in Words:", 15, finalY);
+    doc.setTextColor(40, 44, 52);
     doc.setFont("helvetica", "normal");
     doc.text(numberToWords(inv.grandTotal), 15, finalY + 5);
 
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(99, 102, 241);
     doc.text("TAX SUMMARY", 130, finalY);
+    doc.setTextColor(40, 44, 52);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.text(`Taxable Amount: ₹${inv.subTotal.toLocaleString('en-IN')}`, 130, finalY + 5);
@@ -1014,14 +1034,37 @@ function generateInvoicePDF(inv) {
     
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(16, 185, 129);
     doc.text(`NET PAYABLE: ₹${inv.grandTotal.toLocaleString('en-IN')}`, 130, finalY + 22);
+    doc.setTextColor(40, 44, 52);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("Bank Details:", 15, finalY + 15);
+    doc.setFont("helvetica", "normal");
+    const bDetails = companySettings?.bankDetails ? companySettings.bankDetails.split('\n') : [];
+    bDetails.forEach((line, i) => doc.text(line, 15, finalY + 19 + (i * 4)));
+
+    if (companySettings?.upiId && window.QRCode) {
+        try {
+            const upiUrl = `upi://pay?pa=${companySettings.upiId}&pn=${encodeURIComponent(companySettings.name || 'Company')}&am=${Math.round(inv.grandTotal)}&cu=INR`;
+            const qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 150, margin: 1 });
+            doc.addImage(qrDataUrl, 'PNG', 85, finalY + 10, 25, 25);
+            doc.setFontSize(6);
+            doc.text("Scan to Pay", 97.5, finalY + 38, { align: 'center' });
+        } catch(err) { console.error("QR Code Error:", err); }
+    }
 
     doc.setFontSize(8);
     doc.setFont("helvetica", "italic");
-    doc.text("Terms: 1. Goods once sold will not be taken back. 2. Subject to Hyderabad Jurisdiction.", 15, 280);
+    const tConds = companySettings?.termsConditions ? companySettings.termsConditions.split('\n') : ["1. Goods once sold will not be taken back. 2. Subject to local Jurisdiction."];
+    tConds.forEach((line, i) => doc.text(line, 15, 280 + (i * 4)));
 
     doc.setFont("helvetica", "bold");
     doc.text(`For ${companySettings?.name || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 30, { align: 'right' });
+    if (companySettings?.signatureImage) {
+        doc.addImage(companySettings.signatureImage, 'PNG', 165, finalY + 32, 30, 12);
+    }
     doc.setFont("helvetica", "normal");
     doc.text("Authorised Signatory", 195, 280, { align: 'right' });
 

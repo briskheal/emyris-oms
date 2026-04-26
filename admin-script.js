@@ -754,12 +754,21 @@ async function loadSettings() {
         // Bank & Terms & Signature
         document.getElementById('set-bank-details').value = s.bankDetails || '';
         document.getElementById('set-terms').value = s.termsConditions || '';
+        if (document.getElementById('set-upi-id')) document.getElementById('set-upi-id').value = s.upiId || '';
         document.getElementById('set-signature-b64').value = s.signatureImage || '';
         if (s.signatureImage) {
             document.getElementById('sig-preview').src = s.signatureImage;
             document.getElementById('sig-preview').style.display = 'block';
         } else {
             document.getElementById('sig-preview').style.display = 'none';
+        }
+
+        if (document.getElementById('set-logo-b64')) document.getElementById('set-logo-b64').value = s.logoImage || '';
+        if (s.logoImage && document.getElementById('logo-preview')) {
+            document.getElementById('logo-preview').src = s.logoImage;
+            document.getElementById('logo-preview').style.display = 'block';
+        } else if (document.getElementById('logo-preview')) {
+            document.getElementById('logo-preview').style.display = 'none';
         }
 
         // Footer population (handled by script.js in stockist, but here for completeness)
@@ -809,7 +818,9 @@ async function saveSettings(e) {
         fssaiNo: document.getElementById('set-fssai-no').value,
         bankDetails: document.getElementById('set-bank-details').value,
         termsConditions: document.getElementById('set-terms').value,
-        signatureImage: document.getElementById('set-signature-b64').value
+        upiId: document.getElementById('set-upi-id') ? document.getElementById('set-upi-id').value : '',
+        signatureImage: document.getElementById('set-signature-b64').value,
+        logoImage: document.getElementById('set-logo-b64') ? document.getElementById('set-logo-b64').value : ''
     };
 
     try {
@@ -834,6 +845,18 @@ function convertSignatureToBase64(input) {
             document.getElementById('set-signature-b64').value = e.target.result;
             document.getElementById('sig-preview').src = e.target.result;
             document.getElementById('sig-preview').style.display = 'block';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function convertLogoToBase64(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('set-logo-b64').value = e.target.result;
+            document.getElementById('logo-preview').src = e.target.result;
+            document.getElementById('logo-preview').style.display = 'block';
         };
         reader.readAsDataURL(input.files[0]);
     }
@@ -1735,7 +1758,7 @@ function setInvoiceStyle(style) {
     console.log(`✅ Invoice template set to: ${labels[style] || style}`);
 }
 
-function downloadInvoicePDF(id) {
+async function downloadInvoicePDF(id) {
     const inv = allInvoices.find(x => x._id === id);
     if (!inv) return;
 
@@ -1795,18 +1818,24 @@ function downloadInvoicePDF(id) {
         doc.setTextColor(40, 44, 52);
     } else {
         doc.setFontSize(style === 'compact' ? 18 : 22);
-        doc.setTextColor(40, 44, 52);
+        doc.setTextColor(99, 102, 241);
         doc.text("TAX INVOICE", 105, 15, { align: 'center' });
         
-        doc.setDrawColor(200);
-        doc.rect(15, 10, 40, 20); 
-        doc.setFontSize(8);
-        doc.text("LOGO", 35, 20, { align: 'center' });
+        if (companyProfile.logoImage) {
+            doc.addImage(companyProfile.logoImage, 'PNG', 15, 10, 40, 20);
+        } else {
+            doc.setDrawColor(200);
+            doc.rect(15, 10, 40, 20); 
+            doc.setFontSize(8);
+            doc.text("LOGO", 35, 20, { align: 'center' });
+        }
 
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
+        doc.setTextColor(16, 185, 129);
         doc.text(companyProfile.name || "EMYRIS BIOLIFESCIENCES PVT. LTD.", 140, 15);
         doc.setFont("helvetica", "normal");
+        doc.setTextColor(40, 44, 52);
         doc.setFontSize(8);
         doc.text(companyProfile.address || "Sumadhura Pragati Chambers, Park Ln, Secunderabd,", 140, 20);
         doc.text("Hyderabad, Telangana - 500003", 140, 24);
@@ -1815,11 +1844,17 @@ function downloadInvoicePDF(id) {
         doc.text(`FSSAI: 13623011000123`, 140, 36);
     }
 
+    doc.setDrawColor(99, 102, 241);
+    doc.setLineWidth(0.5);
     doc.line(15, 40, 195, 40);
+    doc.setDrawColor(200);
+    doc.setLineWidth(0.2);
 
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(99, 102, 241);
     doc.text(`Invoice No: ${inv.invoiceNo}`, 15, 48);
+    doc.setTextColor(40, 44, 52);
     doc.text(`Date: ${new Date(inv.createdAt).toLocaleDateString('en-GB')}`, 15, 53);
     
     const party = allStockists.find(s => s.name === inv.stockistName) || {};
@@ -1847,7 +1882,7 @@ function downloadInvoicePDF(id) {
             (item.totalValue * (1 + item.gstPercent/100)).toFixed(2)
         ]),
         theme: style === 'modern' ? 'striped' : 'grid',
-        headStyles: { fillColor: style === 'modern' ? [99, 102, 241] : [40, 44, 52], fontSize: style === 'compact' ? 6 : 7, halign: 'center' },
+        headStyles: { fillColor: style === 'compact' ? [40, 44, 52] : [99, 102, 241], fontSize: style === 'compact' ? 6 : 7, halign: 'center' },
         styles: { fontSize: style === 'compact' ? 6 : 7, cellPadding: style === 'compact' ? 1 : 2 },
         columnStyles: {
             0: { cellWidth: 10 },
@@ -1862,16 +1897,23 @@ function downloadInvoicePDF(id) {
     const finalY = 240; // Fixed Y coordinate for A4 page
     
     // Draw a top line for the footer block
-    doc.setDrawColor(200);
+    doc.setDrawColor(99, 102, 241);
+    doc.setLineWidth(0.5);
     doc.line(15, finalY - 5, 195, finalY - 5);
+    doc.setDrawColor(200);
+    doc.setLineWidth(0.2);
 
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(99, 102, 241);
     doc.text("Amount in Words:", 15, finalY);
+    doc.setTextColor(40, 44, 52);
     doc.setFont("helvetica", "normal");
     doc.text(numberToWords(inv.grandTotal), 15, finalY + 5);
 
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(99, 102, 241);
     doc.text("TAX SUMMARY", 130, finalY);
+    doc.setTextColor(40, 44, 52);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.text(`Taxable Amount: ₹${inv.subTotal.toLocaleString('en-IN')}`, 130, finalY + 5);
@@ -1880,14 +1922,37 @@ function downloadInvoicePDF(id) {
     
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(16, 185, 129);
     doc.text(`NET PAYABLE: ₹${inv.grandTotal.toLocaleString('en-IN')}`, 130, finalY + 22);
+    doc.setTextColor(40, 44, 52);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("Bank Details:", 15, finalY + 15);
+    doc.setFont("helvetica", "normal");
+    const bDetails = companyProfile.bankDetails ? companyProfile.bankDetails.split('\n') : [];
+    bDetails.forEach((line, i) => doc.text(line, 15, finalY + 19 + (i * 4)));
+
+    if (companyProfile.upiId && window.QRCode) {
+        try {
+            const upiUrl = `upi://pay?pa=${companyProfile.upiId}&pn=${encodeURIComponent(companyProfile.name || 'Company')}&am=${Math.round(inv.grandTotal)}&cu=INR`;
+            const qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 150, margin: 1 });
+            doc.addImage(qrDataUrl, 'PNG', 85, finalY + 10, 25, 25);
+            doc.setFontSize(6);
+            doc.text("Scan to Pay", 97.5, finalY + 38, { align: 'center' });
+        } catch(err) { console.error("QR Code Error:", err); }
+    }
 
     doc.setFontSize(8);
     doc.setFont("helvetica", "italic");
-    doc.text("Terms: 1. Goods once sold will not be taken back. 2. Subject to Hyderabad Jurisdiction.", 15, 280);
+    const tConds = companyProfile.termsConditions ? companyProfile.termsConditions.split('\n') : ["1. Goods once sold will not be taken back. 2. Subject to local Jurisdiction."];
+    tConds.forEach((line, i) => doc.text(line, 15, 280 + (i * 4)));
 
     doc.setFont("helvetica", "bold");
     doc.text(`For ${companyProfile.name || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 30, { align: 'right' });
+    if (companyProfile.signatureImage) {
+        doc.addImage(companyProfile.signatureImage, 'PNG', 165, finalY + 32, 30, 12);
+    }
     doc.setFont("helvetica", "normal");
     doc.text("Authorised Signatory", 195, 280, { align: 'right' });
 
