@@ -1654,7 +1654,7 @@ function updateStats() {
 }
 
 // --- FINANCIAL NOTES LOGIC ---
-let allNotes = [];
+
 
 async function loadFinancialNotes() {
     try {
