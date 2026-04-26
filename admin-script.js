@@ -2306,12 +2306,12 @@ async function generateStandardPDF({
     const roundOffValue = (grandTotal - unroundedNet).toFixed(2);
     
     doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(40, 44, 52);
-    doc.text(`Sub Total (Taxable): Rs. ${totalTaxable.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 5, { align: 'right' });
-    doc.text(`GST Amount: Rs. ${totalGST.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY, { align: 'right' });
-    doc.text(`Round Off: Rs. ${roundOffValue}`, 195, finalY + 5, { align: 'right' });
+    doc.text(`Sub Total (Taxable): Rs. ${totalTaxable.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 10, { align: 'right' });
+    doc.text(`GST Amount: Rs. ${totalGST.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 5, { align: 'right' });
+    doc.text(`Round Off: Rs. ${roundOffValue}`, 195, finalY, { align: 'right' });
     
     doc.setFont("helvetica", "bold"); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
-    doc.text(`NET PAYABLE: Rs. ${grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY + 10, { align: 'right' });
+    doc.text(`NET PAYABLE: Rs. ${grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY + 5, { align: 'right' });
 
     // 6. Bank & QR Code
     if (showBank && companyProfile && companyProfile.bankDetails) {
@@ -2341,9 +2341,9 @@ async function generateStandardPDF({
     const tC = terms ? terms.split('\n') : []; tC.forEach((line, i) => doc.text(line, 15, 280 + (i * 4)));
 
     doc.setFont("helvetica", "bold");
-    doc.text(`For ${(companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 40, { align: 'right' });
-    if (companyProfile && companyProfile.signatureImage) { try { doc.addImage(companyProfile.signatureImage, 'JPEG', 165, finalY + 42, 30, 12); } catch(e){} }
-    doc.text("Authorised Signatory", 195, 280, { align: 'right' });
+    doc.text(`For ${(companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 30, { align: 'right' });
+    if (companyProfile && companyProfile.signatureImage) { try { doc.addImage(companyProfile.signatureImage, 'JPEG', 165, finalY + 32, 30, 10); } catch(e){} }
+    doc.text("Authorised Signatory", 195, finalY + 45, { align: 'right' });
 
     doc.save(filename);
 }
