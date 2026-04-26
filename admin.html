@@ -1211,12 +1211,15 @@
                     <div style="font-size:0.55rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--primary);margin-bottom:4px;opacity:0.9;">INVENTORY MASTER</div>
                     <div style="font-size:1.2rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">📦 Manage Product Record</div>
                 </div>
-                <button type="button" class="btn btn-ghost" onclick="closeProductModal()" style="padding:6px 14px;font-size:0.75rem;opacity:0.8;">✕ Close</button>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button type="button" class="btn btn-ghost" onclick="closeProductModal()" style="padding:6px 14px;font-size:0.75rem;border-radius:8px;">CANCEL</button>
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('productForm').requestSubmit()" style="padding:6px 16px;font-size:0.75rem;border-radius:8px;">SAVE PRODUCT</button>
+                </div>
             </div>
             <form id="productForm" onsubmit="saveProduct(event)" style="display: flex; flex-direction: column; flex: 1;">
                 <input type="hidden" id="prod-id">
                 
-                <div style="padding: 2rem; display: grid; grid-template-columns: 360px 1fr; gap: 2rem; align-items: stretch; height: 100%;">
+                <div style="padding: 1.25rem 1.5rem; display: grid; grid-template-columns: 360px 1fr; gap: 1.5rem; align-items: stretch; height: 100%;">
                     
                     <!-- LEFT COLUMN: Core Details & Defaults -->
                     <div style="display: flex; flex-direction: column; gap: 1.5rem; overflow-y: auto; padding-right: 0.5rem;">
@@ -1302,11 +1305,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                <div style="padding: 1.5rem 2rem; background: rgba(255,255,255,0.02); border-top: 1px solid var(--glass-border); display: flex; justify-content: flex-end; gap: 1rem; margin-top: auto;">
-                    <button type="button" class="btn btn-ghost" onclick="closeProductModal()" style="border-radius: 12px; font-size: 0.8rem; font-weight: 700;">CANCEL</button>
-                    <button type="submit" class="btn btn-primary" style="padding-left: 2.5rem; padding-right: 2.5rem; border-radius: 12px; font-size: 0.8rem;">SAVE PRODUCT</button>
                 </div>
             </form>
         </div>
