@@ -951,11 +951,12 @@ async function generateInvoicePDF(inv) {
         doc.setFont("helvetica", "normal");
         doc.setTextColor(40, 44, 52);
         doc.setFontSize(8);
-        doc.text(companySettings?.address || "Sumadhura Pragati Chambers, Park Ln, Secunderabd,", 140, 20);
-        doc.text("Hyderabad, Telangana - 500003", 140, 24);
-        doc.text(`DL No: TS/SEC/2023-44281, 44282`, 140, 28);
-        doc.text(`GSTIN: 36AABCE1234F1Z5`, 140, 32);
-        doc.text(`FSSAI: 13623011000123`, 140, 36);
+        const addressLines = doc.splitTextToSize(companySettings?.address || "Sumadhura Pragati Chambers, Park Ln, Secunderabad, Telangana - 500003", 65);
+        doc.text(addressLines, 140, 20);
+        let currY = 20 + (addressLines.length * 4);
+        doc.text(`DL No: TS/SEC/2023-44281, 44282`, 140, currY);
+        doc.text(`GSTIN: 36AABCE1234F1Z5`, 140, currY + 4);
+        doc.text(`FSSAI: 13623011000123`, 140, currY + 8);
     }
 
     doc.setDrawColor(99, 102, 241);
@@ -987,7 +988,7 @@ async function generateInvoicePDF(inv) {
             item.hsn || '-',
             item.batch || 'B2401',
             item.exp || '12/25',
-            `₹${(item.mrp || 0).toFixed(2)}`,
+            `Rs. ${(item.mrp || 0).toFixed(2)}`,
             item.qty,
             'NOS',
             item.priceUsed.toFixed(2),
@@ -1007,6 +1008,24 @@ async function generateInvoicePDF(inv) {
         margin: { left: 15, right: 15, bottom: 60 }
     });
 
+    const tableFinalY = doc.lastAutoTable.finalY + 10;
+    
+    const gstHalves = (inv.gstAmount / 2).toFixed(2);
+    doc.autoTable({
+        startY: tableFinalY,
+        head: [['Tax Type', 'Taxable Amount', 'Tax Rate', 'Tax Amount']],
+        body: [
+            ['CGST', `Rs. ${inv.subTotal.toFixed(2)}`, `${inv.items[0]?.gstPercent/2}%`, `Rs. ${gstHalves}`],
+            ['SGST', `Rs. ${inv.subTotal.toFixed(2)}`, `${inv.items[0]?.gstPercent/2}%`, `Rs. ${gstHalves}`]
+        ],
+        theme: 'plain',
+        headStyles: { fillColor: false, textColor: [99, 102, 241], fontStyle: 'bold', fontSize: 8, halign: 'right' },
+        styles: { fontSize: 8, halign: 'right', cellPadding: 1, textColor: [40, 44, 52] },
+        columnStyles: { 0: { fontStyle: 'bold', halign: 'left' } },
+        margin: { left: 90, right: 15 },
+        tableWidth: 105
+    });
+
     const finalY = 240; 
     
     doc.setDrawColor(99, 102, 241);
@@ -1022,20 +1041,10 @@ async function generateInvoicePDF(inv) {
     doc.setFont("helvetica", "normal");
     doc.text(numberToWords(inv.grandTotal), 15, finalY + 5);
 
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(99, 102, 241);
-    doc.text("TAX SUMMARY", 130, finalY);
-    doc.setTextColor(40, 44, 52);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.text(`Taxable Amount: ₹${inv.subTotal.toLocaleString('en-IN')}`, 130, finalY + 5);
-    doc.text(`CGST (Total): ₹${(inv.gstAmount/2).toLocaleString('en-IN')}`, 130, finalY + 9);
-    doc.text(`SGST (Total): ₹${(inv.gstAmount/2).toLocaleString('en-IN')}`, 130, finalY + 13);
-    
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(16, 185, 129);
-    doc.text(`NET PAYABLE: ₹${inv.grandTotal.toLocaleString('en-IN')}`, 130, finalY + 22);
+    doc.text(`NET PAYABLE: Rs. ${inv.grandTotal.toLocaleString('en-IN')}`, 130, finalY + 22);
     doc.setTextColor(40, 44, 52);
 
     doc.setFont("helvetica", "bold");
