@@ -953,7 +953,7 @@ async function generateInvoicePDF(inv) {
         
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(16, 185, 129);
+        doc.setTextColor(99, 102, 241);
         doc.text(companySettings?.name || "EMYRIS BIOLIFESCIENCES PVT. LTD.", 15, 28);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(40, 44, 52);
@@ -998,7 +998,7 @@ async function generateInvoicePDF(inv) {
 
     // Horizontal Separator removed as per request
     doc.autoTable({
-        startY: 75,
+        startY: 70,
         head: [['S.No', 'Product Description', 'HSN', 'Batch', 'Exp', 'MRP', 'Qty', 'Unit', 'Price/Unit', 'Taxable', 'GST%', 'Amount']],
         body: inv.items.map((item, idx) => [
             idx + 1,
@@ -1075,8 +1075,8 @@ async function generateInvoicePDF(inv) {
 
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(16, 185, 129);
-    doc.text(`NET PAYABLE: Rs. ${inv.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`, 195, finalY + 5, { align: 'right' });
+    doc.setTextColor(99, 102, 241);
+    doc.text(`NET PAYABLE: Rs. ${inv.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`, 195, finalY, { align: 'right' });
     doc.setTextColor(40, 44, 52);
 
     doc.setFont("helvetica", "bold");
