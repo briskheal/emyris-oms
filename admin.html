@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1560,86 +1560,109 @@
     </div>
 
     <!-- MODAL (Multi-Item Return - Sale/Purchase) -->
-    <div id="returnModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(15px); display: flex; align-items: center; justify-content: center; z-index: 3000;">
-        <div class="glass-card" style="width: 95%; max-width: 1300px; padding: 2.5rem; max-height: 95vh; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem; border-bottom:1px solid var(--glass-border); padding-bottom:1rem;">
-                <h3 class="section-title" id="return-modal-title" style="margin:0;">📦 Record Product Return (Multi-Item)</h3>
-                <button class="btn btn-ghost" onclick="closeReturnModal()">✕</button>
+    <div id="returnModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.92);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;z-index:3000;">
+        <div class="glass-card" style="width:98%;max-width:1380px;padding:1.25rem 1.75rem;max-height:96vh;overflow-y:auto;border:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:0;font-family:'Inter',sans-serif;">
+
+            <!-- â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem;border-bottom:1px solid var(--glass-border);padding-bottom:0.75rem;">
+                <div>
+                    <div id="return-module-badge" style="font-size:0.55rem;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:3px;">CREDIT NOTE</div>
+                    <div id="return-modal-title" style="font-size:0.95rem;font-weight:700;color:#e2e8f0;letter-spacing:-0.02em;">Sale Return â€” Credit Note</div>
+                </div>
+                <button class="btn btn-ghost" onclick="closeReturnModal()" style="padding:5px 12px;font-size:0.72rem;opacity:0.7;">âœ• Close</button>
             </div>
-            
-            <form id="returnForm" onsubmit="saveMultiItemReturn(event)">
+
+            <!-- â”€â”€ 3-Action Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+            <div id="return-action-tabs" style="display:flex;gap:5px;margin-bottom:1rem;background:rgba(0,0,0,0.3);padding:4px;border-radius:8px;width:fit-content;"></div>
+
+            <form id="returnForm" onsubmit="saveMultiItemReturn(event)" style="display:flex;flex-direction:column;flex:1;">
                 <input type="hidden" id="return-reason">
-                <!-- Header Section -->
-                <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:1.5rem; margin-bottom: 2.5rem;">
-                    <div class="form-group">
-                        <label>Party / Stockist Name</label>
-                        <select id="return-party" required onchange="updateNotePartyDetails(this.value, 'return-party-info')"></select>
-                        <div id="return-party-info" style="font-size:0.7rem; color:var(--accent); margin-top:5px; height: 1rem;"></div>
+                <input type="hidden" id="return-note-type">
+
+                <!-- â”€â”€ Header Fields â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+                <div style="display:grid;grid-template-columns:2.2fr 1fr 1fr;gap:0.85rem;margin-bottom:0.85rem;">
+                    <div>
+                        <label style="display:block;font-size:0.6rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Party / Stockist</label>
+                        <select id="return-party" required onchange="updateNotePartyDetails(this.value,'return-party-info')" style="width:100%;font-size:0.78rem;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#e2e8f0;"></select>
+                        <div id="return-party-info" style="font-size:0.6rem;color:var(--accent);margin-top:3px;min-height:0.8rem;"></div>
                     </div>
-                    <div class="form-group">
-                        <label>Ref. Invoice No</label>
-                        <input type="text" id="return-inv-no" placeholder="e.g. INV-1023">
+                    <div>
+                        <label style="display:block;font-size:0.6rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Ref Invoice No</label>
+                        <input type="text" id="return-inv-no" placeholder="e.g. INV-1023" style="width:100%;font-size:0.78rem;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#e2e8f0;box-sizing:border-box;">
                     </div>
-                    <div class="form-group">
-                        <label>Invoice Date</label>
-                        <input type="text" id="return-inv-date" placeholder="DD-MM-YYYY">
+                    <div>
+                        <label style="display:block;font-size:0.6rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Invoice Date</label>
+                        <input type="text" id="return-inv-date" placeholder="DD-MM-YYYY" style="width:100%;font-size:0.78rem;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#e2e8f0;box-sizing:border-box;">
                     </div>
                 </div>
 
-                <!-- Item Table Section -->
-                <div class="table-container" style="margin-bottom: 2rem; border: 1px solid var(--glass-border); background: rgba(15,23,42,0.4);">
-                    <table style="font-size: 0.85rem; width: 100%; border-collapse: collapse;">
+                <!-- â”€â”€ Items Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+                <div style="flex:1;border:1px solid rgba(99,102,241,0.15);border-radius:10px;overflow:hidden;background:rgba(6,12,24,0.6);margin-bottom:0.75rem;">
+                    <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+                        <colgroup>
+                            <col style="width:24%"><!-- Product -->
+                            <col style="width:6%"><!-- HSN -->
+                            <col style="width:9%"><!-- Batch -->
+                            <col style="width:6%"><!-- Month -->
+                            <col style="width:6%"><!-- Year -->
+                            <col style="width:5%"><!-- Qty -->
+                            <col style="width:9%"><!-- Price -->
+                            <col style="width:5%"><!-- GST% -->
+                            <col style="width:10%"><!-- Total -->
+                            <col style="width:3%"><!-- Del -->
+                        </colgroup>
                         <thead>
-                            <tr style="background: rgba(255,255,255,0.03);">
-                                <th style="padding: 1rem; text-align: left; width: 30%;">Product Item</th>
-                                <th style="padding: 1rem; text-align: left;">HSN</th>
-                                <th style="padding: 1rem; text-align: left;">Batch</th>
-                                <th style="padding: 1rem; text-align: left;">Exp Dt</th>
-                                <th style="padding: 1rem; text-align: center; width: 80px;">Qty</th>
-                                <th style="padding: 1rem; text-align: right; width: 100px;">Price</th>
-                                <th style="padding: 1rem; text-align: center; width: 70px;">GST%</th>
-                                <th style="padding: 1rem; text-align: right; width: 130px;">Total Value</th>
-                                <th style="padding: 1rem; text-align: center; width: 40px;"></th>
+                            <tr style="background:rgba(99,102,241,0.1);border-bottom:1px solid rgba(99,102,241,0.2);">
+                                <th style="padding:6px 8px;text-align:left;font-size:0.58rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Product</th>
+                                <th style="padding:6px 5px;text-align:left;font-size:0.58rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">HSN</th>
+                                <th style="padding:6px 5px;text-align:left;font-size:0.58rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Batch No</th>
+                                <th style="padding:6px 5px;text-align:center;font-size:0.58rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Mon</th>
+                                <th style="padding:6px 5px;text-align:center;font-size:0.58rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Year</th>
+                                <th style="padding:6px 5px;text-align:center;font-size:0.58rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Qty</th>
+                                <th style="padding:6px 5px;text-align:right;font-size:0.58rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Price</th>
+                                <th style="padding:6px 5px;text-align:center;font-size:0.58rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">GST%</th>
+                                <th style="padding:6px 8px;text-align:right;font-size:0.58rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;">Total</th>
+                                <th></th>
                             </tr>
                         </thead>
-                        <tbody id="return-items-body">
-                            <!-- Dynamic Rows Here -->
-                        </tbody>
+                        <tbody id="return-items-body"></tbody>
                     </table>
                 </div>
 
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <button type="button" class="btn btn-ghost" onclick="addReturnRow()" style="color: var(--primary); font-weight: 700; border-style: dashed;">+ ADD ANOTHER PRODUCT</button>
-                    
-                    <div style="width: 380px; background: rgba(0,0,0,0.3); padding: 2rem; border-radius: 20px; border: 1px solid var(--glass-border);">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
-                            <span style="color: var(--text-muted); font-size: 0.8rem;">Subtotal (Taxable):</span>
-                            <span id="return-subtotal" style="font-weight: 600; color: #fff;">₹0.00</span>
+                <!-- â”€â”€ Totals Row + Add Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:0.85rem;">
+                    <button type="button" onclick="addReturnRow()" style="background:transparent;border:1px dashed rgba(99,102,241,0.35);color:var(--primary);padding:5px 14px;border-radius:7px;font-size:0.68rem;font-weight:800;cursor:pointer;letter-spacing:0.05em;transition:all 0.2s;" onmouseover="this.style.background='rgba(99,102,241,0.1)'" onmouseout="this.style.background='transparent'">ï¼‹ ADD ITEM</button>
+                    <div style="display:flex;align-items:center;gap:1.2rem;background:rgba(0,0,0,0.4);padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,0.06);">
+                        <div style="text-align:right;">
+                            <div style="font-size:0.52rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#475569;margin-bottom:2px;">Subtotal</div>
+                            <div id="return-subtotal" style="font-size:0.75rem;font-weight:700;color:#94a3b8;font-family:monospace;">â‚¹0.00</div>
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
-                            <span style="color: var(--text-muted); font-size: 0.8rem;">GST Total:</span>
-                            <span id="return-gst" style="font-weight: 600; color: #fff;">₹0.00</span>
+                        <span style="color:#334155;font-size:0.65rem;">+</span>
+                        <div style="text-align:right;">
+                            <div style="font-size:0.52rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#475569;margin-bottom:2px;">GST</div>
+                            <div id="return-gst" style="font-size:0.75rem;font-weight:700;color:#94a3b8;font-family:monospace;">â‚¹0.00</div>
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 1.25rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1.25rem;">
-                            <span style="color: var(--text-muted); font-size: 0.8rem;">Round Off:</span>
-                            <span id="return-roundoff" style="font-weight: 600; color: #fff;">₹0.00</span>
+                        <span style="color:#334155;font-size:0.65rem;">Â±</span>
+                        <div style="text-align:right;">
+                            <div style="font-size:0.52rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#475569;margin-bottom:2px;">Round Off</div>
+                            <div id="return-roundoff" style="font-size:0.75rem;font-weight:700;color:#64748b;font-family:monospace;">â‚¹0.00</div>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                            <span style="font-weight: 800; color: #fff; font-size: 0.9rem; text-transform: uppercase;">Grand Total:</span>
-                            <span id="return-total" style="font-size: 1.8rem; font-weight: 900; color: var(--primary);">₹0.00</span>
+                        <div style="width:1px;height:28px;background:rgba(255,255,255,0.07);"></div>
+                        <div style="text-align:right;">
+                            <div style="font-size:0.52rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;">Grand Total</div>
+                            <div id="return-total" style="font-size:1.05rem;font-weight:900;color:var(--primary);font-family:monospace;">â‚¹0.00</div>
                         </div>
                     </div>
                 </div>
 
-                <div style="margin-top: 3.5rem; display: flex; gap: 1.5rem; justify-content: flex-end;">
-                    <button type="button" class="btn btn-ghost" onclick="closeReturnModal()" style="width: 160px; justify-content: center;">CANCEL</button>
-                    <button type="submit" class="btn btn-primary" style="width: 280px; font-weight: 900; justify-content: center; font-size: 0.9rem;">✓ POST RETURN & GENERATE CN</button>
+                <!-- â”€â”€ Footer Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+                <div style="display:flex;justify-content:flex-end;align-items:center;gap:0.6rem;padding-top:0.75rem;border-top:1px solid rgba(255,255,255,0.06);">
+                    <button type="button" onclick="closeReturnModal()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#64748b;padding:7px 18px;border-radius:7px;font-size:0.7rem;font-weight:600;cursor:pointer;transition:all 0.2s;letter-spacing:0.04em;">âœ• CANCEL</button>
+                    <button type="submit" id="return-submit-btn" style="background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;padding:7px 22px;border-radius:7px;font-size:0.72rem;font-weight:900;cursor:pointer;letter-spacing:0.06em;transition:all 0.2s;box-shadow:0 4px 14px rgba(99,102,241,0.35);">âœ“ POST RETURN &amp; GENERATE CN</button>
                 </div>
             </form>
         </div>
     </div>
-
-
     <!-- MODAL (Party Ledger) -->
     <div id="ledgerModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
         <div class="glass-card" style="width: 90%; max-width: 1200px; max-height: 90vh; overflow-y: auto;">

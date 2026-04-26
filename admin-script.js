@@ -1858,55 +1858,7 @@ function closeNoteModal() {
 // --- MULTI-ITEM RETURN LOGIC ---
 let returnItems = [];
 
-function openReturnModal(reason, editData = null) {
-    const modal = document.getElementById('returnModal');
-    const title = document.getElementById('return-modal-title');
-    document.getElementById('return-reason').value = reason;
-    
-    if (editData) {
-        title.innerText = "✏️ Edit Return Note: " + editData.noteNo;
-        currentEditingNoteId = editData._id;
-    } else {
-        title.innerText = reason === 'Salable Return' ? "📝 Record Sale Return (Credit Note)" : "📝 Record Purchase Return (Debit Note)";
-        currentEditingNoteId = null;
-    }
-    
-    // Setup Party Select
-    const select = document.getElementById('return-party');
-    if(select) {
-        select.innerHTML = '<option value="">-- Select Party --</option>' + 
-            allStockists.map(s => `<option value="${s._id}">${s.name} (${s.partyType || 'STOCKIST'})</option>`).join('');
-    }
 
-    document.getElementById('returnForm').reset();
-    document.getElementById('return-items-body').innerHTML = '';
-    returnItems = [];
-    
-    if (editData && editData.items && editData.items.length > 0) {
-        document.getElementById('return-party').value = editData.party?._id || editData.party;
-        updateNotePartyDetails(editData.party?._id || editData.party, 'return-party-info');
-        
-        document.getElementById('return-inv-no').value = editData.refInvoiceNo || '';
-        document.getElementById('return-inv-date').value = editData.refInvoiceDate || '';
-        
-        editData.items.forEach(item => {
-            const rowId = addReturnRow();
-            const row = document.getElementById(`return-row-${rowId}`);
-            row.querySelector('.return-prod-select').value = item.productId;
-            document.getElementById(`return-hsn-${rowId}`).value = item.hsn || '';
-            document.getElementById(`return-batch-${rowId}`).value = item.batchNo || '';
-            document.getElementById(`return-exp-${rowId}`).value = item.expDate || '';
-            document.getElementById(`return-qty-${rowId}`).value = item.qty;
-            document.getElementById(`return-price-${rowId}`).value = item.price;
-            document.getElementById(`return-gst-pct-${rowId}`).value = item.gstPercent;
-        });
-    } else {
-        addReturnRow(); // Add first empty row
-    }
-    
-    calculateReturnTotals();
-    modal.classList.remove('hidden');
-}
 
 function closeReturnModal() {
     document.getElementById('returnModal').classList.add('hidden');
@@ -1915,30 +1867,72 @@ function closeReturnModal() {
 
 let returnRowCounter = 0;
 function addReturnRow() {
-    const id = Date.now() + '-' + (returnRowCounter++);
+    const id  = Date.now() + '-' + (returnRowCounter++);
     const row = document.createElement('tr');
-    row.id = `return-row-${id}`;
+    row.id    = `return-row-${id}`;
+    row.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s;';
+    row.onmouseover = () => row.style.background = 'rgba(255,255,255,0.025)';
+    row.onmouseout  = () => row.style.background = 'transparent';
+
+    // Month options 01-12
+    const months = Array.from({length:12},(_,i)=>{const m=String(i+1).padStart(2,'0'); return `<option value="${m}">${m}</option>`;}).join('');
+    // Year options current year to +5
+    const curYear = new Date().getFullYear();
+    const years   = Array.from({length:8},(_,i)=>{const y=curYear+i; return `<option value="${y}">${y}</option>`;}).join('');
+
+    const cellStyle = 'padding:4px 5px;';
+    const inputBase = 'width:100%;box-sizing:border-box;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.07);border-radius:5px;color:#e2e8f0;font-size:0.72rem;padding:4px 6px;transition:border-color 0.2s;';
+    const selBase   = inputBase + 'cursor:pointer;';
+
     row.innerHTML = `
-        <td style="padding: 10px;">
-            <select class="return-prod-select" onchange="updateReturnRowData('${id}', this.value)" required>
-                <option value="">-- Select Product --</option>
-                ${allProducts.map(p => `<option value="${p._id}">${p.name} (${p.packing})</option>`).join('')}
+        <td style="${cellStyle}padding-left:8px;">
+            <select class="return-prod-select" onchange="updateReturnRowData('${id}',this.value)" required
+                style="${selBase}font-size:0.71rem;">
+                <option value="">â€” Product â€”</option>
+                ${allProducts.map(p=>`<option value="${p._id}">${p.name} (${p.packing})</option>`).join('')}
             </select>
         </td>
-        <td><input type="text" id="return-hsn-${id}" readonly style="background:transparent; border:none; color:var(--text-muted);"></td>
-        <td><input type="text" id="return-batch-${id}" placeholder="Batch"></td>
-        <td><input type="text" id="return-exp-${id}" placeholder="MM/YY"></td>
-        <td><input type="number" id="return-qty-${id}" oninput="calculateReturnTotals()" required style="text-align:center;"></td>
-        <td><input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" required style="text-align:right;"></td>
-        <td><input type="number" id="return-gst-pct-${id}" oninput="calculateReturnTotals()" step="0.1" required style="text-align:center;"></td>
-        <td style="text-align:right; font-weight:700;" id="return-row-total-${id}">₹0.00</td>
-        <td><button type="button" class="btn btn-ghost" onclick="removeReturnRow('${id}')" style="color:#ef4444; padding:5px;">✕</button></td>
+        <td style="${cellStyle}">
+            <input type="text" id="return-hsn-${id}" readonly
+                style="${inputBase}background:transparent;border-color:transparent;color:#64748b;font-size:0.68rem;text-align:center;">
+        </td>
+        <td style="${cellStyle}">
+            <input type="text" id="return-batch-${id}" placeholder="Batch No"
+                style="${inputBase}">
+        </td>
+        <td style="${cellStyle}">
+            <select id="return-exp-mm-${id}" onchange="calculateReturnTotals()" style="${selBase}text-align:center;">
+                <option value="">MM</option>${months}
+            </select>
+        </td>
+        <td style="${cellStyle}">
+            <select id="return-exp-yy-${id}" onchange="calculateReturnTotals()" style="${selBase}text-align:center;">
+                <option value="">YY</option>${years}
+            </select>
+        </td>
+        <td style="${cellStyle}">
+            <input type="number" id="return-qty-${id}" oninput="calculateReturnTotals()" min="1" required
+                style="${inputBase}width:52px;text-align:center;">
+        </td>
+        <td style="${cellStyle}">
+            <input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" min="0" required
+                style="${inputBase}width:88px;text-align:right;font-family:monospace;">
+        </td>
+        <td style="${cellStyle}">
+            <input type="number" id="return-gst-pct-${id}" oninput="calculateReturnTotals()" step="0.5" min="0" required
+                style="${inputBase}width:46px;text-align:center;color:#fff;font-weight:700;">
+        </td>
+        <td style="${cellStyle}padding-right:8px;text-align:right;font-weight:800;color:#e2e8f0;font-family:monospace;font-size:0.72rem;" id="return-row-total-${id}">â‚¹0.00</td>
+        <td style="padding:4px 6px;text-align:center;">
+            <button type="button" onclick="removeReturnRow('${id}')"
+                style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:0.8rem;opacity:0.6;padding:2px 5px;border-radius:4px;transition:opacity 0.2s;"
+                onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">âœ•</button>
+        </td>
     `;
     document.getElementById('return-items-body').appendChild(row);
     returnItems.push(id);
-    return id; // Return ID for editing population
+    return id;
 }
-
 function removeReturnRow(id) {
     if(returnItems.length <= 1) return;
     document.getElementById(`return-row-${id}`).remove();
@@ -1948,13 +1942,24 @@ function removeReturnRow(id) {
 
 function updateReturnRowData(rowId, productId) {
     const p = allProducts.find(x => x._id === productId);
-    if(p) {
-        document.getElementById(`return-hsn-${rowId}`).value = p.hsn || '';
+    if (p) {
+        document.getElementById(`return-hsn-${rowId}`).value   = p.hsn || '';
         document.getElementById(`return-price-${rowId}`).value = p.pts || 0;
         document.getElementById(`return-gst-pct-${rowId}`).value = p.gstPercent || 12;
-        if(p.batches && p.batches.length > 0) {
-            document.getElementById(`return-batch-${rowId}`).value = p.batches[0].batchNo || '';
-            document.getElementById(`return-exp-${rowId}`).value = p.batches[0].expDate || '';
+        if (p.batches && p.batches.length > 0) {
+            const b = p.batches[0];
+            document.getElementById(`return-batch-${rowId}`).value = b.batchNo || '';
+            // Auto-fill MM / Year selects from batch expDate (stored as MM/YY or MM/YYYY)
+            if (b.expDate) {
+                const parts = b.expDate.split('/');
+                const mm = (parts[0] || '').padStart(2,'0');
+                const yy = parts[1] || '';
+                const fullYear = yy.length === 2 ? '20' + yy : yy;
+                const mSel = document.getElementById(`return-exp-mm-${rowId}`);
+                const ySel = document.getElementById(`return-exp-yy-${rowId}`);
+                if (mSel) mSel.value = mm;
+                if (ySel) ySel.value = fullYear;
+            }
         }
     }
     calculateReturnTotals();
@@ -2001,29 +2006,26 @@ async function saveMultiItemReturn(e) {
     try {
         const items = returnItems.map(id => {
             const prodId = document.querySelector(`#return-row-${id} .return-prod-select`).value;
-            const p = allProducts.find(x => x._id === prodId);
-            const qty = Number(document.getElementById(`return-qty-${id}`).value);
-            const price = Number(document.getElementById(`return-price-${id}`).value);
+            const p      = allProducts.find(x => x._id === prodId);
+            const qty    = Number(document.getElementById(`return-qty-${id}`).value);
+            const price  = Number(document.getElementById(`return-price-${id}`).value);
             const gstPct = Number(document.getElementById(`return-gst-pct-${id}`).value);
-            const batch = document.getElementById(`return-batch-${id}`).value;
-            const exp = document.getElementById(`return-exp-${id}`).value;
-            const hsn = document.getElementById(`return-hsn-${id}`).value;
+            const batch  = document.getElementById(`return-batch-${id}`).value;
+            const hsn    = document.getElementById(`return-hsn-${id}`).value;
+            // Read MM/YY from dropdowns
+            const expMM  = (document.getElementById(`return-exp-mm-${id}`)?.value || '');
+            const expYY  = (document.getElementById(`return-exp-yy-${id}`)?.value || '');
+            const exp    = (expMM && expYY) ? `${expMM}/${String(expYY).slice(-2)}` : '';
 
-            if(!prodId || !qty || !price || !batch || !exp) {
-                throw new Error("All columns (Product, Batch, Exp, Qty, Price) are mandatory and cannot be left blank.");
+            if (!prodId || !qty || !price || !batch || !exp) {
+                throw new Error('All columns (Product, Batch, Exp Month/Year, Qty, Price) are mandatory.');
             }
-            
             const taxable = qty * price;
             return {
-                productId: prodId,
-                name: p ? p.name : 'Unknown',
+                productId:    prodId,
+                name:         p ? p.name : 'Unknown',
                 manufacturer: p ? p.manufacturer : 'EMYRIS',
-                qty,
-                hsn,
-                batchNo: batch,
-                expDate: exp,
-                price,
-                gstPercent: gstPct,
+                qty, hsn, batchNo: batch, expDate: exp, price, gstPercent: gstPct,
                 totalValue: taxable + (taxable * (gstPct / 100))
             };
         });
@@ -2035,15 +2037,15 @@ async function saveMultiItemReturn(e) {
         const gstAmountStr = document.getElementById('return-gst').innerText.replace(/[₹,]/g, '');
         
         const data = {
-            noteType: reasonValue === 'Salable Return' ? 'CN' : 'DN',
-            party: document.getElementById('return-party').value,
-            amount: Number(totalStr),
-            subTotal: Number(subTotalStr),
-            gstAmount: Number(gstAmountStr),
-            reason: reasonValue,
-            description: `Multi-item return against Inv: ${document.getElementById('return-inv-no').value}`,
-            refInvoiceNo: document.getElementById('return-inv-no').value,
-            refInvoiceDate: document.getElementById('return-inv-date').value,
+            noteType:      document.getElementById('return-note-type').value || (reasonValue === 'Salable Return' ? 'CN' : 'DN'),
+            party:         document.getElementById('return-party').value,
+            amount:        Number(totalStr),
+            subTotal:      Number(subTotalStr),
+            gstAmount:     Number(gstAmountStr),
+            reason:        reasonValue,
+            description:   `Multi-item return against Inv: ${document.getElementById('return-inv-no').value}`,
+            refInvoiceNo:  document.getElementById('return-inv-no').value,
+            refInvoiceDate:document.getElementById('return-inv-date').value,
             items
         };
 
