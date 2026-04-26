@@ -2092,9 +2092,10 @@ async function downloadInvoicePDF(id) {
         try {
             const upiUrl = `upi://pay?pa=${upiTarget}&pn=${encodeURIComponent(companyProfile.name || 'Company')}&am=${Math.round(inv.grandTotal)}&cu=INR`;
             const qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 150, margin: 1 });
-            doc.addImage(qrDataUrl, 'PNG', 85, finalY + 10, 25, 25);
+            // Moved slightly right (to X=100) and increased size to 30x30
+            doc.addImage(qrDataUrl, 'PNG', 100, finalY + 10, 30, 30);
             doc.setFontSize(6);
-            doc.text("Scan to Pay", 97.5, finalY + 38, { align: 'center' });
+            doc.text("Scan to Pay", 115, finalY + 42, { align: 'center' });
         } catch(err) { console.error("QR Code Error:", err); }
     }
 
