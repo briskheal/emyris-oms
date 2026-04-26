@@ -1816,10 +1816,6 @@ function downloadNotePDF(id) {
     doc.save(`Note_${note.noteNo}.pdf`);
 }
 
-    doc.text("This is a financial adjustment note and does not affect physical inventory.", 20, doc.lastAutoTable.finalY + 20);
-    doc.save(`Note_${note.noteNo}.pdf`);
-}
-
 // --- LEDGER RE-INTEGRATION ---
 async function viewLedger(id) {
     const s = allStockists.find(x => x._id === id);
