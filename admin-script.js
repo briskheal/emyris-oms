@@ -1759,14 +1759,17 @@ function openNoteModal(editData = null) {
     if (editData) {
         document.getElementById('note-type').value = editData.noteType;
         document.getElementById('note-party').value = editData.party?._id || editData.party;
+        updateNotePartyDetails(editData.party?._id || editData.party);
+        
         document.getElementById('note-amount').value = editData.amount;
         document.getElementById('note-reason').value = editData.reason;
+        toggleNoteInventoryFields(editData.reason); // Trigger visibility toggle!
+        
         document.getElementById('note-desc').value = editData.description;
         if (editData.productId) {
             document.getElementById('note-product').value = editData.productId;
             document.getElementById('note-batch').value = editData.batchNo || '';
             document.getElementById('note-qty').value = editData.qty || 0;
-            document.getElementById('note-inventory-fields').classList.remove('hidden');
         }
         document.getElementById('note-modal-title').innerText = "✏️ Edit Financial Note";
     } else {
@@ -1838,6 +1841,8 @@ function openReturnModal(reason, editData = null) {
     
     if (editData && editData.items && editData.items.length > 0) {
         document.getElementById('return-party').value = editData.party?._id || editData.party;
+        updateNotePartyDetails(editData.party?._id || editData.party, 'return-party-info');
+        
         document.getElementById('return-inv-no').value = editData.refInvoiceNo || '';
         document.getElementById('return-inv-date').value = editData.refInvoiceDate || '';
         
@@ -1865,8 +1870,9 @@ function closeReturnModal() {
     currentEditingNoteId = null;
 }
 
+let returnRowCounter = 0;
 function addReturnRow() {
-    const id = Date.now();
+    const id = Date.now() + '-' + (returnRowCounter++);
     const row = document.createElement('tr');
     row.id = `return-row-${id}`;
     row.innerHTML = `
