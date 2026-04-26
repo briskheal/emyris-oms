@@ -1096,12 +1096,13 @@ async function generateInvoicePDF(inv) {
     doc.text(`NET PAYABLE: Rs. ${inv.grandTotal.toFixed(2)}`, 195, finalY, { align: 'right' });
     doc.setTextColor(40, 44, 52);
 
-    doc.setFont("helvetica", "bold");
+    doc.setFont("courier", "bold");
     doc.setFontSize(8);
     doc.text("Bank Details:", 15, finalY + 15);
-    doc.setFont("helvetica", "normal");
+    doc.setFont("courier", "normal");
     const bDetails = companySettings?.bankDetails ? companySettings.bankDetails.split('\n') : [];
     bDetails.forEach((line, i) => doc.text(line, 15, finalY + 19 + (i * 4)));
+    doc.setFont("helvetica", "normal"); // Switch back
 
     let upiTarget = companySettings?.upiId;
     if (!upiTarget && companySettings?.bankAccountNo && companySettings?.bankIfsc) {
