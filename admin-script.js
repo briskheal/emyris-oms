@@ -1785,8 +1785,7 @@ function downloadInvoicePDF(id) {
     const style = companyProfile.invoiceStyle || 'classic';
 
     if (style === 'modern') {
-        // MODERN STYLE
-        doc.setFillColor(99, 102, 241); // Primary color
+        doc.setFillColor(99, 102, 241);
         doc.rect(0, 0, 210, 40, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(24);
@@ -1795,7 +1794,6 @@ function downloadInvoicePDF(id) {
         doc.text(`${companyProfile.name || 'EMYRIS BIOLIFESCIENCES'}`, 105, 30, { align: 'center' });
         doc.setTextColor(40, 44, 52);
     } else {
-        // CLASSIC / COMPACT HEADER
         doc.setFontSize(style === 'compact' ? 18 : 22);
         doc.setTextColor(40, 44, 52);
         doc.text("TAX INVOICE", 105, 15, { align: 'center' });
@@ -1819,7 +1817,6 @@ function downloadInvoicePDF(id) {
 
     doc.line(15, 40, 195, 40);
 
-    // Invoice Meta
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.text(`Invoice No: ${inv.invoiceNo}`, 15, 48);
@@ -1858,11 +1855,16 @@ function downloadInvoicePDF(id) {
             9: { halign: 'right' },
             11: { halign: 'right' }
         },
-        margin: { left: 15, right: 15 }
+        margin: { left: 15, right: 15, bottom: 60 }
     });
 
-    // Summary Footer
-    const finalY = doc.lastAutoTable.finalY + 10;
+    // STANDARDISED FIXED FOOTER
+    const finalY = 240; // Fixed Y coordinate for A4 page
+    
+    // Draw a top line for the footer block
+    doc.setDrawColor(200);
+    doc.line(15, finalY - 5, 195, finalY - 5);
+
     doc.setFont("helvetica", "bold");
     doc.text("Amount in Words:", 15, finalY);
     doc.setFont("helvetica", "normal");
@@ -1884,333 +1886,10 @@ function downloadInvoicePDF(id) {
     doc.setFont("helvetica", "italic");
     doc.text("Terms: 1. Goods once sold will not be taken back. 2. Subject to Hyderabad Jurisdiction.", 15, 280);
 
-    doc.save(`Invoice_${inv.invoiceNo}.pdf`);
-}
-
-function downloadInvoicePDF(id) {
-    const inv = allInvoices.find(x => x._id === id);
-    if (!inv) return alert('Invoice not found.');
-
-    // ── NUMBER TO WORDS (Indian Currency) ────────────────────────────────────
-    function numToWords(num) {
-        const a = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine',
-                   'Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen',
-                   'Seventeen','Eighteen','Nineteen'];
-        const b = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
-        const grp = n => {
-            let s = '';
-            if (n >= 100) { s += a[Math.floor(n/100)] + ' Hundred '; n %= 100; }
-            if (n >= 20)  { s += b[Math.floor(n/10)] + ' '; n %= 10; }
-            if (n > 0)    { s += a[n] + ' '; }
-            return s;
-        };
-        if (num === 0) return 'Zero Rupees Only';
-        const parts = num.toFixed(2).split('.');
-        let int = parseInt(parts[0]), dec = parseInt(parts[1]);
-        let out = '', i = 0, divisors = [1000, 100, 100, 100];
-        const groups = ['Thousand ', 'Lakh ', 'Crore ', ''];
-        // Indian number system: units < 1000, then pairs
-        const groups2 = [];
-        groups2.push(int % 1000); int = Math.floor(int / 1000);
-        while (int > 0) { groups2.push(int % 100); int = Math.floor(int / 100); }
-        const suffixes = ['', 'Thousand ', 'Lakh ', 'Crore '];
-        for (let j = groups2.length - 1; j >= 0; j--) {
-            if (groups2[j] > 0) out += grp(groups2[j]) + suffixes[j];
-        }
-        let result = 'Rupees ' + out.trim();
-        if (dec > 0) result += ' and ' + grp(dec).trim() + ' Paise';
-        return result + ' Only';
-    }
-
-    const { jsPDF } = window.jspdf;
-    // A5 = 148mm x 210mm
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
-    const W = 148, H = 210;
-    const co = companyProfile || {};
-
-    // Company legal info
-    const coName    = co.name    || 'EMYRIS BIOLIFESCIENCES';
-    const coAddr    = co.address || 'Corporate Office, Hyderabad, Telangana';
-    const coGST     = co.gstNo   || 'N/A';
-    const coPAN     = co.panNo   || 'N/A';
-    const coDL      = co.dlNo    || 'N/A';
-    const coFSSAI   = co.fssaiNo || '';
-    const coPhone   = (co.phones && co.phones[0]) || co.tollFree || '';
-    const coEmail   = (co.emails && co.emails[0]) || '';
-    const coWeb     = (co.websites && co.websites[0]) || '';
-
-    const stockist  = inv.stockistName || 'Unknown Party';
-    const stkCode   = inv.stockistCode || '';
-    const invDate   = new Date(inv.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'2-digit', year:'numeric' });
-
-    // ── COLOURS & HELPERS ──────────────────────────────────────────────────────
-    const PRIMARY = [99, 102, 241];   // indigo
-    const DARK    = [15, 23, 42];
-    const LIGHT   = [241, 245, 249];
-    const MUTED   = [100, 116, 139];
-    const WHITE   = [255, 255, 255];
-    const GREEN   = [16, 185, 129];
-
-    const setFont = (size, style = 'normal', color = DARK) => {
-        doc.setFontSize(size);
-        doc.setFont('helvetica', style);
-        doc.setTextColor(...color);
-    };
-
-    let y = 0; // current Y position
-
-    // ── HEADER BAND ────────────────────────────────────────────────────────────
-    doc.setFillColor(...PRIMARY);
-    doc.rect(0, 0, W, 24, 'F');
-
-    // Company Name
-    doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(...WHITE);
-    doc.text(coName.toUpperCase(), 5, 9);
-
-    // TAX INVOICE label (right)
-    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-    doc.text('TAX INVOICE', W - 5, 7, { align: 'right' });
-    doc.setFontSize(6.5); doc.setFont('helvetica', 'normal');
-    doc.text('(Original for Recipient)', W - 5, 11, { align: 'right' });
-
-    // Company sub-info in header
-    doc.setFontSize(5.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 210, 255);
-    const headerInfo = [coAddr, `GST: ${coGST} | PAN: ${coPAN}`];
-    if (coDL !== 'N/A') headerInfo.push(`DL: ${coDL}`);
-    headerInfo.forEach((line, i) => doc.text(line, 5, 14 + (i * 3.5)));
-    // Phone / Email / Web (right side of header)
-    doc.text([`Ph: ${coPhone}`, coEmail, coWeb].filter(Boolean).join(' | '), W - 5, 18, { align: 'right' });
-    if (coFSSAI) doc.text(`FSSAI: ${coFSSAI}`, W - 5, 21, { align: 'right' });
-
-    y = 27;
-
-    // ── INVOICE META (2 columns) ───────────────────────────────────────────────
-    doc.setFillColor(...LIGHT);
-    doc.rect(0, y, W, 20, 'F');
-    doc.setDrawColor(220, 220, 230);
-    doc.rect(0, y, W, 20);
-    
-    // Left: Bill To
-    setFont(6, 'bold', PRIMARY);
-    doc.text('BILL TO', 5, y + 5);
-    setFont(8, 'bold', DARK);
-    doc.text(stockist.toUpperCase(), 5, y + 10);
-    setFont(6.5, 'normal', MUTED);
-    if (stkCode) doc.text(`Code: ${stkCode}`, 5, y + 14);
-    // Get stockist object for compliance info
-    const stkObj = allStockists.find(s => s.name === inv.stockistName) || {};
-    const stkComplianceLines = [];
-    if (stkObj.gstNo) stkComplianceLines.push(`GSTIN: ${stkObj.gstNo}`);
-    if (stkObj.dlNo)  stkComplianceLines.push(`DL: ${stkObj.dlNo}`);
-    stkComplianceLines.forEach((line, i) => doc.text(line, 5, y + 17 + i * 3));
-
-    // Right: Invoice details
-    const midX = W / 2 + 2;
-    const metaRows = [
-        ['Invoice No.', inv.invoiceNo],
-        ['Date',        invDate],
-        ['Place of Supply', (stkObj.state || 'Telangana')],
-    ];
-    setFont(6, 'bold', MUTED); doc.text('INVOICE DETAILS', midX, y + 5);
-    metaRows.forEach(([label, val], i) => {
-        setFont(6, 'normal', MUTED); doc.text(label + ':', midX, y + 10 + i * 3.5);
-        setFont(6.5, 'bold', DARK);  doc.text(String(val), W - 5, y + 10 + i * 3.5, { align: 'right' });
-    });
-
-    y += 23;
-
-    // ── ITEMS TABLE ────────────────────────────────────────────────────────────
-    const cols = {
-        sl:   { x: 1,  w: 5  },
-        name: { x: 6,  w: 32 },
-        hsn:  { x: 38, w: 10 },
-        batch:{ x: 48, w: 12 },
-        exp:  { x: 60, w: 8  },
-        qty:  { x: 68, w: 6  },
-        bon:  { x: 74, w: 6  },
-        mrp:  { x: 80, w: 10 },
-        rate: { x: 90, w: 11 },
-        txbl: { x: 101,w: 14 },
-        gst:  { x: 115,w: 9  },
-        amt:  { x: 124,w: 23 },
-    };
-
-    // Header row
-    doc.setFillColor(...DARK);
-    doc.rect(0, y, W, 6, 'F');
-    setFont(4.5, 'bold', WHITE);
-    const headers = { sl:'Sl', name:'Product', hsn:'HSN', batch:'Batch', exp:'Exp', qty:'Qty', bon:'Free', mrp:'MRP', rate:'Rate', txbl:'Taxable', gst:'GST', amt:'Amount' };
-    Object.entries(cols).forEach(([key, c]) => {
-        const align = ['sl','qty','bon','mrp','rate','txbl','gst','amt'].includes(key) ? 'center' : 'left';
-        doc.text(headers[key], c.x + (align === 'center' ? c.w/2 : 1), y + 4, { align });
-    });
-    y += 6;
-
-    // Item rows
-    let taxableTotal = 0, gstTotal = 0;
-    const gstBreakdown = {}; // { rate: { taxable, cgst, sgst } }
-
-    inv.items.forEach((item, idx) => {
-        const isEven = idx % 2 === 0;
-        const rowH = 6.5; // compact enough but fits 2 lines
-        if (isEven) { doc.setFillColor(248, 250, 252); doc.rect(0, y, W, rowH, 'F'); }
-
-        const taxable  = (item.priceUsed || 0) * (item.qty || 0);
-        const gstPct   = item.gstPercent || 12;
-        const gstAmt   = taxable * gstPct / 100;
-        const lineAmt  = taxable + gstAmt;
-        taxableTotal  += taxable;
-        gstTotal      += gstAmt;
-
-        if (!gstBreakdown[gstPct]) gstBreakdown[gstPct] = { taxable: 0, cgst: 0, sgst: 0 };
-        gstBreakdown[gstPct].taxable += taxable;
-        gstBreakdown[gstPct].cgst   += gstAmt / 2;
-        gstBreakdown[gstPct].sgst   += gstAmt / 2;
-
-        const fmt = n => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-        doc.setDrawColor(230, 230, 240);
-        doc.rect(0, y, W, rowH);
-        setFont(5, 'normal', DARK);
-        doc.text(String(idx + 1), cols.sl.x + cols.sl.w/2, y + 4, { align: 'center' });
-        
-        // Product Name (top line)
-        doc.text((item.name || '-').substring(0,25), cols.name.x + 1, y + 3);
-        // Manufacturer Name (bottom line, smaller)
-        setFont(3.5, 'normal', MUTED);
-        doc.text((item.manufacturer || '').substring(0,30), cols.name.x + 1, y + 5.5);
-        
-        setFont(5, 'normal', DARK);
-        doc.text(item.hsn || '30049', cols.hsn.x + 1, y + 4);
-        doc.text(item.batch || 'BT-01', cols.batch.x + 1, y + 4);
-        doc.text(item.exp || '12/26', cols.exp.x + 1, y + 4);
-        doc.text(String(item.qty || 0), cols.qty.x + cols.qty.w/2, y + 4, { align: 'center' });
-        setFont(5, 'normal', GREEN);
-        doc.text(String(item.bonusQty || 0), cols.bon.x + cols.bon.w/2, y + 4, { align: 'center' });
-        setFont(5, 'normal', DARK);
-        doc.text(fmt(item.mrp || 0), cols.mrp.x + cols.mrp.w - 1, y + 4, { align: 'right' });
-        doc.text(fmt(item.priceUsed || 0), cols.rate.x + cols.rate.w - 1, y + 4, { align: 'right' });
-        doc.text(fmt(taxable), cols.txbl.x + cols.txbl.w - 1, y + 4, { align: 'right' });
-        doc.text(`${gstPct}%`, cols.gst.x + cols.gst.w/2, y + 4, { align: 'center' });
-        setFont(5.5, 'bold', DARK);
-        doc.text(fmt(lineAmt), cols.amt.x + cols.amt.w - 1, y + 4, { align: 'right' });
-        y += rowH;
-
-        // Page break safety
-        if (y > H - 55) {
-            doc.addPage('a5');
-            y = 10;
-        }
-    });
-
-    // ── GST BREAKDOWN TABLE & GRAND TOTALS ─────────────────────────────────────
-    y += 2;
-    const grandTotal = taxableTotal + gstTotal;
-    const totalsStartY = y; // Anchor below the last product row's faint line
-
-    // Determine if it's IGST or CGST/SGST based on Stockist State
-    const sState = (stkObj.state || '').toLowerCase().trim();
-    const isLocal = sState === '' || sState.includes('telengana') || sState.includes('telangana') || sState === 'ts' || sState === 'tg';
-    const isIGST = !isLocal;
-
-    // Left: GST Summary
-    const gstSummaryX = 0;
-    setFont(5.5, 'bold', PRIMARY);
-    doc.text('GST SUMMARY', gstSummaryX + 2, y + 4);
-    y += 5;
-    doc.setFillColor(235, 237, 255);
-    doc.rect(gstSummaryX, y, 75, 5, 'F');
-    setFont(5, 'bold', PRIMARY);
-    doc.text('GST Rate', gstSummaryX + 2, y + 3.5);
-    doc.text('Taxable', gstSummaryX + 20, y + 3.5);
-    if (isIGST) {
-        doc.text('IGST', gstSummaryX + 45, y + 3.5);
-    } else {
-        doc.text('CGST', gstSummaryX + 38, y + 3.5);
-        doc.text('SGST', gstSummaryX + 52, y + 3.5);
-    }
-    doc.text('Total GST', gstSummaryX + 64, y + 3.5);
-    y += 5;
-    Object.entries(gstBreakdown).forEach(([rate, vals]) => {
-        setFont(5, 'normal', DARK);
-        const fv = v => v.toLocaleString('en-IN', { minimumFractionDigits: 2 });
-        doc.text(`${rate}%`, gstSummaryX + 2, y + 3.5);
-        doc.text(fv(vals.taxable), gstSummaryX + 20, y + 3.5);
-        if (isIGST) {
-            doc.text(fv(vals.cgst + vals.sgst), gstSummaryX + 45, y + 3.5);
-        } else {
-            doc.text(fv(vals.cgst), gstSummaryX + 38, y + 3.5);
-            doc.text(fv(vals.sgst), gstSummaryX + 52, y + 3.5);
-        }
-        doc.text(fv(vals.cgst + vals.sgst), gstSummaryX + 64, y + 3.5);
-        y += 4.5;
-    });
-    const finalGstY = y;
-
-    // Right: Grand Total Box
-    const totX = W - 65; 
-    const fmt2 = n => 'Rs. ' + n.toLocaleString('en-IN', { minimumFractionDigits: 2 });
-    const totRows = [
-        ['Taxable Value', taxableTotal],
-        ['Total GST',     gstTotal],
-        ['ROUND OFF',     Math.round(grandTotal) - grandTotal],
-    ];
-    let tY = totalsStartY; // Start EXACTLY below the last item row
-    totRows.forEach(([lbl, val]) => {
-        setFont(6, 'normal', MUTED); doc.text(lbl, totX + 1, tY + 4);
-        setFont(6, 'normal', DARK);  doc.text(fmt2(val), W - 2, tY + 4, { align: 'right' });
-        tY += 5.5;
-    });
-    // Grand Total row
-    doc.setFillColor(...PRIMARY);
-    doc.rect(totX, tY, W - totX, 8, 'F');
-    setFont(7, 'bold', WHITE); doc.text('GRAND TOTAL', totX + 2, tY + 5.5);
-    doc.text(fmt2(Math.round(grandTotal)), W - 2, tY + 5.5, { align: 'right' });
-    tY += 8;
-    
-    // Amount in Words in bracket below Grand Total
-    setFont(5, 'italic', MUTED);
-    doc.text(`(Rupees ${numToWords(Math.round(grandTotal))} Only)`, W - 2, tY + 4, { align: 'right' });
-    tY += 8;
-
-    y = Math.max(finalGstY, tY) + 2;
-
-    // ── TERMS, BANK & SIGNATURE ────────────────────────────────────────────────
-    const sigY = y;
-
-    // Left side: Bank Details
-    setFont(5.5, 'bold', DARK); doc.text('Bank Details:', 3, y + 4);
-    setFont(5, 'normal', MUTED); 
-    const bDetails = co.bankDetails ? co.bankDetails.split('\n') : ['Bank Name: HDFC Bank', 'A/C No: 123456789012', 'IFSC Code: HDFC0001234'];
-    bDetails.forEach((line, i) => doc.text(line, 3, y + 8 + (i * 3.5)));
-
-    // Left side: Terms (below bank details)
-    const termsY = y + 8 + (bDetails.length * 3.5) + 3;
-    setFont(5.5, 'bold', DARK); doc.text('Terms & Conditions:', 3, termsY);
-    setFont(4.5, 'normal', MUTED);
-    const tConds = co.termsConditions ? co.termsConditions.split('\n') : ['1. Goods once sold will not be taken back.', '2. Subject to local jurisdiction.'];
-    tConds.forEach((line, i) => doc.text(line, 3, termsY + 3.5 + (i * 3)));
-
-    // Right side: Signature block
-    setFont(5.5, 'bold', PRIMARY); doc.text(`For ${coName}`, W - 3, sigY + 4, { align: 'right' });
-    
-    if (co.signatureImage) {
-        doc.addImage(co.signatureImage, 'PNG', W - 35, sigY + 6, 30, 12);
-    } else {
-        doc.setDrawColor(...MUTED);
-        doc.line(W - 40, sigY + 18, W - 3, sigY + 18);
-    }
-    setFont(5, 'normal', MUTED); doc.text('Authorised Signatory', W - 3, sigY + 22, { align: 'right' });
-
-    // ── FOOTER ────────────────────────────────────────────────────────────────
-    y += 22;
-    doc.setFillColor(...DARK);
-    doc.rect(0, H - 8, W, 8, 'F');
-    setFont(5, 'normal', [150, 160, 200]);
-    doc.text('E. & O.E.  —  This is a Computer Generated Invoice  —  No signature required', W / 2, H - 4, { align: 'center' });
-    setFont(5, 'normal', [120, 130, 180]);
-    doc.text(coWeb, 3, H - 4);
-    doc.text(coEmail, W - 3, H - 4, { align: 'right' });
+    doc.setFont("helvetica", "bold");
+    doc.text(`For ${companyProfile.name || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 30, { align: 'right' });
+    doc.setFont("helvetica", "normal");
+    doc.text("Authorised Signatory", 195, 280, { align: 'right' });
 
     doc.save(`Invoice_${inv.invoiceNo}.pdf`);
 }

@@ -10,6 +10,7 @@ let companySettings = null;
 let askingRates = {}; // Store negotiated rates
 let negotiationNotes = {}; // Store authorization details
 let myOrdersHistory = []; // Store history for modal lookup
+let currentViewOrderId = null; // Track order for invoice downloading
 
 
 async function syncProfile() {
@@ -813,6 +814,10 @@ function viewOrderDetails(orderId) {
     statusEl.innerText = o.status.toUpperCase();
     statusEl.style.color = o.status === 'invoiced' ? '#6366f1' : (o.status === 'approved' ? '#10b981' : (o.status === 'rejected' ? '#ef4444' : '#f59e0b'));
 
+    const dlBtn = document.getElementById('btn-download-invoice');
+    if (o.status === 'invoiced' && dlBtn) dlBtn.classList.remove('hidden');
+    else if (dlBtn) dlBtn.classList.add('hidden');
+
     document.getElementById('detail-item-count').innerText = `${o.items.length} Items`;
 
     const body = document.getElementById('detail-items-body');
@@ -842,4 +847,183 @@ function viewOrderDetails(orderId) {
 
 function closeOrderModal() {
     document.getElementById('orderDetailModal').style.display = 'none';
+    currentViewOrderId = null;
+}
+
+async function downloadStockistInvoice() {
+    if (!currentViewOrderId) return;
+    try {
+        const btn = document.getElementById('btn-download-invoice');
+        if (btn) {
+            btn.innerText = "⏳ Generating...";
+            btn.disabled = true;
+        }
+
+        const res = await fetch(`${API_BASE}/stockist/orders/${currentViewOrderId}/invoice`);
+        const data = await res.json();
+        
+        if (!data.success || !data.invoice) {
+            alert("Could not load invoice data: " + (data.message || 'Unknown error'));
+            if (btn) { btn.innerText = "📄 Download Invoice"; btn.disabled = false; }
+            return;
+        }
+
+        generateInvoicePDF(data.invoice);
+        
+        if (btn) {
+            btn.innerText = "✅ Downloaded";
+            setTimeout(() => { btn.innerText = "📄 Download Invoice"; btn.disabled = false; }, 2000);
+        }
+    } catch (e) {
+        console.error("PDF Gen Error:", e);
+        alert("Failed to generate PDF.");
+        const btn = document.getElementById('btn-download-invoice');
+        if (btn) { btn.innerText = "📄 Download Invoice"; btn.disabled = false; }
+    }
+}
+
+function generateInvoicePDF(inv) {
+    function numberToWords(num) {
+        const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+        const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+        const g = ['', 'Thousand', 'Lakh', 'Crore'];
+
+        const makeGroup = (n) => {
+            let s = '';
+            if (n >= 100) { s += a[Math.floor(n / 100)] + 'Hundred '; n %= 100; }
+            if (n >= 20) { s += b[Math.floor(n / 10)] + ' '; n %= 10; }
+            if (n > 0) s += a[n];
+            return s;
+        };
+
+        if (num === 0) return 'Zero';
+        let ns = num.toString().split('.');
+        let integer = parseInt(ns[0]);
+        let fraction = ns[1] ? parseInt(ns[1]) : 0;
+        
+        let out = '';
+        let i = 0;
+        while (integer > 0) {
+            let group;
+            if (i === 0) { group = integer % 1000; integer = Math.floor(integer / 1000); }
+            else { group = integer % 100; integer = Math.floor(integer / 100); }
+            if (group > 0) out = makeGroup(group) + (g[i] ? g[i] + ' ' : '') + out;
+            i++;
+        }
+        
+        let final = 'Rupees ' + out.trim();
+        if (fraction > 0) final += ' and ' + fraction + '/100 Paise';
+        return final + ' Only';
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const style = companySettings?.invoiceStyle || 'classic';
+
+    if (style === 'modern') {
+        doc.setFillColor(99, 102, 241);
+        doc.rect(0, 0, 210, 40, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(24);
+        doc.text("TAX INVOICE", 105, 20, { align: 'center' });
+        doc.setFontSize(10);
+        doc.text(`${companySettings?.name || 'EMYRIS BIOLIFESCIENCES'}`, 105, 30, { align: 'center' });
+        doc.setTextColor(40, 44, 52);
+    } else {
+        doc.setFontSize(style === 'compact' ? 18 : 22);
+        doc.setTextColor(40, 44, 52);
+        doc.text("TAX INVOICE", 105, 15, { align: 'center' });
+        
+        doc.setDrawColor(200);
+        doc.rect(15, 10, 40, 20); 
+        doc.setFontSize(8);
+        doc.text("LOGO", 35, 20, { align: 'center' });
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text(companySettings?.name || "EMYRIS BIOLIFESCIENCES PVT. LTD.", 140, 15);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.text(companySettings?.address || "Sumadhura Pragati Chambers, Park Ln, Secunderabd,", 140, 20);
+        doc.text("Hyderabad, Telangana - 500003", 140, 24);
+        doc.text(`DL No: TS/SEC/2023-44281, 44282`, 140, 28);
+        doc.text(`GSTIN: 36AABCE1234F1Z5`, 140, 32);
+        doc.text(`FSSAI: 13623011000123`, 140, 36);
+    }
+
+    doc.line(15, 40, 195, 40);
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Invoice No: ${inv.invoiceNo}`, 15, 48);
+    doc.text(`Date: ${new Date(inv.createdAt).toLocaleDateString('en-GB')}`, 15, 53);
+    
+    const party = currentUser || {};
+    doc.text("BILL TO:", 110, 48);
+    doc.setFont("helvetica", "normal");
+    doc.text(inv.stockistName || 'N/A', 110, 53);
+    doc.text(party.address || '', 110, 58, { maxWidth: 80 });
+    doc.text(`GST: ${party.gstNo || 'N/A'} | DL: ${party.dlNo || 'N/A'}`, 110, 68);
+
+    doc.autoTable({
+        startY: 75,
+        head: [['S.No', 'Product Description', 'HSN', 'Batch', 'Exp', 'MRP', 'Qty', 'Unit', 'Price/Unit', 'Taxable', 'GST%', 'Amount']],
+        body: inv.items.map((item, idx) => [
+            idx + 1,
+            { content: `${item.name}\n(Mfg: ${item.manufacturer || 'EMYRIS'})`, styles: { fontSize: style === 'compact' ? 6 : 7 } },
+            item.hsn || '-',
+            item.batch || 'B2401',
+            item.exp || '12/25',
+            `₹${(item.mrp || 0).toFixed(2)}`,
+            item.qty,
+            'NOS',
+            item.priceUsed.toFixed(2),
+            item.totalValue.toFixed(2),
+            item.gstPercent + '%',
+            (item.totalValue * (1 + item.gstPercent/100)).toFixed(2)
+        ]),
+        theme: style === 'modern' ? 'striped' : 'grid',
+        headStyles: { fillColor: style === 'modern' ? [99, 102, 241] : [40, 44, 52], fontSize: style === 'compact' ? 6 : 7, halign: 'center' },
+        styles: { fontSize: style === 'compact' ? 6 : 7, cellPadding: style === 'compact' ? 1 : 2 },
+        columnStyles: {
+            0: { cellWidth: 10 },
+            1: { cellWidth: 40 },
+            9: { halign: 'right' },
+            11: { halign: 'right' }
+        },
+        margin: { left: 15, right: 15, bottom: 60 }
+    });
+
+    const finalY = 240; 
+    
+    doc.setDrawColor(200);
+    doc.line(15, finalY - 5, 195, finalY - 5);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Amount in Words:", 15, finalY);
+    doc.setFont("helvetica", "normal");
+    doc.text(numberToWords(inv.grandTotal), 15, finalY + 5);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("TAX SUMMARY", 130, finalY);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(`Taxable Amount: ₹${inv.subTotal.toLocaleString('en-IN')}`, 130, finalY + 5);
+    doc.text(`CGST (Total): ₹${(inv.gstAmount/2).toLocaleString('en-IN')}`, 130, finalY + 9);
+    doc.text(`SGST (Total): ₹${(inv.gstAmount/2).toLocaleString('en-IN')}`, 130, finalY + 13);
+    
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text(`NET PAYABLE: ₹${inv.grandTotal.toLocaleString('en-IN')}`, 130, finalY + 22);
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "italic");
+    doc.text("Terms: 1. Goods once sold will not be taken back. 2. Subject to Hyderabad Jurisdiction.", 15, 280);
+
+    doc.setFont("helvetica", "bold");
+    doc.text(`For ${companySettings?.name || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 30, { align: 'right' });
+    doc.setFont("helvetica", "normal");
+    doc.text("Authorised Signatory", 195, 280, { align: 'right' });
+
+    doc.save(`Invoice_${inv.invoiceNo}.pdf`);
 }

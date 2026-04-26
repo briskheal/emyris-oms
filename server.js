@@ -599,6 +599,14 @@ app.post('/api/stockist/forgot-id-pw', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.get('/api/stockist/orders/:orderId/invoice', async (req, res) => {
+    try {
+        const invoice = await Invoice.findOne({ order: req.params.orderId }).populate('stockist');
+        if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
+        res.json({ success: true, invoice });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Admin: Login
 app.post('/api/admin/login', (req, res) => {
     const { adminId, password } = req.body;
