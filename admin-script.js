@@ -512,7 +512,7 @@ async function loadStockists(type = '') {
 
 async function loadMasters() {
     try {
-        const [cats, hsns, gst, groups, hq] = await Promise.all([
+        const [cats, hsns, gst, groups, hq, expCats] = await Promise.all([
             fetch(`${API_BASE}/admin/categories`).then(r => r.json()),
             fetch(`${API_BASE}/admin/hsns`).then(r => r.json()),
             fetch(`${API_BASE}/admin/gst`).then(r => r.json()),
