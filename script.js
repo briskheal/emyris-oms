@@ -402,7 +402,7 @@ async function loadSettings() {
         }
 
         if (companySettings.videoUrl) {
-            const videoContainer = document.querySelector('#view-login .glass-card > div:nth-child(2)') || document.querySelector('#view-login [style*="height: 110px"]');
+            const videoContainer = document.querySelector('#view-login .glass-card > div:nth-child(2)') || document.querySelector('#view-login [style*="height: 180px"]');
             if (videoContainer) {
                 const isYoutube = companySettings.videoUrl.includes('youtube.com') || companySettings.videoUrl.includes('youtu.be');
                 if (isYoutube) {
@@ -423,6 +423,7 @@ async function loadSettings() {
                 }
             }
         }
+
 
 
     } catch (e) { console.error("Load settings failed", e); }
@@ -904,29 +905,48 @@ var isMusicPlaying = false;
 function toggleMusic() {
     console.log('🎵 [MUSIC] Toggle clicked');
     const audio = document.getElementById('bgMusic');
-    const btn = document.getElementById('musicToggle');
-    if (!audio || !btn) return;
+    const btnLanding = document.getElementById('musicToggle');
+    const btnMain = document.getElementById('musicToggleMain');
+    
+    if (!audio) return;
+
+    const updateUI = (isPlaying) => {
+        const text = isPlaying ? 'Music On' : 'Music Off';
+        const icon = isPlaying ? '🔊' : '🔇';
+        const border = isPlaying ? '#6366f1' : 'rgba(255,255,255,0.1)';
+        const bg = isPlaying ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.05)';
+        const color = isPlaying ? '#6366f1' : '#fff';
+
+        [btnLanding, btnMain].forEach(btn => {
+            if (btn) {
+                btn.style.borderColor = border;
+                btn.style.background = bg;
+                btn.style.color = color;
+                const iconEl = btn.querySelector('span');
+                if (iconEl) iconEl.innerText = icon;
+                const textEl = btn.querySelector('span:nth-child(2)');
+                if (textEl) textEl.innerText = text;
+            }
+        });
+    };
 
     if (audio.paused) {
-        audio.volume = 0.15; // Soft volume
+        audio.volume = 0.15;
         audio.play().then(() => {
             isMusicPlaying = true;
-            btn.innerHTML = '<span>🔊</span> <span id="musicText">Music On</span>';
-            btn.style.borderColor = '#6366f1';
-            btn.style.background = 'rgba(99, 102, 241, 0.2)';
+            updateUI(true);
             console.log('✅ [MUSIC] Playing...');
         }).catch(e => {
-            console.error("❌ [MUSIC] Playback blocked or failed:", e);
+            console.error("❌ [MUSIC] Playback blocked:", e);
         });
     } else {
         audio.pause();
         isMusicPlaying = false;
-        btn.innerHTML = '<span>🔇</span> <span id="musicText">Music Off</span>';
-        btn.style.borderColor = 'rgba(255,255,255,0.1)';
-        btn.style.background = 'rgba(255,255,255,0.05)';
+        updateUI(false);
         console.log('⏸️ [MUSIC] Paused');
     }
 }
+
 
 
 

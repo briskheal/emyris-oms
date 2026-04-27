@@ -879,10 +879,16 @@ async function loadSettings() {
 
         setInvoiceStyle(s.invoiceStyle || 'classic');
 
-        // Multimedia Labels
+        // Multimedia Setup
         if (s.musicUrl) {
             const musicName = s.musicUrl.split('/').pop();
             document.getElementById('current-music-name').innerText = `Current: ${musicName}`;
+            
+            // Set audio source if not already set
+            const audio = document.getElementById('bgMusic');
+            if (audio && !audio.src.includes(s.musicUrl)) {
+                audio.src = s.musicUrl;
+            }
         }
         if (s.videoUrl) {
             const videoName = s.videoUrl.split('/').pop();
@@ -890,6 +896,38 @@ async function loadSettings() {
         }
     } catch (e) { console.error("Load settings fail"); }
 }
+
+function toggleMusic() {
+    const audio = document.getElementById('bgMusic');
+    const btn = document.getElementById('musicToggleAdmin');
+    const text = document.getElementById('musicTextAdmin');
+    
+    if (!audio || !audio.src) {
+        alert("No music source found. Please upload music in Global Masters.");
+        return;
+    }
+
+    if (audio.paused) {
+        audio.play().then(() => {
+            btn.style.background = 'rgba(16, 185, 129, 0.1)';
+            btn.style.borderColor = '#10b981';
+            btn.style.color = '#10b981';
+            btn.querySelector('span').innerText = '🔊';
+            text.innerText = 'Music On';
+        }).catch(err => {
+            console.error("Playback blocked:", err);
+            alert("Playback blocked by browser. Please interact with the page first.");
+        });
+    } else {
+        audio.pause();
+        btn.style.background = 'rgba(99, 102, 241, 0.1)';
+        btn.style.borderColor = '#6366f1';
+        btn.style.color = '#fff';
+        btn.querySelector('span').innerText = '🔇';
+        text.innerText = 'Music Off';
+    }
+}
+
 
 async function uploadMedia(type) {
     const inputId = type === 'music' ? 'musicFile' : 'videoFile';
