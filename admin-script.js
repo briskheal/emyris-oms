@@ -169,9 +169,10 @@ function toggleSubmenu(id, el) {
     
     const isHidden = submenu.classList.contains('hidden');
     
-    // Close other submenus if any
     document.querySelectorAll('[id^="sub-"]').forEach(sub => {
-        if (sub.id !== id) sub.classList.add('hidden');
+        if (sub.id !== id && !sub.contains(submenu)) {
+            sub.classList.add('hidden');
+        }
     });
 
     if (isHidden) {
@@ -3515,152 +3516,146 @@ function filterPayments() {
 
 // --- INTELLIGENCE & REPORTING ENGINE ---
 
-async function generateReport(type) {
+
+let currentReportData = [];
+let currentReportName = "Report";
+
+function closeReportModal() {
+    document.getElementById('reportModal').classList.add('hidden');
+}
+
+function generateReport(type) {
+    document.getElementById('current-report-type').value = type;
+    document.getElementById('report-modal-title').innerText = `📊 Report: ${type.toUpperCase().replace(/-/g, ' ')}`;
+    
+    // Default dates: First day of current month to today
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    document.getElementById('report-to-date').value = today.toISOString().split('T')[0];
+    document.getElementById('report-from-date').value = firstDay.toISOString().split('T')[0];
+    
+    document.getElementById('reportModal').classList.remove('hidden');
+    
+    // Auto load data
+    renderReportView();
+}
+
+async function renderReportView() {
+    const type = document.getElementById('current-report-type').value;
+    const fromDateStr = document.getElementById('report-from-date').value;
+    const toDateStr = document.getElementById('report-to-date').value;
+    
+    const loading = document.getElementById('report-loading-spinner');
+    const empty = document.getElementById('report-empty-state');
+    const thead = document.getElementById('report-table-head');
+    const tbody = document.getElementById('report-table-body');
+    
+    thead.innerHTML = '';
+    tbody.innerHTML = '';
+    empty.style.display = 'none';
+    loading.style.display = 'block';
+    
     try {
-        console.log(`🚀 Generating Report: ${type}`);
         const res = await fetch(`${API_BASE}/admin/reports/full-audit`);
         const data = await res.json();
-        const { invoices, purchases, payments, notes, expenses, products, stockists } = data;
-
+        let { invoices, purchases, payments, notes, expenses, products, stockists } = data;
+        
+        // Filter by dates
+        const fromD = new Date(fromDateStr);
+        const toD = new Date(toDateStr);
+        toD.setHours(23,59,59,999);
+        
+        invoices = invoices.filter(x => new Date(x.createdAt) >= fromD && new Date(x.createdAt) <= toD);
+        purchases = purchases.filter(x => new Date(x.date || x.createdAt) >= fromD && new Date(x.date || x.createdAt) <= toD);
+        payments = payments.filter(x => new Date(x.date) >= fromD && new Date(x.date) <= toD);
+        expenses = expenses.filter(x => new Date(x.date) >= fromD && new Date(x.date) <= toD);
+        notes = notes.filter(x => new Date(x.date) >= fromD && new Date(x.date) <= toD);
+        
         let reportData = [];
         let fileName = `Emyris_${type}_${new Date().toISOString().split('T')[0]}`;
-
-        switch (type) {
-            case 'bill-profit':
-                invoices.forEach(inv => {
-                    inv.items.forEach(item => {
-                        const prod = products.find(p => p._id.toString() === item.product.toString());
-                        const costPrice = prod ? prod.pts : 0;
-                        const profit = (item.priceUsed - costPrice) * item.qty;
-                        reportData.push({
-                            "Invoice No": inv.invoiceNo,
-                            "Date": new Date(inv.createdAt).toLocaleDateString('en-GB'),
-                            "Party": inv.stockistName,
-                            "Product": item.name,
-                            "Qty": item.qty,
-                            "Sale Rate": item.priceUsed,
-                            "Cost Rate": costPrice,
-                            "Profit Amount": profit.toFixed(2),
-                            "Margin %": costPrice > 0 ? (((item.priceUsed - costPrice) / costPrice) * 100).toFixed(2) : '100'
-                        });
-                    });
-                });
-                break;
-
-            case 'p-and-l':
-                const totalSales = invoices.reduce((s, x) => s + x.subTotal, 0);
-                const totalExpenses = expenses.reduce((s, x) => s + x.amount, 0);
-                let totalCogs = 0;
-                invoices.forEach(inv => {
-                    inv.items.forEach(item => {
-                        const prod = products.find(p => p._id.toString() === item.product.toString());
-                        totalCogs += (prod ? prod.pts : 0) * item.qty;
-                    });
-                });
-                reportData = [{
-                    "Metric": "Total Sales (Revenue)",
-                    "Amount": totalSales.toFixed(2)
-                }, {
-                    "Metric": "Cost of Goods Sold (COGS)",
-                    "Amount": totalCogs.toFixed(2)
-                }, {
-                    "Metric": "Gross Profit",
-                    "Amount": (totalSales - totalCogs).toFixed(2)
-                }, {
-                    "Metric": "Total Indirect Expenses",
-                    "Amount": totalExpenses.toFixed(2)
-                }, {
-                    "Metric": "NET PROFIT / LOSS",
-                    "Amount": (totalSales - totalCogs - totalExpenses).toFixed(2)
-                }];
-                break;
-
-            case 'stock-summary':
-                reportData = products.map(p => ({
-                    "Product Name": p.name,
-                    "HSN": p.hsn,
-                    "Category": p.category,
-                    "Group": p.group,
-                    "Current Stock": p.qtyAvailable,
-                    "Valuation (PTS)": (p.qtyAvailable * p.pts).toFixed(2),
-                    "Valuation (MRP)": (p.qtyAvailable * p.mrp).toFixed(2)
-                }));
-                break;
-
-            case 'exp-txn':
-                reportData = expenses.map(e => ({
-                    "Exp No": e.expenseNo,
-                    "Date": new Date(e.date).toLocaleDateString('en-GB'),
-                    "Category": e.categoryName,
-                    "Title": e.title,
-                    "Method": e.paymentMethod,
-                    "Ref No": e.refNo || '-',
-                    "Amount": e.amount
-                }));
-                break;
-
-            case 'gstr1':
-                reportData = invoices.map(inv => {
-                    const party = inv.stockist;
-                    return {
-                        "GSTIN": party ? party.gstNo : "N/A",
-                        "Receiver Name": inv.stockistName,
-                        "Invoice No": inv.invoiceNo,
-                        "Date": new Date(inv.createdAt).toLocaleDateString('en-GB'),
-                        "Total Value": inv.grandTotal,
-                        "Taxable Value": inv.subTotal,
-                        "IGST": party && party.state !== "TELANGANA" ? inv.gstAmount : 0,
-                        "CGST": party && party.state === "TELANGANA" ? inv.gstAmount / 2 : 0,
-                        "SGST": party && party.state === "TELANGANA" ? inv.gstAmount / 2 : 0
-                    };
-                });
-                break;
-
-            case 'low-stock':
-                reportData = products.filter(p => p.qtyAvailable < 10).map(p => ({
-                    "Product": p.name,
-                    "Current Qty": p.qtyAvailable,
-                    "Status": "REORDER REQUIRED"
-                }));
-                break;
-
-            case 'bank-statement':
-                const bankTxns = payments.filter(p => p.method === 'Bank Transfer' || p.method === 'UPI');
-                reportData = bankTxns.map(p => ({
-                    "Date": new Date(p.date).toLocaleDateString('en-GB'),
-                    "Ref No": p.refNo,
-                    "Party": p.partyName,
-                    "Type": p.type,
-                    "Amount": p.amount
-                }));
-                break;
-
-            case 'consolidated-ledger':
-                fileName = "Consolidated_Master_Ledger";
-                stockists.forEach(s => {
-                    reportData.push({
-                        "Party Name": s.name,
-                        "City": s.city,
-                        "Opening Balance": 0,
-                        "Closing Outstanding": s.outstandingBalance || 0
-                    });
-                });
-                break;
-
-            default:
-                alert(`Report "${type}" is being prepared for the next module update. Using basic data dump for now.`);
-                reportData = invoices.map(i => ({ "Date": i.createdAt, "No": i.invoiceNo, "Party": i.stockistName, "Amount": i.grandTotal }));
-        }
-
+        
+        ${switchBody}
+        
+        currentReportData = reportData;
+        currentReportName = fileName;
+        
+        loading.style.display = 'none';
+        
         if (reportData.length === 0) {
-            alert("No data found for the selected period/criteria.");
+            empty.style.display = 'block';
             return;
         }
-
-        downloadExcel(reportData, fileName);
+        
+        // Render Table Headers
+        const headers = Object.keys(reportData[0]);
+        headers.forEach(h => {
+            const th = document.createElement('th');
+            th.textContent = h;
+            th.style.padding = '10px';
+            th.style.borderBottom = '2px solid rgba(255,255,255,0.1)';
+            th.style.textAlign = 'left';
+            th.style.whiteSpace = 'nowrap';
+            thead.appendChild(th);
+        });
+        
+        // Render Rows
+        reportData.forEach(row => {
+            const tr = document.createElement('tr');
+            headers.forEach(h => {
+                const td = document.createElement('td');
+                td.textContent = row[h];
+                td.style.padding = '8px 10px';
+                td.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                td.style.whiteSpace = 'nowrap';
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        
     } catch (e) {
-        console.error("Report Generation Error:", e);
-        alert("Failed to generate report. Check console.");
+        console.error("Report generation error:", e);
+        loading.style.display = 'none';
+        alert("Failed to compile report. Check console.");
+    }
+}
+
+function exportReportExcel() {
+    if(!currentReportData || currentReportData.length === 0) return alert("No data to export.");
+    downloadExcel(currentReportData, currentReportName);
+}
+
+function exportReportPDF() {
+    if(!currentReportData || currentReportData.length === 0) return alert("No data to export.");
+    
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('landscape');
+        
+        doc.setFontSize(14);
+        doc.text(`Report: ${currentReportName.replace(/_/g, ' ')}`, 14, 15);
+        
+        const fromDateStr = document.getElementById('report-from-date').value;
+        const toDateStr = document.getElementById('report-to-date').value;
+        doc.setFontSize(10);
+        doc.text(`Period: ${fromDateStr} to ${toDateStr}`, 14, 22);
+        
+        const headers = Object.keys(currentReportData[0]);
+        const body = currentReportData.map(row => headers.map(h => row[h]));
+        
+        doc.autoTable({
+            head: [headers],
+            body: body,
+            startY: 28,
+            theme: 'grid',
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [16, 185, 129] }
+        });
+        
+        doc.save(`${currentReportName}.pdf`);
+    } catch(e) {
+        console.error(e);
+        alert("Failed to export PDF. Ensure jsPDF library is loaded.");
     }
 }
 
