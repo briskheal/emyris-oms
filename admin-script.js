@@ -150,7 +150,12 @@ function switchTab(tabId, el, subType = null) {
         // Update context label
         const label = document.getElementById('note-context-label');
         if(label) {
-            label.innerText = currentNoteReason === 'ALL' ? "Global View" : `Viewing: ${currentNoteReason}`;
+            let labelText = "Global View";
+            if (currentNoteReason === 'Salable Return') labelText = "Sales Linked CN (Returns/Claims)";
+            else if (currentNoteReason === 'Purchase Return') labelText = "Purc. Linked DN (Stock/Rate)";
+            else if (currentNoteReason === 'Price Diff') labelText = "Price Difference (CN/DN)";
+            else if (currentNoteReason !== 'ALL') labelText = `Viewing: ${currentNoteReason}`;
+            label.innerText = labelText;
         }
     }
     if (tabId === 'purchase') renderPurchaseEntries();
@@ -1634,7 +1639,7 @@ function viewOrderDetails(id) {
     }
 
     deleteBtn.onclick = () => {
-        if (confirm(`âš ï¸ CRITICAL: Are you sure you want to PERMANENTLY DELETE Order #${o.orderNo}?\n\nThis will also remove it from the Stockist's view.`)) {
+        if (confirm(`⚠️  CRITICAL: Are you sure you want to PERMANENTLY DELETE Order #${o.orderNo}?\n\nThis will also remove it from the Stockist's view.`)) {
             deleteOrder(o._id);
             closeOrderModal();
         }
@@ -1669,7 +1674,7 @@ async function rejectOrder(id) {
         const res = await fetch(`${API_BASE}/admin/orders/${id}/reject`, { method: 'PUT' });
         const result = await res.json();
         if (result.success) {
-            alert("âŒ Order rejected and marked accordingly.");
+            alert("❌ Order rejected and marked accordingly.");
             loadOrders(); // Refresh history
         } else {
             alert("Rejection failed: " + result.message);
@@ -1682,7 +1687,7 @@ async function negotiateItem(orderId, itemId, action, btn) {
     
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `â³`;
+    btn.innerHTML = `⏳`;
 
     const customRate = document.getElementById(`rate-${orderId}-${itemId}`).value;
 
@@ -1746,7 +1751,7 @@ async function deleteOrder(id) {
         const res = await fetch(`${API_BASE}/admin/orders/${id}`, { method: 'DELETE' });
         const result = await res.json();
         if (result.success) {
-            alert("🗑️ Order deleted successfully.");
+            alert("🗑️  Order deleted successfully.");
             loadOrders(); // Refresh history
         }
     } catch (e) { alert("Delete failed."); }
@@ -2124,7 +2129,13 @@ function filterNotes() {
 
     const filtered = allNotes.filter(n => {
         const matchesQuery = n.noteNo.toLowerCase().includes(query) || n.partyName.toLowerCase().includes(query);
-        const matchesReason = currentNoteReason === 'ALL' || n.reason === currentNoteReason;
+        let matchesReason = currentNoteReason === 'ALL' || n.reason === currentNoteReason;
+        
+        // Combined filter for Price Difference
+        if (currentNoteReason === 'Price Diff') {
+            matchesReason = (n.reason === 'Price Diff CN' || n.reason === 'Price Diff DN');
+        }
+        
         return matchesQuery && matchesReason;
     });
     
