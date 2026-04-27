@@ -403,14 +403,14 @@ async function loadSettings() {
         }
 
         if (companySettings.videoUrl) {
-            const videoContainer = document.querySelector('#view-login .glass-card > div:nth-child(2)') || document.querySelector('#view-login [style*="height: 180px"]');
+            const videoContainer = document.querySelector('#view-login > div:nth-child(2)') || document.querySelector('#view-login [style*="height: 180px"]');
             if (videoContainer) {
                 const isYoutube = companySettings.videoUrl.includes('youtube.com') || companySettings.videoUrl.includes('youtu.be');
                 
                 // Idempotent Check: Only update if source changed
                 const currentIframe = videoContainer.querySelector('iframe');
                 const currentVideo = videoContainer.querySelector('video');
-                const currentSrc = currentIframe ? currentIframe.src : (currentVideo ? currentVideo.querySelector('source').src : '');
+                const currentSrc = (currentIframe && currentIframe.src) || (currentVideo && currentVideo.querySelector('source') && currentVideo.querySelector('source').src) || '';
                 
                 if (!currentSrc.includes(companySettings.videoUrl)) {
                     if (isYoutube) {
@@ -432,6 +432,7 @@ async function loadSettings() {
                 }
             }
         }
+
 
 
 
