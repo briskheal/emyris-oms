@@ -1009,28 +1009,41 @@ function testMedia(type) {
         }
     }
 
+    // Auto-fix Dropbox Link
+    if (url.includes('dropbox.com') && url.includes('dl=0')) {
+        url = url.replace('dl=0', 'raw=1');
+        document.getElementById(urlInput).value = url;
+    }
+
     if (type === 'music') {
-        const audio = document.getElementById('bgMusic');
-        if (audio) {
-            audio.pause();
-            audio.crossOrigin = "anonymous"; // Enable CORS for external hosting
-            audio.src = url;
-            audio.volume = 1.0; // Force full volume for test
-            audio.load();
-            
-            console.log("🧪 [TEST] Attempting to play:", url);
-            
-            audio.play()
-                .then(() => alert("🎵 Music test started successfully! If you can't hear it, check your computer volume."))
-                .catch(e => {
-                    console.error("❌ Playback error:", e);
-                    alert(`❌ Playback failed.\n\nError: ${e.message}\n\nThis usually means the link is not a "Direct" audio link or the server is blocking our request.`);
-                });
+        let audio = document.getElementById('bgMusic');
+        if (!audio) {
+            audio = document.createElement('audio');
+            audio.id = 'bgMusic';
+            document.body.appendChild(audio);
         }
+        
+        audio.pause();
+        audio.removeAttribute('src'); // Clear previous source
+        audio.load();
+        
+        audio.crossOrigin = "anonymous";
+        audio.src = url;
+        audio.volume = 1.0;
+        
+        console.log("🧪 [TEST] Force testing link:", url);
+        
+        audio.play()
+            .then(() => alert("🎵 Music test started successfully! System is working!"))
+            .catch(e => {
+                console.error("❌ Test failed:", e);
+                alert(`❌ Playback failed.\n\nMessage: ${e.message}\n\nTIP: Ensure your Dropbox/Drive file is "Shared to Anyone". If it still fails, the file might be too large for direct streaming.`);
+            });
     } else {
         alert("📹 Video test: Save settings and check the Landing Page.");
     }
 }
+
 
 
 
