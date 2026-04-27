@@ -911,11 +911,14 @@ app.post('/api/admin/settings', async (req, res) => {
             settings = new Company(req.body);
         } else {
             const updateData = { ...req.body };
-            // Safety: Don't overwrite existing images with empty strings
+            // Safety: Don't overwrite existing assets with empty strings
             if (!updateData.logoImage && settings.logoImage) delete updateData.logoImage;
             if (!updateData.signatureImage && settings.signatureImage) delete updateData.signatureImage;
+            if (!updateData.musicUrl && settings.musicUrl) delete updateData.musicUrl;
+            if (!updateData.videoUrl && settings.videoUrl) delete updateData.videoUrl;
             
             Object.assign(settings, updateData);
+
         }
         await settings.save();
         res.json({ success: true, settings });
