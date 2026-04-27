@@ -403,7 +403,8 @@ async function loadSettings() {
         }
 
         if (companySettings.videoUrl) {
-            const videoContainer = document.querySelector('#view-login > div:nth-child(2)') || document.querySelector('#view-login [style*="height: 180px"]');
+            const videoContainer = document.getElementById('video-loop-container');
+
             if (videoContainer) {
                 const isYoutube = companySettings.videoUrl.includes('youtube.com') || companySettings.videoUrl.includes('youtu.be');
                 
