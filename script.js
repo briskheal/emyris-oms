@@ -392,33 +392,43 @@ async function loadSettings() {
         }
 
         // Multimedia Logic (Dynamic)
+        // Multimedia Logic (Dynamic)
         if (companySettings.musicUrl) {
             const audio = document.getElementById('bgMusic');
             if (audio) {
-                // Check if current src is different to avoid restart
-                if (!audio.src.includes(companySettings.musicUrl)) {
-                    audio.src = companySettings.musicUrl;
+                const targetSrc = companySettings.musicUrl.startsWith('http') ? companySettings.musicUrl : window.location.origin + companySettings.musicUrl;
+                // STICT CHECK: Only change if the absolute path is different
+                if (audio.src !== targetSrc) {
+                    console.log('🎵 [MUSIC] Source changed, updating...');
+                    audio.src = targetSrc;
+                }
+                
+                // Persistence: Auto-resume if state was 'On'
+                if (localStorage.getItem('emyris_music_on') === 'true' && audio.paused) {
+                    audio.play().catch(() => console.warn("Auto-play blocked"));
                 }
             }
         }
 
         if (companySettings.videoUrl) {
             const videoContainer = document.getElementById('video-loop-container');
-
             if (videoContainer) {
                 const isYoutube = companySettings.videoUrl.includes('youtube.com') || companySettings.videoUrl.includes('youtu.be');
                 
-                // Idempotent Check: Only update if source changed
+                // Idempotent Check: Avoid resetting if URL matches
                 const currentIframe = videoContainer.querySelector('iframe');
                 const currentVideo = videoContainer.querySelector('video');
                 const currentSrc = (currentIframe && currentIframe.src) || (currentVideo && currentVideo.querySelector('source') && currentVideo.querySelector('source').src) || '';
                 
                 if (!currentSrc.includes(companySettings.videoUrl)) {
+                    console.log('📹 [VIDEO] Source mismatch, re-injecting...');
                     if (isYoutube) {
+                        const embedUrl = companySettings.videoUrl.includes('?') ? 
+                            `${companySettings.videoUrl}&autoplay=1&mute=1&loop=1` : 
+                            `${companySettings.videoUrl}?autoplay=1&mute=1&loop=1`;
                         videoContainer.innerHTML = `
                             <iframe style="width: 100%; height: 100%; border: none; opacity: 0.8; pointer-events: none;" 
-                                src="${companySettings.videoUrl.includes('?') ? companySettings.videoUrl + '&autoplay=1&mute=1&loop=1' : companySettings.videoUrl + '?autoplay=1&mute=1&loop=1'}" 
-                                allow="autoplay; encrypted-media">
+                                src="${embedUrl}" allow="autoplay; encrypted-media">
                             </iframe>
                             <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">EMYRIS LIVE SERIES</div>
                         `;
@@ -433,6 +443,7 @@ async function loadSettings() {
                 }
             }
         }
+
 
 
 
@@ -946,6 +957,7 @@ function toggleMusic() {
         audio.volume = 0.15;
         audio.play().then(() => {
             isMusicPlaying = true;
+            localStorage.setItem('emyris_music_on', 'true');
             updateUI(true);
             console.log('✅ [MUSIC] Playing...');
         }).catch(e => {
@@ -956,10 +968,12 @@ function toggleMusic() {
     } else {
         audio.pause();
         isMusicPlaying = false;
+        localStorage.setItem('emyris_music_on', 'false');
         updateUI(false);
         console.log('⏸️ [MUSIC] Paused');
     }
 }
+
 
 
 
@@ -1239,15 +1253,20 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Resilient Media Handling: Ensure music/video doesn't stop on layout shifts
+let resizeTimeout;
 window.addEventListener('resize', () => {
-    // Only resume if it was already playing
-    if (isMusicPlaying) {
-        const audio = document.getElementById('bgMusic');
-        if (audio && audio.paused) {
-            audio.play().catch(() => {});
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        // Only resume if it was already playing
+        if (localStorage.getItem('emyris_music_on') === 'true') {
+            const audio = document.getElementById('bgMusic');
+            if (audio && audio.paused) {
+                audio.play().catch(() => {});
+            }
         }
-    }
+    }, 250); // Debounce
 });
+
 
 function startMusic() {
     const audio = document.getElementById('bgMusic');

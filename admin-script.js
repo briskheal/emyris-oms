@@ -882,18 +882,25 @@ async function loadSettings() {
         // Multimedia Setup
         if (s.musicUrl) {
             const musicName = s.musicUrl.split('/').pop();
-            document.getElementById('current-music-name').innerText = `Current: ${musicName}`;
+            if (document.getElementById('current-music-name')) document.getElementById('current-music-name').innerText = `Current: ${musicName}`;
             
-            // Set audio source if not already set
             const audio = document.getElementById('bgMusic');
-            if (audio && !audio.src.includes(s.musicUrl)) {
-                audio.src = s.musicUrl;
+            if (audio) {
+                const targetSrc = s.musicUrl.startsWith('http') ? s.musicUrl : window.location.origin + s.musicUrl;
+                if (audio.src !== targetSrc) {
+                    audio.src = targetSrc;
+                }
+                // Persistence
+                if (localStorage.getItem('emyris_music_on') === 'true' && audio.paused) {
+                    audio.play().catch(() => {});
+                }
             }
         }
         if (s.videoUrl) {
             const videoName = s.videoUrl.split('/').pop();
-            document.getElementById('current-video-name').innerText = `Current: ${videoName}`;
+            if (document.getElementById('current-video-name')) document.getElementById('current-video-name').innerText = `Current: ${videoName}`;
         }
+
     } catch (e) { console.error("Load settings fail"); }
 }
 
@@ -909,22 +916,18 @@ function toggleMusic() {
 
     if (audio.paused) {
         audio.play().then(() => {
+            localStorage.setItem('emyris_music_on', 'true');
             btn.style.background = 'rgba(16, 185, 129, 0.1)';
             btn.style.borderColor = '#10b981';
             btn.style.color = '#10b981';
             btn.querySelector('span').innerText = '🔊';
             text.innerText = 'Music On';
         }).catch(err => {
-            console.warn("🎵 [ADMIN MUSIC] Playback blocked by browser policy.");
-            btn.style.background = 'rgba(99, 102, 241, 0.1)';
-            btn.style.borderColor = '#6366f1';
-            btn.style.color = '#fff';
-            btn.querySelector('span').innerText = '🔇';
-            text.innerText = 'Music Off';
+            console.warn("Playback blocked by browser policy.");
         });
-
     } else {
         audio.pause();
+        localStorage.setItem('emyris_music_on', 'false');
         btn.style.background = 'rgba(99, 102, 241, 0.1)';
         btn.style.borderColor = '#6366f1';
         btn.style.color = '#fff';
