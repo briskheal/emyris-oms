@@ -915,9 +915,14 @@ function toggleMusic() {
             btn.querySelector('span').innerText = '🔊';
             text.innerText = 'Music On';
         }).catch(err => {
-            console.error("Playback blocked:", err);
-            alert("Playback blocked by browser. Please interact with the page first.");
+            console.warn("🎵 [ADMIN MUSIC] Playback blocked by browser policy.");
+            btn.style.background = 'rgba(99, 102, 241, 0.1)';
+            btn.style.borderColor = '#6366f1';
+            btn.style.color = '#fff';
+            btn.querySelector('span').innerText = '🔇';
+            text.innerText = 'Music Off';
         });
+
     } else {
         audio.pause();
         btn.style.background = 'rgba(99, 102, 241, 0.1)';

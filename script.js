@@ -948,8 +948,10 @@ function toggleMusic() {
             updateUI(true);
             console.log('✅ [MUSIC] Playing...');
         }).catch(e => {
-            console.error("❌ [MUSIC] Playback blocked:", e);
+            console.warn("🎵 [MUSIC] Playback blocked by browser policy. Interaction required.");
+            updateUI(false);
         });
+
     } else {
         audio.pause();
         isMusicPlaying = false;
