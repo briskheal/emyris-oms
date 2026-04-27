@@ -8,6 +8,15 @@ const fs = require('fs');
 const multer = require('multer');
 
 dotenv.config();
+const cloudinary = require('cloudinary').v2;
+
+// Cloudinary Configuration
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
 
 // Ensure uploads folder exists
 const uploadDir = path.join(__dirname, 'uploads', 'media');
@@ -435,7 +444,16 @@ const failedEmailSchema = new mongoose.Schema({
     lastAttempt: { type: Date, default: Date.now }
 });
 
+const mediaSchema = new mongoose.Schema({
+    name: String,
+    url: String,
+    type: { type: String, enum: ['music', 'video'] },
+    createdAt: { type: Date, default: Date.now }
+});
+
 const Company = mongoose.model('Company', companySchema);
+const Media = mongoose.model('Media', mediaSchema);
+
 const Product = mongoose.model('Product', productSchema);
 const Stockist = mongoose.model('Stockist', stockistSchema);
 const Order = mongoose.model('Order', orderSchema);
@@ -889,19 +907,56 @@ app.get('/api/admin/settings', async (req, res) => {
 app.post('/api/admin/upload-media', upload.single('media'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
-        const mediaUrl = `/uploads/media/${req.file.filename}`;
+        
         const type = req.body.type; // 'music' or 'video'
         
+        // 1. Upload to Cloudinary (Permanent)
+        const result = await cloudinary.uploader.upload(req.file.path, {
+            resource_type: type === 'video' ? 'video' : 'auto',
+            folder: 'emyris_media'
+        });
+
+        // 2. Save to Media Library Database
+        const newMedia = new Media({
+            name: req.file.originalname,
+            url: result.secure_url,
+            type: type
+        });
+        await newMedia.save();
+
+        // 3. Update active settings automatically
         let settings = await Company.findOne();
         if (!settings) settings = new Company();
-
-        if (type === 'music') settings.musicUrl = mediaUrl;
-        else if (type === 'video') settings.videoUrl = mediaUrl;
-
+        if (type === 'music') settings.musicUrl = result.secure_url;
+        else if (type === 'video') settings.videoUrl = result.secure_url;
         await settings.save();
-        res.json({ success: true, mediaUrl, message: `Uploaded ${type} successfully!` });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+
+        // Cleanup local temp file
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+
+        res.json({ success: true, mediaUrl: result.secure_url, media: newMedia, message: `Uploaded to Cloud Library successfully!` });
+    } catch (e) { 
+        console.error("Cloud Upload Fail:", e);
+        res.status(500).json({ success: false, error: e.message }); 
+    }
 });
+
+// GET: Fetch all media library items
+app.get('/api/admin/media', async (req, res) => {
+    try {
+        const media = await Media.find().sort({ createdAt: -1 });
+        res.json(media);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE: Remove from media library
+app.delete('/api/admin/media/:id', async (req, res) => {
+    try {
+        await Media.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

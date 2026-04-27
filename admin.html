@@ -591,13 +591,31 @@
                                         oninput="updateLocalVolume(this.value)">
                                     <span id="volumePercent" style="font-size: 0.75rem; color: #fff; font-weight: 700; min-width: 35px;">50%</span>
                                 </div>
-                                <button class="btn btn-primary" onclick="saveSettings(event)" style="width: 100%; justify-content: center; background: var(--grad-primary); font-size: 0.7rem; padding: 10px;">
-                                    💾 SAVE ALL MULTIMEDIA CHANGES
-                                </button>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <button class="btn btn-primary" onclick="saveSettings(event)" style="width: 100%; justify-content: center; background: var(--grad-primary); font-size: 0.7rem; padding: 10px;">
+                                        💾 SAVE ALL CHANGES
+                                    </button>
+                                    <button class="btn btn-ghost" onclick="toggleMediaLibrary()" style="width: 100%; justify-content: center; font-size: 0.7rem; padding: 8px; border: 1px solid var(--accent);">
+                                        📚 BROWSE MEDIA LIBRARY
+                                    </button>
+                                </div>
                             </div>
 
                         </div>
+
+                        <!-- NEW: Media Library Explorer (Hidden by Default) -->
+                        <div id="media-library-explorer" class="hidden" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed rgba(255,255,255,0.1); animation: fadeIn 0.3s ease;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 style="margin: 0; font-size: 0.85rem; color: #fff;">📚 Permanent Cloud Library</h4>
+                                <button class="btn btn-ghost" style="padding: 2px 8px; font-size: 0.6rem;" onclick="toggleMediaLibrary()">CLOSE LIBRARY</button>
+                            </div>
+                            <div id="media-library-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                                <!-- Library items will be injected here -->
+                                <p style="font-size: 0.7rem; color: var(--text-muted);">Loading library...</p>
+                            </div>
+                        </div>
                     </div>
+
 
 
                     </div>

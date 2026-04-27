@@ -1044,6 +1044,61 @@ function testMedia(type) {
     }
 }
 
+// --- MEDIA LIBRARY LOGIC ---
+
+async function toggleMediaLibrary() {
+    const explorer = document.getElementById('media-library-explorer');
+    explorer.classList.toggle('hidden');
+    if (!explorer.classList.contains('hidden')) {
+        await fetchMediaLibrary();
+    }
+}
+
+async function fetchMediaLibrary() {
+    const list = document.getElementById('media-library-list');
+    list.innerHTML = '<p style="color: var(--accent);">⏳ Loading library...</p>';
+    
+    try {
+        const res = await fetch(`${API_BASE}/admin/media`);
+        const media = await res.json();
+        
+        if (!media.length) {
+            list.innerHTML = '<p style="color: var(--text-muted); font-size:0.7rem;">Library is empty. Upload files to see them here.</p>';
+            return;
+        }
+
+        list.innerHTML = media.map(item => `
+            <div class="glass-card" style="padding: 10px; border: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2);">
+                <div style="font-size: 0.6rem; color: var(--accent); font-weight: 800; margin-bottom: 5px;">${item.type.toUpperCase()}</div>
+                <div style="font-size: 0.75rem; color: #fff; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.name}">
+                    ${item.name}
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <button class="btn btn-primary" style="flex:1; padding: 4px; font-size: 0.6rem;" onclick="selectFromLibrary('${item.url}', '${item.type}')">ACTIVATE</button>
+                    <button class="btn btn-ghost" style="padding: 4px; font-size: 0.6rem; color: #ef4444;" onclick="deleteFromMedia('${item._id}')">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) { list.innerHTML = '<p style="color: #ef4444;">Error loading library.</p>'; }
+}
+
+function selectFromLibrary(url, type) {
+    const inputId = type === 'music' ? 'set-music-url' : 'set-video-url';
+    if (document.getElementById(inputId)) {
+        document.getElementById(inputId).value = url;
+        alert(`✅ ${type.toUpperCase()} link updated from library! Click SAVE to apply.`);
+    }
+}
+
+async function deleteFromMedia(id) {
+    if (!confirm("Are you sure you want to remove this file from your library?")) return;
+    try {
+        const res = await fetch(`${API_BASE}/admin/media/${id}`, { method: 'DELETE' });
+        if (res.ok) await fetchMediaLibrary();
+    } catch (e) { alert("Delete failed"); }
+}
+
+
 
 
 
