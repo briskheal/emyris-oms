@@ -879,6 +879,18 @@ async function loadSettings() {
 
         setInvoiceStyle(s.invoiceStyle || 'classic');
 
+        // Sync Volume Slider
+        if (s.musicVolume !== undefined) {
+            const volSlider = document.getElementById('globalVolume');
+            if (volSlider) {
+                volSlider.value = s.musicVolume;
+                if (document.getElementById('volumePercent')) document.getElementById('volumePercent').innerText = `${Math.round(s.musicVolume * 100)}%`;
+                const audio = document.getElementById('bgMusic');
+                if (audio) audio.volume = s.musicVolume;
+            }
+        }
+
+
         // Multimedia Setup
         if (s.musicUrl) {
             const musicName = s.musicUrl.split('/').pop();
@@ -915,7 +927,9 @@ function toggleMusic() {
     }
 
     if (audio.paused) {
+        audio.volume = companyProfile.musicVolume || 0.5; 
         audio.play().then(() => {
+
             localStorage.setItem('emyris_music_on', 'true');
             btn.style.background = 'rgba(16, 185, 129, 0.1)';
             btn.style.borderColor = '#10b981';
@@ -960,6 +974,13 @@ async function uploadMedia(type) {
         }
     } catch (e) { alert("Upload failed"); }
 }
+
+function updateLocalVolume(val) {
+    const audio = document.getElementById('bgMusic');
+    if (audio) audio.volume = val;
+    if (document.getElementById('volumePercent')) document.getElementById('volumePercent').innerText = `${Math.round(val * 100)}%`;
+}
+
 
 
 async function saveSettings(e) {
@@ -1006,8 +1027,10 @@ async function saveSettings(e) {
             color: document.getElementById('set-msg-color').value,
             speed: Number(document.getElementById('set-msg-speed').value || 30)
         },
-        invoiceStyle: document.getElementById('set-inv-style').value
+        invoiceStyle: document.getElementById('set-inv-style').value,
+        musicVolume: Number(document.getElementById('globalVolume') ? document.getElementById('globalVolume').value : 0.5)
     };
+
 
     try {
         const res = await fetch(`${API_BASE}/admin/settings`, {

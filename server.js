@@ -199,8 +199,10 @@ const companySchema = new mongoose.Schema({
     bankAccountNo: { type: String, default: "" },
     bankIfsc: { type: String, default: "" },
     // Multimedia
-    musicUrl: { type: String, default: "https://archive.org/download/PeacefulMusic/01%20Peaceful%20Mind.mp3" },
-    videoUrl: { type: String, default: "https://www.youtube.com/embed/4m2mN1XmXxE?autoplay=1&mute=1&loop=1&playlist=4m2mN1XmXxE&controls=0&showinfo=0&rel=0&modestbranding=1" },
+    musicUrl: { type: String, default: "" },
+    videoUrl: { type: String, default: "" },
+    musicVolume: { type: Number, default: 0.5 },
+
     // Document Specific Formats
 
     invoiceTerms: { type: String, default: "1. Goods once sold will not be taken back.\n2. Interest @ 24% p.a. will be charged if payment is delayed." },
@@ -911,11 +913,14 @@ app.post('/api/admin/settings', async (req, res) => {
             settings = new Company(req.body);
         } else {
             const updateData = { ...req.body };
-            // Safety: Don't overwrite existing images with empty strings
+            // Protection: Don't overwrite existing multimedia assets with empty/missing values
             if (!updateData.logoImage && settings.logoImage) delete updateData.logoImage;
             if (!updateData.signatureImage && settings.signatureImage) delete updateData.signatureImage;
+            if (!updateData.musicUrl && settings.musicUrl) delete updateData.musicUrl;
+            if (!updateData.videoUrl && settings.videoUrl) delete updateData.videoUrl;
             
             Object.assign(settings, updateData);
+
         }
         await settings.save();
         res.json({ success: true, settings });

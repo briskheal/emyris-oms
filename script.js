@@ -399,14 +399,19 @@ async function loadSettings() {
                 const targetSrc = companySettings.musicUrl.startsWith('http') ? companySettings.musicUrl : window.location.origin + companySettings.musicUrl;
                 // STICT CHECK: Only change if the absolute path is different
                 if (audio.src !== targetSrc) {
-                    console.log('🎵 [MUSIC] Source changed, updating...');
                     audio.src = targetSrc;
+                }
+                
+                // Apply Global Volume from Admin
+                if (companySettings.musicVolume !== undefined) {
+                    audio.volume = companySettings.musicVolume;
                 }
                 
                 // Persistence: Auto-resume if state was 'On'
                 if (localStorage.getItem('emyris_music_on') === 'true' && audio.paused) {
-                    audio.play().catch(() => console.warn("Auto-play blocked"));
+                    audio.play().catch(() => {});
                 }
+
             }
         }
 
