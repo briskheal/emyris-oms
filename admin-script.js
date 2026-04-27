@@ -1001,22 +1001,37 @@ function testMedia(type) {
 
     // Auto-fix Drive Link
     if (url.includes('drive.google.com') && url.includes('/d/')) {
-        const id = url.split('/d/')[1].split('/')[0];
-        url = `https://drive.google.com/uc?export=download&id=${id}`;
-        document.getElementById(urlInput).value = url;
+        const parts = url.split('/d/');
+        if (parts.length > 1) {
+            const id = parts[1].split('/')[0];
+            url = `https://drive.google.com/uc?export=download&id=${id}`;
+            document.getElementById(urlInput).value = url;
+        }
     }
 
     if (type === 'music') {
         const audio = document.getElementById('bgMusic');
         if (audio) {
+            audio.pause();
+            audio.crossOrigin = "anonymous"; // Enable CORS for external hosting
             audio.src = url;
+            audio.volume = 1.0; // Force full volume for test
             audio.load();
-            audio.play().then(() => alert("🎵 Music test started!")).catch(e => alert("❌ Playback failed. Check if link is a Direct Link."));
+            
+            console.log("🧪 [TEST] Attempting to play:", url);
+            
+            audio.play()
+                .then(() => alert("🎵 Music test started successfully! If you can't hear it, check your computer volume."))
+                .catch(e => {
+                    console.error("❌ Playback error:", e);
+                    alert(`❌ Playback failed.\n\nError: ${e.message}\n\nThis usually means the link is not a "Direct" audio link or the server is blocking our request.`);
+                });
         }
     } else {
         alert("📹 Video test: Save settings and check the Landing Page.");
     }
 }
+
 
 
 
