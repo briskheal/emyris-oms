@@ -392,36 +392,27 @@ async function loadSettings() {
         }
 
         // Multimedia Logic (Dynamic)
-        console.log('🎬 [MEDIA] Checking Multimedia Settings...', { music: companySettings.musicUrl, video: companySettings.videoUrl });
-        
         if (companySettings.musicUrl) {
             const audio = document.getElementById('bgMusic');
             if (audio) {
-                console.log('🎵 [MUSIC] Audio element found. Current src:', audio.src);
+                // Check if current src is different to avoid restart
                 if (!audio.src.includes(companySettings.musicUrl)) {
-                    console.log('🎵 [MUSIC] Updating source to:', companySettings.musicUrl);
                     audio.src = companySettings.musicUrl;
                 }
-            } else {
-                console.warn('⚠️ [MUSIC] Audio element #bgMusic not found in DOM');
             }
         }
 
         if (companySettings.videoUrl) {
-            const videoContainer = document.querySelector('#view-login > div:nth-child(2)') || 
-                                 document.querySelector('#view-login [style*="height: 180px"]') ||
-                                 document.querySelector('.glass-card > [style*="height: 180px"]');
-            
+            const videoContainer = document.querySelector('#view-login > div:nth-child(2)') || document.querySelector('#view-login [style*="height: 180px"]');
             if (videoContainer) {
-                console.log('📹 [VIDEO] Container found. Processing URL:', companySettings.videoUrl);
                 const isYoutube = companySettings.videoUrl.includes('youtube.com') || companySettings.videoUrl.includes('youtu.be');
                 
+                // Idempotent Check: Only update if source changed
                 const currentIframe = videoContainer.querySelector('iframe');
                 const currentVideo = videoContainer.querySelector('video');
                 const currentSrc = (currentIframe && currentIframe.src) || (currentVideo && currentVideo.querySelector('source') && currentVideo.querySelector('source').src) || '';
                 
                 if (!currentSrc.includes(companySettings.videoUrl)) {
-                    console.log('📹 [VIDEO] Source mismatch. Injecting new player...');
                     if (isYoutube) {
                         videoContainer.innerHTML = `
                             <iframe style="width: 100%; height: 100%; border: none; opacity: 0.8; pointer-events: none;" 
@@ -438,14 +429,9 @@ async function loadSettings() {
                             <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">EMYRIS LIVE SERIES</div>
                         `;
                     }
-                } else {
-                    console.log('📹 [VIDEO] Source already matches. Skipping injection.');
                 }
-            } else {
-                console.warn('⚠️ [VIDEO] Video container not found in #view-login card');
             }
         }
-
 
 
 

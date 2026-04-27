@@ -880,26 +880,20 @@ async function loadSettings() {
         setInvoiceStyle(s.invoiceStyle || 'classic');
 
         // Multimedia Setup
-        console.log('🎬 [ADMIN MEDIA] Loading Settings...', { music: s.musicUrl, video: s.videoUrl });
         if (s.musicUrl) {
             const musicName = s.musicUrl.split('/').pop();
-            if (document.getElementById('current-music-name')) document.getElementById('current-music-name').innerText = `Current: ${musicName}`;
+            document.getElementById('current-music-name').innerText = `Current: ${musicName}`;
             
             // Set audio source if not already set
             const audio = document.getElementById('bgMusic');
-            if (audio) {
-                console.log('🎵 [ADMIN MUSIC] Audio element found. Current src:', audio.src);
-                if (!audio.src.includes(s.musicUrl)) {
-                    console.log('🎵 [ADMIN MUSIC] Updating source to:', s.musicUrl);
-                    audio.src = s.musicUrl;
-                }
+            if (audio && !audio.src.includes(s.musicUrl)) {
+                audio.src = s.musicUrl;
             }
         }
         if (s.videoUrl) {
             const videoName = s.videoUrl.split('/').pop();
-            if (document.getElementById('current-video-name')) document.getElementById('current-video-name').innerText = `Current: ${videoName}`;
+            document.getElementById('current-video-name').innerText = `Current: ${videoName}`;
         }
-
     } catch (e) { console.error("Load settings fail"); }
 }
 
