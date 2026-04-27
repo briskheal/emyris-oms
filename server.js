@@ -1,10 +1,34 @@
-﻿const express = require('express');
+const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const axios = require('axios');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 
 dotenv.config();
+
+// Ensure uploads folder exists
+const uploadDir = path.join(__dirname, 'uploads', 'media');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Multer Storage Configuration
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+});
+const upload = multer({ 
+    storage,
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['audio/mpeg', 'video/mp4', 'audio/mp3'];
+        if (allowedTypes.includes(file.mimetype)) cb(null, true);
+        else cb(new Error('Invalid file type. Only MP3 and MP4 allowed.'));
+    }
+});
+
 
 const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL;
 if (!GOOGLE_SCRIPT_URL) {
@@ -174,7 +198,11 @@ const companySchema = new mongoose.Schema({
     upiId: { type: String, default: "" },
     bankAccountNo: { type: String, default: "" },
     bankIfsc: { type: String, default: "" },
+    // Multimedia
+    musicUrl: { type: String, default: "https://archive.org/download/PeacefulMusic/01%20Peaceful%20Mind.mp3" },
+    videoUrl: { type: String, default: "https://www.youtube.com/embed/4m2mN1XmXxE?autoplay=1&mute=1&loop=1&playlist=4m2mN1XmXxE&controls=0&showinfo=0&rel=0&modestbranding=1" },
     // Document Specific Formats
+
     invoiceTerms: { type: String, default: "1. Goods once sold will not be taken back.\n2. Interest @ 24% p.a. will be charged if payment is delayed." },
     cnTerms: { type: String, default: "1. Subject to verification of physical goods.\n2. Credit will be adjusted in next invoice." },
     dnTerms: { type: String, default: "1. Shortage/Damage claim acknowledged.\n2. Amount debited to your account." },
@@ -194,6 +222,7 @@ const categorySchema = new mongoose.Schema({ name: { type: String, required: tru
 const groupSchema = new mongoose.Schema({ name: { type: String, required: true, unique: true } });
 const hsnSchema = new mongoose.Schema({ code: { type: String, required: true, unique: true }, description: String });
 const gstSchema = new mongoose.Schema({ rate: { type: Number, required: true, unique: true } });
+const hqSchema = new mongoose.Schema({ name: { type: String, required: true, unique: true }, code: String });
 
 // 2. Product Master
 const productSchema = new mongoose.Schema({
@@ -253,8 +282,11 @@ const stockistSchema = new mongoose.Schema({
     creditLimit: { type: Number, default: 0 },
     outstandingBalance: { type: Number, default: 0 },
     city: String,
-    state: String
+    state: String,
+    pincode: String,
+    hq: { type: String, default: "" } // Headquarters Assigned
 }).index({ loginId: 1, partyType: 1, name: 1 }); // Performance index
+
 
 // 4. Order
 const orderSchema = new mongoose.Schema({
@@ -285,6 +317,7 @@ const orderSchema = new mongoose.Schema({
         approvedBy: String,
         approvedAt: Date
     },
+    hq: { type: String, default: "" }, // Captured HQ for this order
     createdAt: { type: Date, default: Date.now }
 }).index({ orderNo: 1, status: 1, createdAt: -1 });
 
@@ -314,6 +347,7 @@ const invoiceSchema = new mongoose.Schema({
     gstAmount: Number,
     grandTotal: Number,
     amountInWords: String,
+    hq: String,
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -407,6 +441,7 @@ const Category = mongoose.model('Category', categorySchema);
 const Group = mongoose.model('Group', groupSchema);
 const HSN = mongoose.model('HSN', hsnSchema);
 const GST = mongoose.model('GST', gstSchema);
+const HQ = mongoose.model('HQ', hqSchema);
 const Invoice = mongoose.model('Invoice', invoiceSchema);
 const PurchaseEntry = mongoose.model('PurchaseEntry', purchaseEntrySchema);
 const FinancialNote = mongoose.model('FinancialNote', financialNoteSchema);
@@ -487,7 +522,7 @@ app.get('/api/health', (req, res) => res.json({ status: 'running', database: mon
 // Auth & Registration
 app.post('/api/stockist/register', async (req, res) => {
     try {
-        const { name, password, address, phone, email, dlNo, gstNo, fssaiNo, panNo } = req.body;
+        const { name, password, address, phone, email, dlNo, gstNo, fssaiNo, panNo, city, state, pincode } = req.body;
         
         // Auto-generate Login ID (EMY + Random 6 Digits)
         let loginId;
@@ -498,7 +533,8 @@ app.post('/api/stockist/register', async (req, res) => {
             if (!existing) isUnique = true;
         }
 
-        const newStockist = new Stockist({ name, loginId, password, address, phone, email, dlNo, gstNo, fssaiNo, panNo });
+        const newStockist = new Stockist({ name, loginId, password, address, phone, email, dlNo, gstNo, fssaiNo, panNo, city, state, pincode });
+
         await newStockist.save();
         console.log(`👤 DB: New Stockist saved -> ${name}`);
 
@@ -846,6 +882,28 @@ app.get('/api/admin/settings', async (req, res) => {
     res.json(settings);
 });
 
+// --- MEDIA UPLOAD ENDPOINTS ---
+
+app.post('/api/admin/upload-media', upload.single('media'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
+        const mediaUrl = `/uploads/media/${req.file.filename}`;
+        const type = req.body.type; // 'music' or 'video'
+        
+        let settings = await Company.findOne();
+        if (!settings) settings = new Company();
+
+        if (type === 'music') settings.musicUrl = mediaUrl;
+        else if (type === 'video') settings.videoUrl = mediaUrl;
+
+        await settings.save();
+        res.json({ success: true, mediaUrl, message: `Uploaded ${type} successfully!` });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 app.post('/api/admin/settings', async (req, res) => {
     try {
         let settings = await Company.findOne();
@@ -920,6 +978,30 @@ app.delete('/api/admin/gst/:id', async (req, res) => {
     res.json({ success: true });
 });
 
+// HQ Master
+app.get('/api/admin/masters/hq', async (req, res) => {
+    try {
+        const hqs = await HQ.find();
+        res.json(hqs);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/masters/hq', async (req, res) => {
+    try {
+        const hq = new HQ(req.body);
+        await hq.save();
+        res.json({ success: true, hq });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/admin/masters/hq/:id', async (req, res) => {
+    try {
+        await HQ.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+
 // Email Recovery Endpoints
 app.get('/api/admin/failed-emails', async (req, res) => {
     try {
@@ -968,6 +1050,8 @@ app.post('/api/orders/create', async (req, res) => {
         const count = await Order.countDocuments();
         const orderNo = `EMY-ORD-${dateStr}-${(count + 1).toString().padStart(4, '0')}`;
 
+        const stockist = await Stockist.findById(stockistId);
+        
         const newOrder = new Order({
             orderNo,
             stockist: stockistId,
@@ -975,12 +1059,11 @@ app.post('/api/orders/create', async (req, res) => {
             items,
             subTotal,
             gstAmount,
-            grandTotal
+            grandTotal,
+            hq: stockist ? stockist.hq : "" // Auto-pickup HQ if assigned
         });
         await newOrder.save();
 
-        // Fetch stockist details for the email
-        const stockist = await Stockist.findById(stockistId);
         if (stockist) {
             sendOrderEmails(newOrder, stockist);
         }
@@ -1015,8 +1098,8 @@ app.get('/api/orders/my-orders/:stockistId', async (req, res) => {
 // Admin: Approve Order (with Inventory Deduction)
 app.put('/api/admin/orders/:id/approve', async (req, res) => {
     try {
-        const { approvedBy, batchSelections } = req.body;
-        const order = await Order.findById(req.params.id);
+        const { approvedBy, batchSelections, selectedHq } = req.body;
+        const order = await Order.findById(req.params.id).populate('stockist');
         
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
         if (order.status === 'approved') return res.status(400).json({ success: false, message: 'Order already approved' });
@@ -1081,6 +1164,15 @@ app.put('/api/admin/orders/:id/approve', async (req, res) => {
             approvedBy: approvedBy || 'ADMIN',
             approvedAt: new Date()
         };
+
+        // Assign HQ if provided (Mandatory for 1st time, or allows update)
+        if (selectedHq) {
+            order.hq = selectedHq;
+            // Update stockist HQ for future automatic pickup
+            if (order.stockist) {
+                await Stockist.findByIdAndUpdate(order.stockist._id, { hq: selectedHq });
+            }
+        }
 
         await order.save();
         res.json({ success: true, order });
@@ -1155,10 +1247,15 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
             items: invoiceItems,
             subTotal: order.subTotal,
             gstAmount: order.gstAmount,
-            grandTotal: order.grandTotal
+            grandTotal: order.grandTotal,
+            hq: order.hq
         });
 
         await newInvoice.save();
+        
+        // --- ACCOUNTING UPDATE ---
+        // Sales Invoice increases what the stockist owes (Outstanding increases)
+        await Stockist.findByIdAndUpdate(order.stockist._id, { $inc: { outstandingBalance: order.grandTotal } });
         
         // Update order status to 'invoiced'
         order.status = 'invoiced';
@@ -1338,6 +1435,25 @@ app.post('/api/admin/financial-notes', async (req, res) => {
             subTotal, gstAmount
         });
 
+        // ── PDCN QUANTITY VALIDATION (Admin Side) ──
+        if (reason === 'Price Diff CN' && items && items.length) {
+            const invoices = await Invoice.find({ stockist: party, status: { $in: ['invoiced','approved'] } });
+            const billedMap = {};
+            for (const inv of invoices) {
+                for (const item of (inv.items || [])) {
+                    const pid = String(item.productId || '');
+                    if (pid) billedMap[pid] = (billedMap[pid] || 0) + (item.qty || 0);
+                }
+            }
+            for (const item of items) {
+                const pid = String(item.productId);
+                const billed = billedMap[pid] || 0;
+                if (item.qty > billed) {
+                    return res.status(400).json({ success: false, error: `QUANTITY ERROR: Product "${item.name}" was only billed ${billed} units total. Cannot raise PDCN for ${item.qty} units.` });
+                }
+            }
+        }
+
         // ── INVENTORY LOGIC (Only for inventory-affecting reasons) ────────────
         // Salable Return  → add back to stock (goods returned in salable condition)
         // Purchase Return → deduct from stock (goods sent back to supplier)
@@ -1425,6 +1541,25 @@ app.put('/api/admin/financial-notes/:id', async (req, res) => {
         // 2. APPLY NEW LOGIC
         const partyObj = await Stockist.findById(party);
         
+        // ── PDCN QUANTITY VALIDATION (Admin Side Update) ──
+        if (reason === 'Price Diff CN' && items && items.length) {
+            const invoices = await Invoice.find({ stockist: party, status: { $in: ['invoiced','approved'] } });
+            const billedMap = {};
+            for (const inv of invoices) {
+                for (const item of (inv.items || [])) {
+                    const pid = String(item.productId || '');
+                    if (pid) billedMap[pid] = (billedMap[pid] || 0) + (item.qty || 0);
+                }
+            }
+            for (const item of items) {
+                const pid = String(item.productId);
+                const billed = billedMap[pid] || 0;
+                if (item.qty > billed) {
+                    return res.status(400).json({ success: false, error: `QUANTITY ERROR: Product "${item.name}" was only billed ${billed} units total. Cannot raise PDCN for ${item.qty} units.` });
+                }
+            }
+        }
+
         oldNote.noteType = noteType;
         oldNote.party = party;
         oldNote.partyName = partyObj ? partyObj.name : 'Unknown';

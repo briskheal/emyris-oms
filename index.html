@@ -43,65 +43,90 @@
             flex-direction: row;
             align-items: center;
             justify-content: space-between;
-            padding: 0 5%;
+            padding: 0 5% 100px;
             gap: 3rem;
-            height: 100vh;
-            overflow: hidden;
+            min-height: 100vh;
+            overflow-y: auto;
+            position: relative;
         }
+
+
         .main-heading {
             text-align: left;
             max-width: 350px;
             animation: fadeInLeft 0.8s ease-out;
         }
+
+
+
+
+
         .main-heading h1 {
-            font-size: 2.8rem;
-            line-height: 1.1;
+            font-size: 1.5rem;
+            line-height: 1;
             font-weight: 800;
-            letter-spacing: -1.5px;
-            margin-bottom: 1rem;
+            letter-spacing: -1px;
+            margin-bottom: 0.2rem;
             background: var(--grad-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+
+
+
         .auth-grid {
             display: grid;
             grid-template-columns: 1fr 1.3fr;
             gap: 1.5rem;
             flex: 1;
             animation: fadeInRight 0.8s ease-out;
-            max-width: 900px;
+            max-width: 1000px;
         }
+
+
+
+
+
+
+
         .glass-card {
             background: rgba(30, 41, 59, 0.4);
             backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 1.25rem 1.5rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border-radius: 16px;
+            padding: 0.75rem 1rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
         }
-        .card-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.25rem; color: #fff; }
-        .card-subtitle { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; }
 
-        .form-group { margin-bottom: 0.75rem; text-align: left; }
+
+        .card-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.1rem; color: #fff; }
+        .card-subtitle { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+
+
+        .form-group { margin-bottom: 0.5rem; text-align: left; }
+
         .form-group label {
             display: block;
-            font-size: 0.7rem;
+            font-size: 0.6rem;
             font-weight: 700;
             color: var(--primary);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 0.4rem;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.2rem;
         }
+
         input, select, textarea {
             width: 100%;
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 8px;
-            padding: 0.6rem 0.8rem;
+            border-radius: 6px;
+            padding: 0.4rem 0.6rem;
             color: #fff;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
+
             transition: 0.3s;
         }
+
         input:focus { outline: none; border-color: var(--primary); background: rgba(255,255,255,0.05); }
 
         .btn-primary {
@@ -141,7 +166,9 @@
 
         /* --- FOOTERS --- */
         #global-footer { background: rgba(15, 23, 42, 0.9); border-top: 1px solid var(--glass-border); padding: 2rem 0; margin-top: 4rem; }
-        .landing-footer { background: rgba(15, 23, 42, 0.9); border-top: 1px solid var(--glass-border); padding: 1.5rem 0; margin-top: auto; }
+        .landing-footer { background: rgba(15, 23, 42, 0.95); border-top: 1px solid var(--glass-border); padding: 0.5rem 0; margin-top: auto; }
+
+
 
         @media (max-width: 1100px) {
             body { height: auto; overflow: auto; }
@@ -174,10 +201,33 @@
 <body>
 
     <!-- LANDING VIEW (KEEPING NEW DESIGN) -->
-    <div id="section-auth" class="landing-wrapper">
-        <div class="main-heading">
+    <div id="section-auth" style="min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); overflow: hidden;">
+        <!-- TOP MARQUEE (FIXED & MINIMIZED) -->
+        <div id="land-marquee" class="hidden" style="width: 100%; padding: 4px; background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(10px); border-bottom: 1px solid var(--glass-border); overflow: hidden; white-space: nowrap; z-index: 2000; position: fixed; top: 0; left: 0;">
+            <div id="land-marquee-content" style="display: inline-block; animation: marquee linear infinite; font-weight: 700; color: #fff; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 2px;">Welcome to EMYRIS OMS Portal</div>
+        </div>
+
+
+
+
+        <div class="landing-wrapper" style="flex: 1; padding: 40px 5% 80px; display: flex; align-items: center; justify-content: space-between;">
+
+
+
+
+
+
+
+
+
+
+
+        <div class="main-heading" style="margin-top: 0;">
             <h1>EMYRIS OMS</h1>
             <p style="font-size: 1.1rem; line-height: 1.4; color: var(--text-muted);">Advanced Pharmaceutical<br>Distribution Portal</p>
+
+
+
             <div style="margin-top: 2rem; border-left: 2px solid var(--primary); padding-left: 1rem; font-size: 0.85rem; opacity: 0.6;">
                 Streamlined for performance,<br>compliance, and real-time<br>order management.
             </div>
@@ -186,9 +236,27 @@
         <div id="view-auth-combined" class="auth-grid">
             <!-- LOGIN -->
             <div id="view-login" class="glass-card">
-                <h2 class="card-title">Sign In</h2>
-                <p class="card-subtitle">Access your dashboard</p>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h2 class="card-title" style="margin:0;">Sign In</h2>
+                    <button type="button" id="musicToggle" onclick="toggleMusic()" style="background: rgba(99, 102, 241, 0.1); border: 1px solid #6366f1; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; transition: 0.3s; z-index: 10;">
+                        <span>🔇</span> <span id="musicText">Music Off</span>
+                    </button>
+                </div>
+                
+                <div style="margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; border: 1px solid var(--glass-border); height: 110px; position: relative; background: #000;">
+                    <!-- Pharma Manufacturing YouTube Loop (Muted) -->
+                    <iframe style="width: 100%; height: 100%; border: none; opacity: 0.8; pointer-events: none;" 
+                        src="https://www.youtube.com/embed/S_8q26C9C4E?autoplay=1&mute=1&loop=1&playlist=S_8q26C9C4E&controls=0&showinfo=0&rel=0&modestbranding=1" 
+                        allow="autoplay; encrypted-media">
+                    </iframe>
+                    <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">PHARMA PRODUCTION LINE</div>
+                </div>
+
+
+
+
                 <form onsubmit="handleLogin(event)">
+
                     <div class="form-group">
                         <label>Login ID</label>
                         <input type="text" id="login-id" placeholder="e.g. EMY123456" required>
@@ -206,9 +274,16 @@
 
             <!-- REGISTER -->
             <div id="view-register" class="glass-card">
-                <h2 class="card-title">New Partner</h2>
-                <p class="card-subtitle">Join the professional network</p>
-                <form onsubmit="handleRegister(event)">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <h2 class="card-title" style="margin:0;">New Partner</h2>
+                        <p class="card-subtitle" style="margin:0;">Join the professional network</p>
+                    </div>
+                </div>
+
+                <form onsubmit="handleRegister(event)" style="margin-top: 1rem;">
+
+
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                         <div class="form-group"><label>Firm Name</label><input type="text" id="reg-name" required style="text-transform: uppercase;"></div>
                         <div class="form-group"><label>Email</label><input type="email" id="reg-email" required></div>
@@ -229,8 +304,18 @@
                         <div class="form-group"><label>Drug License</label><input type="text" id="reg-dl" required></div>
                         <div class="form-group"><label>FSSAI No.</label><input type="text" id="reg-fssai" required></div>
                     </div>
-                    <div class="form-group" style="margin-bottom: 0.75rem;"><label>Address</label><input type="text" id="reg-address" required></div>
-                    <button type="submit" class="btn-primary" id="regBtn">Apply Now</button>
+                    <div class="form-group" style="margin-bottom: 0.5rem;"><label>Address</label><input type="text" id="reg-address" required></div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+                        <div class="form-group"><label>City</label><input type="text" id="reg-city" required></div>
+                        <div class="form-group"><label>Pincode</label><input type="number" id="reg-pin" required oninput="handlePinInput(this)"></div>
+                        <div class="form-group">
+                            <label>State</label>
+                            <input type="text" id="reg-state" required readonly style="background: rgba(255,255,255,0.05); color: var(--text-muted);">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary" id="regBtn">Welcome to EMYRIS-OMS</button>
+
                 </form>
             </div>
         </div>
@@ -254,6 +339,9 @@
                     <div><label style="font-size: 0.65rem; color: var(--text-muted);">GSTIN</label><div id="summary-gst" style="font-weight: 600; font-size: 0.85rem;">-</div></div>
                     <div><label style="font-size: 0.65rem; color: var(--text-muted);">DL No.</label><div id="summary-dl" style="font-weight: 600; font-size: 0.85rem;">-</div></div>
                     <div style="grid-column: span 2;"><label style="font-size: 0.65rem; color: var(--text-muted);">Address</label><div id="summary-address" style="font-weight: 600; font-size: 0.8rem;">-</div></div>
+                    <div><label style="font-size: 0.65rem; color: var(--text-muted);">City</label><div id="summary-city" style="font-weight: 600; font-size: 0.85rem;">-</div></div>
+                    <div><label style="font-size: 0.65rem; color: var(--text-muted);">State</label><div id="summary-state" style="font-weight: 600; font-size: 0.85rem;">-</div></div>
+
                 </div>
             </div>
             <button class="btn-primary" onclick="window.location.reload()">Finish</button>
@@ -286,11 +374,15 @@
                 <button type="submit" class="btn-primary" id="pinBtn">Verify</button>
             </form>
         </div>
+        </div>
 
-        <!-- LANDING FOOTER (COMPACT) -->
-        <footer id="landing-footer" class="landing-footer" style="position: absolute; bottom: 0; left: 0; width: 100%; border-top: 1px solid var(--glass-border); background: rgba(15, 23, 42, 0.9); padding: 1rem 5%;">
+        <!-- LANDING FOOTER (FIXED BOTTOM) -->
+
+        <footer id="landing-footer" class="landing-footer" style="position: fixed; bottom: 0; left: 0; width: 100%; border-top: 1px solid var(--glass-border); background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); padding: 0.75rem 5%; z-index: 100;">
+
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-muted);">
-                <div style="flex: 1;"><div class="footer-title" style="color: #fff; font-weight: 700;">EMYRIS OMS</div><p>&copy; 2026 EMYRIS BIOLIFESCIENCES</p></div>
+                <div style="flex: 1;"><div class="footer-title" style="color: #fff; font-weight: 700;">EMYRIS OMS</div><p style="font-size: 0.6rem; opacity: 0.6;">v1.0.4 Secure Portal</p></div>
+
                 <div style="flex: 2; display: flex; gap: 2rem; justify-content: center;">
                     <span id="land-web">🌐 www.emyrisbio.com</span>
                     <span id="land-tollfree">📞 7993163300</span>
@@ -498,9 +590,27 @@
         </div>
     </div>
 
-    <script src="script.js?v=1.0.2"></script>
+    <script src="script.js?v=1.0.4"></script>
+
     <style>
         @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
     </style>
+    <audio id="bgMusic" loop preload="auto">
+        <source src="https://archive.org/download/PeacefulMusic/01%20Peaceful%20Mind.mp3" type="audio/mpeg">
+    </audio>
 </body>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 </html>

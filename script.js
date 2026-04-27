@@ -64,6 +64,9 @@ function switchView(view) {
 
     const globalFooter = document.getElementById('global-footer');
     if (globalFooter) globalFooter.classList.add('hidden');
+    const landMarquee = document.getElementById('land-marquee');
+    if (landMarquee) landMarquee.classList.add('hidden');
+
 
     if (view === 'order') {
         document.getElementById('view-order').classList.remove('hidden');
@@ -76,12 +79,14 @@ function switchView(view) {
     } else {
         // Show auth section
         document.getElementById('section-auth').classList.remove('hidden');
-        if (globalFooter) globalFooter.classList.remove('hidden');
         const userMenu = document.getElementById('userMenu');
+
         if (userMenu) userMenu.classList.add('hidden');
 
         if (view === 'login' || view === 'register') {
+            if (landMarquee) landMarquee.classList.remove('hidden');
             document.getElementById('view-auth-combined').classList.remove('hidden');
+
             document.getElementById('view-login').classList.remove('hidden');
             document.getElementById('view-register').classList.remove('hidden');
             // Smooth scroll to auth section if needed
@@ -127,8 +132,12 @@ async function handleRegister(e) {
             dlNo: document.getElementById('reg-dl').value.toUpperCase(),
             gstNo: document.getElementById('reg-gst').value.toUpperCase(),
             fssaiNo: document.getElementById('reg-fssai').value.toUpperCase(),
-            panNo: document.getElementById('reg-pan').value.toUpperCase()
+            panNo: document.getElementById('reg-pan').value.toUpperCase(),
+            city: document.getElementById('reg-city').value.toUpperCase(),
+            state: document.getElementById('reg-state').value.toUpperCase(),
+            pincode: document.getElementById('reg-pin').value
         };
+
 
         console.log("📝 Registering Stockist:", data);
 
@@ -150,8 +159,13 @@ async function handleRegister(e) {
             document.getElementById('summary-gst').innerText = data.gstNo;
             document.getElementById('summary-dl').innerText = data.dlNo;
             document.getElementById('summary-address').innerText = data.address;
+            document.getElementById('summary-city').innerText = data.city;
+            document.getElementById('summary-state').innerText = data.state;
+
             
             switchView('reg-success');
+            stopMusic(); // Stop music when finished
+
         } else {
             alert(result.message || "Registration failed. Please check your details.");
         }
@@ -201,6 +215,44 @@ function handleGstInput(el) {
         }
     } catch (err) { console.warn("GST Validation Error:", err); }
 }
+
+function handlePinInput(el) {
+    const pin = el.value.toString();
+    const stateEl = document.getElementById('reg-state');
+    if (!stateEl) return;
+
+    if (pin.length >= 2) {
+        const prefix = parseInt(pin.substring(0, 2));
+        let state = "";
+
+        if (prefix === 11) state = "Delhi";
+        else if (prefix >= 12 && prefix <= 13) state = "Haryana";
+        else if (prefix >= 14 && prefix <= 15) state = "Punjab";
+        else if (prefix === 16) state = "Chandigarh";
+        else if (prefix === 17) state = "Himachal Pradesh";
+        else if (prefix >= 18 && prefix <= 19) state = "Jammu & Kashmir";
+        else if (prefix >= 20 && prefix <= 28) state = "Uttar Pradesh";
+        else if (prefix >= 30 && prefix <= 34) state = "Rajasthan";
+        else if (prefix >= 36 && prefix <= 39) state = "Gujarat";
+        else if (prefix >= 40 && prefix <= 44) state = "Maharashtra";
+        else if (prefix >= 45 && prefix <= 48) state = "Madhya Pradesh";
+        else if (prefix === 49) state = "Chhattisgarh";
+        else if (prefix >= 50 && prefix <= 53) state = "Telangana / Andhra Pradesh";
+        else if (prefix >= 56 && prefix <= 59) state = "Karnataka";
+        else if (prefix >= 60 && prefix <= 64) state = "Tamil Nadu";
+        else if (prefix >= 67 && prefix <= 69) state = "Kerala";
+        else if (prefix >= 70 && prefix <= 74) state = "West Bengal";
+        else if (prefix >= 75 && prefix <= 77) state = "Odisha";
+        else if (prefix === 78) state = "Assam";
+        else if (prefix === 79) state = "NE States";
+        else if (prefix >= 80 && prefix <= 85) state = "Bihar / Jharkhand";
+
+        stateEl.value = state;
+    } else {
+        stateEl.value = "";
+    }
+}
+
 
 async function handleLogin(e) {
     e.preventDefault();
@@ -317,7 +369,7 @@ async function loadSettings() {
         safeSet('f-co-email', email);
         safeSet('f-co-address', companySettings.address || "Corporate Office: EMYRIS BIOLIFESCIENCES");
 
-        // Marquee
+        // Marquee Logic
         if (companySettings.scrollingMessage && companySettings.scrollingMessage.text) {
             const m = document.getElementById('marquee');
             const mc = document.getElementById('marquee-content');
@@ -327,7 +379,52 @@ async function loadSettings() {
                 mc.innerText = companySettings.scrollingMessage.text;
                 mc.style.animationDuration = `${companySettings.scrollingMessage.speed || 30}s`;
             }
+
+            // Also for Landing Marquee
+            const lm = document.getElementById('land-marquee');
+            const lmc = document.getElementById('land-marquee-content');
+            if (lm && lmc) {
+                lm.style.background = companySettings.scrollingMessage.color || 'rgba(99, 102, 241, 0.15)';
+                lmc.innerText = companySettings.scrollingMessage.text;
+                lmc.style.animationDuration = `${companySettings.scrollingMessage.speed || 30}s`;
+            }
         }
+
+        // Multimedia Logic (Dynamic)
+        if (companySettings.musicUrl) {
+            const audio = document.getElementById('bgMusic');
+            if (audio) {
+                // Check if current src is different to avoid restart
+                if (!audio.src.includes(companySettings.musicUrl)) {
+                    audio.src = companySettings.musicUrl;
+                }
+            }
+        }
+
+        if (companySettings.videoUrl) {
+            const videoContainer = document.querySelector('#view-login .glass-card > div:nth-child(2)') || document.querySelector('#view-login [style*="height: 110px"]');
+            if (videoContainer) {
+                const isYoutube = companySettings.videoUrl.includes('youtube.com') || companySettings.videoUrl.includes('youtu.be');
+                if (isYoutube) {
+                    videoContainer.innerHTML = `
+                        <iframe style="width: 100%; height: 100%; border: none; opacity: 0.8; pointer-events: none;" 
+                            src="${companySettings.videoUrl.includes('?') ? companySettings.videoUrl + '&autoplay=1&mute=1&loop=1' : companySettings.videoUrl + '?autoplay=1&mute=1&loop=1'}" 
+                            allow="autoplay; encrypted-media">
+                        </iframe>
+                        <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">EMYRIS LIVE SERIES</div>
+                    `;
+                } else {
+                    videoContainer.innerHTML = `
+                        <video autoplay muted loop playsinline preload="auto" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;">
+                            <source src="${companySettings.videoUrl}" type="video/mp4">
+                        </video>
+                        <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">EMYRIS LIVE SERIES</div>
+                    `;
+                }
+            }
+        }
+
+
     } catch (e) { console.error("Load settings failed", e); }
 }
 
@@ -802,6 +899,66 @@ function handleLogout() {
     console.log('🚪 [LOGOUT] Session ended successfully');
 }
 
+// --- MUSIC LOGIC ---
+var isMusicPlaying = false; 
+function toggleMusic() {
+    console.log('🎵 [MUSIC] Toggle clicked');
+    const audio = document.getElementById('bgMusic');
+    const btn = document.getElementById('musicToggle');
+    if (!audio || !btn) return;
+
+    if (audio.paused) {
+        audio.volume = 0.15; // Soft volume
+        audio.play().then(() => {
+            isMusicPlaying = true;
+            btn.innerHTML = '<span>🔊</span> <span id="musicText">Music On</span>';
+            btn.style.borderColor = '#6366f1';
+            btn.style.background = 'rgba(99, 102, 241, 0.2)';
+            console.log('✅ [MUSIC] Playing...');
+        }).catch(e => {
+            console.error("❌ [MUSIC] Playback blocked or failed:", e);
+        });
+    } else {
+        audio.pause();
+        isMusicPlaying = false;
+        btn.innerHTML = '<span>🔇</span> <span id="musicText">Music Off</span>';
+        btn.style.borderColor = 'rgba(255,255,255,0.1)';
+        btn.style.background = 'rgba(255,255,255,0.05)';
+        console.log('⏸️ [MUSIC] Paused');
+    }
+}
+
+
+
+
+function startMusic() {
+    const audio = document.getElementById('bgMusic');
+    const btn = document.getElementById('musicToggle');
+    const textEl = document.getElementById('musicText');
+    if (audio && audio.paused) {
+        audio.play().then(() => {
+            isMusicPlaying = true;
+            if (btn) {
+                btn.querySelector('span').innerText = '🔊';
+                if (textEl) textEl.innerText = 'Music On';
+                btn.style.borderColor = 'var(--primary)';
+            }
+        }).catch(e => {
+            console.warn("Music auto-start blocked by browser.");
+        });
+    }
+}
+
+
+function stopMusic() {
+    const audio = document.getElementById('bgMusic');
+    if (audio) {
+        audio.pause();
+        isMusicPlaying = false;
+    }
+}
+
+
 function viewOrderDetails(orderId) {
     const o = myOrdersHistory.find(x => x._id === orderId);
     if (!o) {
@@ -1068,3 +1225,9 @@ async function generateInvoicePDF(inv) {
 
     doc.save(`Invoice_${inv.invoiceNo}.pdf`);
 }
+
+// --- INITIALIZATION ---
+document.addEventListener('DOMContentLoaded', () => {
+    loadSettings(); // Populate landing info & marquee on startup
+});
+

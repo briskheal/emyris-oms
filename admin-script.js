@@ -503,13 +503,14 @@ async function loadStockists(type = '') {
 
 async function loadMasters() {
     try {
-        const [cats, hsns, gst, groups] = await Promise.all([
+        const [cats, hsns, gst, groups, hq] = await Promise.all([
             fetch(`${API_BASE}/admin/categories`).then(r => r.json()),
             fetch(`${API_BASE}/admin/hsns`).then(r => r.json()),
             fetch(`${API_BASE}/admin/gst`).then(r => r.json()),
-            fetch(`${API_BASE}/admin/groups`).then(r => r.json())
+            fetch(`${API_BASE}/admin/groups`).then(r => r.json()),
+            fetch(`${API_BASE}/admin/masters/hq`).then(r => r.json())
         ]);
-        window.masters = { categories: cats, hsns, gst, groups };
+        window.masters = { categories: cats, hsns, gst, groups, hq };
         renderMasterLists();
         updateDatalists();
     } catch (e) { console.error("Load masters fail", e); }
@@ -546,6 +547,15 @@ function updateDatalists() {
     if (groupList) groupList.innerHTML = Array.from(groups).map(g => `<option value="${g}"></option>`).join('');
     if (hsnList) hsnList.innerHTML = Array.from(hsns).map(h => `<option value="${h}"></option>`).join('');
     if (gstList) gstList.innerHTML = Array.from(gsts).map(g => `<option value="${g}"></option>`).join('');
+    
+    // Update HQ Dropdowns
+    const partyHqSelect = document.getElementById('party-hq');
+    if (partyHqSelect && window.masters && window.masters.hq) {
+        const currentVal = partyHqSelect.value;
+        partyHqSelect.innerHTML = '<option value="">-- Select HQ --</option>' + 
+            window.masters.hq.map(h => `<option value="${h.name}">${h.name}</option>`).join('');
+        partyHqSelect.value = currentVal;
+    }
 }
 
 function renderProducts() {
@@ -733,6 +743,7 @@ function renderMasterLists() {
     render('master-group-list', window.masters.groups, 'name', 'groups');
     render('master-hsn-list', window.masters.hsns, 'code', 'hsns');
     render('master-gst-list', window.masters.gst, 'rate', 'gst');
+    render('master-hq-list', window.masters.hq || [], 'name', 'masters/hq');
 }
 
 async function addMaster(type) {
@@ -750,11 +761,15 @@ async function addMaster(type) {
     } else if (type === 'gst') {
         val = document.getElementById('new-gst-rate').value;
         body = { rate: Number(val) };
+    } else if (type === 'hq') {
+        val = document.getElementById('new-hq-name').value;
+        body = { name: val };
     }
 
     if (!val) return alert("Please enter a value");
     try {
-        const res = await fetch(`${API_BASE}/admin/${type}`, {
+        const endpoint = type === 'hq' ? `${API_BASE}/admin/masters/hq` : `${API_BASE}/admin/${type}`;
+        const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -764,7 +779,8 @@ async function addMaster(type) {
             // Clear input
             const inputId = type === 'categories' ? 'new-cat-name' : 
                            type === 'groups' ? 'new-group-name' :
-                           type === 'hsns' ? 'new-hsn-code' : 'new-gst-rate';
+                           type === 'hsns' ? 'new-hsn-code' : 
+                           type === 'gst' ? 'new-gst-rate' : 'new-hq-name';
             const input = document.getElementById(inputId);
             if (input) input.value = '';
             loadMasters();
@@ -777,7 +793,8 @@ async function addMaster(type) {
 async function deleteMaster(type, id) {
     if (!confirm("Delete this master entry?")) return;
     try {
-        await fetch(`${API_BASE}/admin/${type}/${id}`, { method: 'DELETE' });
+        const endpoint = type.includes('/') ? `${API_BASE}/api/admin/${type}/${id}` : `${API_BASE}/admin/${type}/${id}`;
+        await fetch(endpoint, { method: 'DELETE' });
         loadMasters();
     } catch (e) { alert("Delete failed"); }
 }
@@ -861,8 +878,43 @@ async function loadSettings() {
         if (document.getElementById('set-dn-bank-visible')) document.getElementById('set-dn-bank-visible').checked = !!s.dnBankVisible;
 
         setInvoiceStyle(s.invoiceStyle || 'classic');
+
+        // Multimedia Labels
+        if (s.musicUrl) {
+            const musicName = s.musicUrl.split('/').pop();
+            document.getElementById('current-music-name').innerText = `Current: ${musicName}`;
+        }
+        if (s.videoUrl) {
+            const videoName = s.videoUrl.split('/').pop();
+            document.getElementById('current-video-name').innerText = `Current: ${videoName}`;
+        }
     } catch (e) { console.error("Load settings fail"); }
 }
+
+async function uploadMedia(type) {
+    const inputId = type === 'music' ? 'musicFile' : 'videoFile';
+    const input = document.getElementById(inputId);
+    if (!input.files || !input.files[0]) return alert("Please select a file first");
+
+    const formData = new FormData();
+    formData.append('media', input.files[0]);
+    formData.append('type', type);
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/upload-media`, {
+            method: 'POST',
+            body: formData
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert(`✅ ${type.toUpperCase()} uploaded successfully!`);
+            loadSettings();
+        } else {
+            alert("Upload failed: " + result.message);
+        }
+    } catch (e) { alert("Upload failed"); }
+}
+
 
 async function saveSettings(e) {
     e.preventDefault();
@@ -1041,9 +1093,13 @@ function openPartyModal(id = null) {
             document.getElementById('party-state').value = s.state || '';
             document.getElementById('party-phone').value = s.phone || '';
             document.getElementById('party-address').value = s.address || '';
+            document.getElementById('party-pincode').value = s.pincode || '';
+
             document.getElementById('party-bank-name').value = s.bankName || '';
             document.getElementById('party-bank-acc').value = s.bankAccountNo || '';
             document.getElementById('party-bank-ifsc').value = s.bankIfsc || '';
+            document.getElementById('party-hq').value = s.hq || '';
+
         }
     }
     modal.classList.remove('hidden');
@@ -1072,9 +1128,12 @@ async function saveParty(e) {
         state: document.getElementById('party-state').value,
         phone: document.getElementById('party-phone').value,
         address: document.getElementById('party-address').value,
+        pincode: document.getElementById('party-pincode').value,
         bankName: document.getElementById('party-bank-name').value,
+
         bankAccountNo: document.getElementById('party-bank-acc').value,
         bankIfsc: document.getElementById('party-bank-ifsc').value,
+        hq: document.getElementById('party-hq').value,
         approved: true 
     };
 
@@ -1245,29 +1304,29 @@ function viewOrderDetails(id) {
         }
 
         return `
-            <tr style="transition: all 0.2s;">
-                <td style="position: sticky; left: 0; z-index: 5; background: #1e293b; font-weight: 700; color: #fff; border-right: 1px solid var(--glass-border);">${item.name}</td>
+            <tr style="transition: all 0.2s; border-bottom: 1px solid rgba(255,255,255,0.03);">
+                <td style="position: sticky; left: 0; z-index: 5; background: #0f172a; font-weight: 700; color: #f1f5f9; border-right: 1px solid rgba(255,255,255,0.05); font-size: 0.75rem;">${item.name}</td>
                 <td style="text-align:center;">${batchCellHtml}</td>
-                <td style="text-align:right; color:var(--text-muted); opacity: 0.8;">₹${(item.masterRate || item.priceUsed).toFixed(2)}</td>
-                <td style="text-align:right; font-weight:700; color:${isNegotiated ? '#ef4444' : '#fff'};">₹${(item.askingRate || item.priceUsed).toFixed(2)}</td>
-                <td style="text-align:center; font-style:italic; font-size:0.75rem; color: #cbd5e1;">${item.negotiationNote || '-'}</td>
+                <td style="text-align:right; color:var(--text-muted); opacity: 0.8; font-family: monospace;">₹${(item.masterRate || item.priceUsed).toFixed(2)}</td>
+                <td style="text-align:right; font-weight:700; color:${isNegotiated ? '#ef4444' : '#fff'}; font-family: monospace;">₹${(item.askingRate || item.priceUsed).toFixed(2)}</td>
+                <td style="text-align:center; font-style:italic; font-size:0.7rem; color: #94a3b8; line-height: 1.2;">${item.negotiationNote || '-'}</td>
                 <td style="text-align:center;">
                     <input type="number" step="0.01" class="final-rate-input" id="rate-${o._id}-${item._id}" 
                         value="${item.priceUsed.toFixed(2)}" 
-                        style="width: 80px; background: rgba(255,255,255,0.05); border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-weight: 800; text-align: center; padding: 4px;">
+                        style="width: 70px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 6px; color: var(--accent); font-weight: 800; text-align: center; padding: 3px; font-size: 0.75rem;">
                 </td>
-                <td style="text-align:center; font-weight:700;">${item.qty}</td>
-                <td style="text-align:center; color:var(--accent); font-weight:700;">+${item.bonusQty || 0}</td>
-                <td style="text-align:right; font-weight:800; color:var(--primary); font-size: 0.9rem;">₹${item.totalValue.toFixed(2)}</td>
+                <td style="text-align:center; font-weight:800; color: #fff;">${item.qty}</td>
+                <td style="text-align:center; color:var(--accent); font-weight:800; font-size: 0.75rem;">+${item.bonusQty || 0}</td>
+                <td style="text-align:right; font-weight:900; color:var(--primary); font-size: 0.85rem; font-family: monospace;">₹${item.totalValue.toFixed(2)}</td>
                 <td style="text-align:center;">
                     ${o.status === 'pending' ? `
-                        <div style="display:flex; gap:6px; justify-content:center;">
-                            <button class="btn" style="padding:4px 8px; font-size:0.6rem; background: rgba(239, 68, 68, 0.1); color:#ef4444; border: 1px solid rgba(239, 68, 68, 0.2);" onclick="negotiateItem('${o._id}', '${item._id}', 'reject', this)" title="Revert to Master PTS">REJECT</button>
-                            <button class="btn" style="padding:4px 8px; font-size:0.6rem; background: rgba(99, 102, 241, 0.1); color:var(--primary); border: 1px solid rgba(99, 102, 241, 0.2);" onclick="negotiateItem('${o._id}', '${item._id}', 'onetime', this)" title="Apply for this order only">1-TIME</button>
-                            <button class="btn" style="padding:4px 8px; font-size:0.6rem; background: rgba(16, 185, 129, 0.1); color:#10b981; border: 1px solid rgba(16, 185, 129, 0.2);" onclick="negotiateItem('${o._id}', '${item._id}', 'month', this)" title="Lock for 1 Month">MONTH</button>
-                            <button class="btn" style="padding:4px 8px; font-size:0.6rem; background: var(--accent); color:#fff;" onclick="negotiateItem('${o._id}', '${item._id}', 'year', this)" title="Lock for 1 Year">YEAR</button>
+                        <div style="display:flex; gap:4px; justify-content:center;">
+                            <button class="btn" style="padding:4px 6px; font-size:0.55rem; background: rgba(239, 68, 68, 0.1); color:#ef4444; border: 1px solid rgba(239, 68, 68, 0.2); font-weight: 800;" onclick="negotiateItem('${o._id}', '${item._id}', 'reject', this)" title="Revert to Master">REJ</button>
+                            <button class="btn" style="padding:4px 6px; font-size:0.55rem; background: rgba(99, 102, 241, 0.1); color:var(--primary); border: 1px solid rgba(99, 102, 241, 0.2); font-weight: 800;" onclick="negotiateItem('${o._id}', '${item._id}', 'onetime', this)" title="Apply for this order only">1-T</button>
+                            <button class="btn" style="padding:4px 6px; font-size:0.55rem; background: rgba(16, 185, 129, 0.1); color:#10b981; border: 1px solid rgba(16, 185, 129, 0.2); font-weight: 800;" onclick="negotiateItem('${o._id}', '${item._id}', 'month', this)" title="Lock for 1 Month">MON</button>
+                            <button class="btn" style="padding:4px 6px; font-size:0.55rem; background: var(--accent); color:#fff; font-weight: 800;" onclick="negotiateItem('${o._id}', '${item._id}', 'year', this)" title="Lock for 1 Year">YRE</button>
                         </div>
-                    ` : '<span style="font-size:0.7rem; font-weight: 800; color:var(--text-muted);">🔒 LOCKED</span>'}
+                    ` : '<span style="font-size:0.65rem; font-weight: 900; color:var(--text-muted); letter-spacing: 0.5px;">LOCKED</span>'}
                 </td>
             </tr>
         `;
@@ -1331,6 +1390,27 @@ function viewOrderDetails(id) {
         }
     };
 
+    // HQ Assignment / Display Logic
+    const hqSelection = document.getElementById('hq-selection-container');
+    const hqDisplay = document.getElementById('hq-display-container');
+    const hqSelect = document.getElementById('detail-hq-select');
+    const hqName = document.getElementById('detail-hq-name');
+
+    if (o.stockist && o.stockist.hq) {
+        if (hqSelection) hqSelection.classList.add('hidden');
+        if (hqDisplay) hqDisplay.classList.remove('hidden');
+        if (hqName) hqName.innerText = o.stockist.hq;
+    } else if (o.status === 'pending') {
+        if (hqSelection) hqSelection.classList.remove('hidden');
+        if (hqDisplay) hqDisplay.classList.add('hidden');
+        // Populate hqSelect from window.masters.hq
+        if (hqSelect) hqSelect.innerHTML = '<option value="">-- Select Headquarters --</option>' + 
+            (window.masters.hq || []).map(h => `<option value="${h.name}">${h.name}</option>`).join('');
+    } else {
+        if (hqSelection) hqSelection.classList.add('hidden');
+        if (hqDisplay) hqDisplay.classList.add('hidden');
+    }
+
     document.getElementById('orderDetailModal').classList.remove('hidden');
 }
 
@@ -1387,11 +1467,19 @@ async function approveOrder(id) {
         }
     });
 
+    const hqSelect = document.getElementById('detail-hq-select');
+    const selectedHq = hqSelect ? hqSelect.value : null;
+
+    if (!o.stockist?.hq && !selectedHq && o.status === 'pending') {
+        alert("⚠️ MANDATORY: Please assign a Headquarters (HQ) for this stockist before approving the order.");
+        return;
+    }
+
     try {
         const res = await fetch(`${API_BASE}/admin/orders/${id}/approve`, { 
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ approvedBy: 'ADMIN', batchSelections })
+            body: JSON.stringify({ approvedBy: 'ADMIN', batchSelections, selectedHq })
         });
         const result = await res.json();
         if (result.success) {
@@ -2227,6 +2315,33 @@ async function saveMultiItemReturn(e) {
         });
 
         if(items.length === 0) return alert("Please add at least one product.");
+
+        // --- PDCN QUANTITY VALIDATION ---
+        if (reasonValue === 'Price Diff CN') {
+            const partyId = document.getElementById('return-party').value;
+            try {
+                const elRes = await fetch(`/api/admin/pdcn/eligibility/${partyId}`);
+                const elData = await elRes.json();
+                if (elData.success) {
+                    const eligibility = elData.eligibility;
+                    for (const item of items) {
+                        const pid = String(item.productId);
+                        const data = eligibility[pid];
+                        const billed = data ? data.totalBilledQty : 0;
+                        const claimed = data ? data.totalClaimedQty : 0;
+                        const eligible = data ? data.eligibleQty : 0;
+
+                        // If we are EDITING an existing note, we must exclude its own previous quantity from "claimed"
+                        // But for simplicity in this admin tool, we'll just check against absolute billed limit
+                        // if we want to be precise: eligibleForThisAction = billed - (claimed - (isEditing ? oldQty : 0))
+                        
+                        if (item.qty > billed) {
+                            return alert(`❌ QUANTITY ERROR: Product "${item.name}" was only billed ${billed} units. You cannot raise a PDCN for ${item.qty} units.`);
+                        }
+                    }
+                }
+            } catch (e) { console.error("Eligibility check failed:", e); }
+        }
 
         const totalStr = document.getElementById('return-total').innerText.replace(/[₹,]/g, '');
         const subTotalStr = document.getElementById('return-subtotal').innerText.replace(/[₹,]/g, '');
