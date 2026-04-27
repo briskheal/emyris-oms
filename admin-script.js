@@ -3589,7 +3589,282 @@ async function renderReportView() {
         let reportData = [];
         let fileName = `Emyris_${type}_${new Date().toISOString().split('T')[0]}`;
         
-        ${switchBody}
+        
+        switch (type) {
+            case 'bill-profit':
+                invoices.forEach(inv => {
+                    inv.items.forEach(item => {
+                        const prod = products.find(p => p._id.toString() === item.product.toString());
+                        const costPrice = prod ? prod.pts : 0;
+                        const profit = (item.priceUsed - costPrice) * item.qty;
+                        reportData.push({
+                            "Invoice No": inv.invoiceNo,
+                            "Date": new Date(inv.createdAt).toLocaleDateString('en-GB'),
+                            "Party": inv.stockistName,
+                            "Product": item.name,
+                            "Qty": item.qty,
+                            "Sale Rate": item.priceUsed,
+                            "Cost Rate": costPrice,
+                            "Profit Amount": profit.toFixed(2),
+                            "Margin %": costPrice > 0 ? (((item.priceUsed - costPrice) / costPrice) * 100).toFixed(2) : '100'
+                        });
+                    });
+                });
+                break;
+
+            case 'p-and-l':
+                const totalSales = invoices.reduce((s, x) => s + x.subTotal, 0);
+                const totalExpenses = expenses.reduce((s, x) => s + x.amount, 0);
+                let totalCogs = 0;
+                invoices.forEach(inv => {
+                    inv.items.forEach(item => {
+                        const prod = products.find(p => p._id.toString() === item.product.toString());
+                        totalCogs += (prod ? prod.pts : 0) * item.qty;
+                    });
+                });
+                reportData = [{
+                    "Metric": "Total Sales (Revenue)",
+                    "Amount": totalSales.toFixed(2)
+                }, {
+                    "Metric": "Cost of Goods Sold (COGS)",
+                    "Amount": totalCogs.toFixed(2)
+                }, {
+                    "Metric": "Gross Profit",
+                    "Amount": (totalSales - totalCogs).toFixed(2)
+                }, {
+                    "Metric": "Total Indirect Expenses",
+                    "Amount": totalExpenses.toFixed(2)
+                }, {
+                    "Metric": "NET PROFIT / LOSS",
+                    "Amount": (totalSales - totalCogs - totalExpenses).toFixed(2)
+                }];
+                break;
+
+            case 'stock-summary':
+                reportData = products.map(p => ({
+                    "Product Name": p.name,
+                    "HSN": p.hsn,
+                    "Category": p.category,
+                    "Group": p.group,
+                    "Current Stock": p.qtyAvailable,
+                    "Valuation (PTS)": (p.qtyAvailable * p.pts).toFixed(2),
+                    "Valuation (MRP)": (p.qtyAvailable * p.mrp).toFixed(2)
+                }));
+                break;
+
+            case 'exp-txn':
+                reportData = expenses.map(e => ({
+                    "Exp No": e.expenseNo,
+                    "Date": new Date(e.date).toLocaleDateString('en-GB'),
+                    "Category": e.categoryName,
+                    "Title": e.title,
+                    "Method": e.paymentMethod,
+                    "Ref No": e.refNo || '-',
+                    "Amount": e.amount
+                }));
+                break;
+
+            case 'gstr-1':
+            case 'gstr1':
+                fileName = "GSTR_1_Sales_Outward";
+                reportData = invoices.map(inv => {
+                    const party = stockists.find(s => s._id.toString() === inv.stockistId.toString());
+                    return {
+                        "GSTIN": party ? party.gstin : "URD",
+                        "Receiver Name": inv.stockistName,
+                        "Invoice No": inv.invoiceNo,
+                        "Date": new Date(inv.createdAt).toLocaleDateString('en-GB'),
+                        "Total Value": inv.grandTotal,
+                        "Taxable Value": inv.subTotal,
+                        "IGST": party && party.state !== "GUJARAT" ? inv.gstAmount : 0,
+                        "CGST": party && party.state === "GUJARAT" ? inv.gstAmount / 2 : 0,
+                        "SGST": party && party.state === "GUJARAT" ? inv.gstAmount / 2 : 0
+                    };
+                });
+                break;
+
+            case 'gstr-2':
+                fileName = "GSTR_2_Purchases_Inward";
+                reportData = purchases.map(p => ({
+                    "Supplier Name": p.supplierName || "Supplier",
+                    "Invoice No": p.invoiceNo,
+                    "Date": new Date(p.date).toLocaleDateString('en-GB'),
+                    "Total Value": p.grandTotal || 0,
+                    "Taxable Value": p.subTotal || 0,
+                    "GST Input Claim": p.gstAmount || 0
+                }));
+                break;
+                
+            case 'gstr-3b':
+            case 'gstr-9':
+            case 'gst-transaction':
+                fileName = "GST_Summary_Transactions";
+                reportData = invoices.map(inv => ({
+                    "Type": "OUTWARD (Sales)",
+                    "Ref": inv.invoiceNo,
+                    "Date": new Date(inv.createdAt).toLocaleDateString('en-GB'),
+                    "Taxable": inv.subTotal,
+                    "GST Amount": inv.gstAmount,
+                    "Total": inv.grandTotal
+                })).concat(purchases.map(p => ({
+                    "Type": "INWARD (Purchase)",
+                    "Ref": p.invoiceNo,
+                    "Date": new Date(p.date).toLocaleDateString('en-GB'),
+                    "Taxable": p.subTotal || 0,
+                    "GST Amount": p.gstAmount || 0,
+                    "Total": p.grandTotal || 0
+                })));
+                break;
+
+            case 'low-stock':
+                fileName = "Low_Stock_Alerts";
+                reportData = products.filter(p => p.qtyAvailable < 20).map(p => ({
+                    "Product": p.name,
+                    "Current Qty": p.qtyAvailable,
+                    "Threshold": 20,
+                    "Status": "REORDER REQUIRED"
+                }));
+                break;
+
+            case 'bank-statement':
+            case 'business-status':
+                fileName = "Bank_Statement_Status";
+                const bankTxns = payments.filter(p => p.method === 'Bank Transfer' || p.method === 'UPI');
+                reportData = bankTxns.map(p => ({
+                    "Date": new Date(p.date).toLocaleDateString('en-GB'),
+                    "Ref No": p.refNo,
+                    "Party": p.partyName,
+                    "Type": p.type,
+                    "Amount": p.amount
+                }));
+                break;
+
+            case 'consolidated-ledger':
+            case 'party-statement':
+            case 'ageing-report':
+                fileName = `Party_Account_Statement`;
+                stockists.forEach(s => {
+                    reportData.push({
+                        "Party Name": s.companyName || s.name,
+                        "City": s.city,
+                        "Opening Balance": 0,
+                        "Credit Limit": s.creditLimit || 0,
+                        "Closing Outstanding": s.currentBalance || 0,
+                        "Status": (s.currentBalance || 0) > (s.creditLimit || 0) ? "EXCEEDED LIMIT" : "OK"
+                    });
+                });
+                break;
+                
+            case 'cashflow':
+            case 'balance-sheet':
+                fileName = "Financial_Cashflow_Balance";
+                let totalIn = payments.filter(p => p.type === 'RECEIPT').reduce((s, x) => s + x.amount, 0);
+                let totalOut = payments.filter(p => p.type === 'PAYMENT').reduce((s, x) => s + x.amount, 0);
+                let totalExp = expenses.reduce((s, x) => s + x.amount, 0);
+                reportData = [
+                    {"Metric": "Total Inflow (Receipts)", "Amount": totalIn.toFixed(2)},
+                    {"Metric": "Total Outflow (Payments)", "Amount": totalOut.toFixed(2)},
+                    {"Metric": "Total Expenses (Overhead)", "Amount": totalExp.toFixed(2)},
+                    {"Metric": "Net Cash Position", "Amount": (totalIn - totalOut - totalExp).toFixed(2)}
+                ];
+                break;
+                
+            case 'discount-report':
+            case 'item-discount':
+                fileName = "Discount_Analysis";
+                invoices.forEach(inv => {
+                    inv.items.forEach(item => {
+                        if(item.bonusQty > 0 || (item.mrp - item.priceUsed) > 0) {
+                            reportData.push({
+                                "Invoice": inv.invoiceNo,
+                                "Party": inv.stockistName,
+                                "Item": item.name,
+                                "Billed Qty": item.qty,
+                                "Bonus Qty": item.bonusQty || 0,
+                                "MRP": item.mrp || 0,
+                                "Billed Rate": item.priceUsed,
+                                "Discount Value": (((item.mrp || 0) - item.priceUsed) * item.qty).toFixed(2)
+                            });
+                        }
+                    });
+                });
+                break;
+                
+            case 'party-profit-loss':
+            case 'sale-purchase-party':
+                fileName = "Party_Wise_Analytics";
+                stockists.forEach(s => {
+                    const partyInvs = invoices.filter(inv => inv.stockistId.toString() === s._id.toString());
+                    const revenue = partyInvs.reduce((sum, inv) => sum + inv.subTotal, 0);
+                    reportData.push({
+                        "Party Name": s.companyName || s.name,
+                        "Total Orders": partyInvs.length,
+                        "Total Revenue Generated": revenue.toFixed(2)
+                    });
+                });
+                break;
+                
+            case 'doc-expiry':
+                fileName = "Compliance_Expiry_Tracker";
+                stockists.forEach(s => {
+                    reportData.push({
+                        "Party": s.companyName || s.name,
+                        "Drug License": s.dlNo || "N/A",
+                        "FSSAI": s.fssaiNo || "N/A",
+                        "GSTIN": s.gstin || "URD",
+                        "Verification Status": "ACTIVE"
+                    });
+                });
+                break;
+                
+            case 'item-profit-loss':
+            case 'item-batch':
+                fileName = "Item_Batch_Analytics";
+                products.forEach(p => {
+                    p.batches.forEach(b => {
+                        reportData.push({
+                            "Product": p.name,
+                            "Batch No": b.batchNo,
+                            "Expiry": `${b.expMonth}/${b.expYear}`,
+                            "Qty Available": b.qty,
+                            "Valuation (PTS)": (b.qty * p.pts).toFixed(2)
+                        });
+                    });
+                });
+                break;
+
+            case 'expense-transaction':
+            case 'expense-category':
+            case 'expense-item':
+                fileName = "Expense_Management_Log";
+                reportData = expenses.map(e => ({
+                    "Exp No": e.expenseNo,
+                    "Date": new Date(e.date).toLocaleDateString('en-GB'),
+                    "Category Type": ["Rent", "Salary", "Logistics", "Marketing"].includes(e.categoryName) ? "Indirect Expense" : "Direct Expense",
+                    "Head": e.categoryName,
+                    "Title/Item": e.title,
+                    "Amount": e.amount,
+                    "Method": e.paymentMethod
+                }));
+                break;
+
+            case 'credit-debit-summary':
+                fileName = "Financial_Adjustment_Notes";
+                reportData = notes.map(n => ({
+                    "Note Type": n.type === 'CN' ? 'CREDIT NOTE' : 'DEBIT NOTE',
+                    "Note Ref": n.noteNo,
+                    "Date": new Date(n.date).toLocaleDateString('en-GB'),
+                    "Party Name": n.partyName,
+                    "Reason": n.reason,
+                    "Impact Amount": n.amount
+                }));
+                break;
+
+            default:
+                alert(`Report "${type}" is being prepared for the next module update. Using basic data dump for now.`);
+                reportData = invoices.map(i => ({ "Date": i.createdAt, "No": i.invoiceNo, "Party": i.stockistName, "Amount": i.grandTotal }));
+        }
+
         
         currentReportData = reportData;
         currentReportName = fileName;
