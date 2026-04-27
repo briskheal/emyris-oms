@@ -921,10 +921,11 @@ function toggleMusic() {
     const btn = document.getElementById('musicToggleAdmin');
     const text = document.getElementById('musicTextAdmin');
     
-    if (!audio || !audio.src) {
-        alert("No music source found. Please upload music in Global Masters.");
+    if (!audio || !audio.src || audio.src.endsWith('/') || audio.src.includes('undefined')) {
+        alert("⚠️ No music source found.\n\nIf you recently pushed code, your uploaded file may have been removed from the server. Please re-upload or use a permanent URL.");
         return;
     }
+
 
     if (audio.paused) {
         audio.volume = companyProfile.musicVolume || 0.5; 
