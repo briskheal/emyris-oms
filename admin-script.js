@@ -73,7 +73,9 @@ let allNotes = [];
 let currentNoteReason = 'ALL';
 let purchaseItems = []; // Temporary storage for new purchase entry
 let companyProfile = {};
-let currentEditingNoteId = null; // Track if we are editing a CN/DN
+let currentEditingNoteId = null; 
+let allPayments = [];
+let currentPaymentTypeFilter = 'RECEIPT';
 
 // --- INITIALIZATION ---
 window.onload = async () => {
@@ -90,6 +92,7 @@ window.onload = async () => {
         await loadInvoices();
         await loadPurchaseEntries();
         await loadFinancialNotes();
+        await loadPayments();
         await loadMasters();
         await loadSettings();
         await refreshDashboard();
@@ -151,9 +154,14 @@ function switchTab(tabId, el, subType = null) {
         }
     }
     if (tabId === 'purchase') renderPurchaseEntries();
+    if (tabId === 'payments') {
+        currentPaymentTypeFilter = subType || 'RECEIPT';
+        renderPayments();
+    }
     if (tabId === 'reports') refreshInventoryVal();
     if (tabId === 'system') loadFailedEmails();
 }
+
 
 function toggleSubmenu(id, el) {
     const submenu = document.getElementById(id);
@@ -3245,4 +3253,172 @@ async function deleteFailedEmail(id) {
             loadFailedEmails();
         }
     } catch (e) { alert("Delete failed"); }
+}
+// --- TREASURY & PAYMENTS MODULE ---
+
+async function loadPayments() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/payments`);
+        allPayments = await res.json();
+        if (allPayments) renderPayments();
+    } catch (e) { console.error("Error loading payments:", e); }
+}
+
+function renderPayments() {
+    const tbody = document.getElementById('paymentTableBody');
+    if (!tbody) return;
+
+    const filtered = allPayments.filter(p => p.type === currentPaymentTypeFilter);
+    
+    // Update Monthly Stats
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    const monthlyReceipts = allPayments.filter(p => p.type === 'RECEIPT' && new Date(p.date).getMonth() === currentMonth && new Date(p.date).getFullYear() === currentYear).reduce((s, x) => s + x.amount, 0);
+    const monthlyPayouts = allPayments.filter(p => p.type === 'PAYMENT' && new Date(p.date).getMonth() === currentMonth && new Date(p.date).getFullYear() === currentYear).reduce((s, x) => s + x.amount, 0);
+
+    document.getElementById('stat-receipts-total').innerText = `₹${monthlyReceipts.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    document.getElementById('stat-payouts-total').innerText = `₹${monthlyPayouts.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    document.getElementById('stat-net-flow').innerText = `₹${(monthlyReceipts - monthlyPayouts).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    document.getElementById('stat-net-flow').style.color = (monthlyReceipts - monthlyPayouts) >= 0 ? '#10b981' : '#ef4444';
+
+    // Update Page Header
+    document.getElementById('payment-page-title').innerText = currentPaymentTypeFilter === 'RECEIPT' ? "💰 Customer Collections (Payment In)" : "💸 Supplier Payouts (Payment Out)";
+
+    tbody.innerHTML = filtered.map(p => `
+        <tr>
+            <td style="font-family:monospace; font-weight:700;">${p.paymentNo}</td>
+            <td><span class="badge" style="background:${p.type === 'RECEIPT' ? '#10b981' : '#ef4444'}; color:#fff; font-size:0.6rem;">${p.type}</span></td>
+            <td style="font-weight:600;">${p.partyName}</td>
+            <td>${p.method}</td>
+            <td>${p.refNo || '-'}</td>
+            <td style="text-align:right; font-weight:800; color:${p.type === 'RECEIPT' ? '#10b981' : '#ef4444'};">₹${p.amount.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+            <td>${new Date(p.date).toLocaleDateString('en-GB')}</td>
+            <td style="text-align:right;">
+                <button class="btn btn-ghost" style="padding:4px 8px; font-size:0.6rem; color:#ef4444;" onclick="deletePayment('${p._id}')">✕ DELETE</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function openPaymentModal() {
+    const modal = document.getElementById('paymentModal');
+    const form = document.getElementById('paymentForm');
+    if(!modal || !form) return;
+    
+    form.reset();
+    document.getElementById('pay-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('pay-type').value = currentPaymentTypeFilter;
+    
+    updatePaymentContext();
+    modal.classList.remove('hidden');
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.add('hidden');
+}
+
+function updatePaymentContext() {
+    const type = document.getElementById('pay-type').value;
+    const partySelect = document.getElementById('pay-party');
+    const partyLabel = document.getElementById('pay-party-label');
+    const modalTitle = document.getElementById('payment-modal-title');
+
+    modalTitle.innerText = type === 'RECEIPT' ? "💰 New Customer Collection" : "💸 New Supplier Payout";
+    partyLabel.innerText = type === 'RECEIPT' ? "Select Stockist (Customer)" : "Select Supplier (Vendor)";
+
+    // Populate party options based on type
+    partySelect.innerHTML = `<option value="">-- Choose Party --</option>`;
+    const filteredParties = allStockists.filter(s => type === 'RECEIPT' ? (s.partyType || 'STOCKIST') === 'STOCKIST' : s.partyType === 'SUPPLIER');
+    
+    filteredParties.forEach(s => {
+        partySelect.innerHTML += `<option value="${s._id}">${s.name} (${s.city || '-'})</option>`;
+    });
+
+    updatePartyBalanceDisplay();
+}
+
+function updatePartyBalanceDisplay() {
+    const partyId = document.getElementById('pay-party').value;
+    const balanceEl = document.getElementById('pay-party-balance');
+    if (!partyId) {
+        balanceEl.innerText = "Outstanding: ₹0.00";
+        return;
+    }
+    const s = allStockists.find(x => x._id === partyId);
+    if (s) {
+        const bal = s.outstandingBalance || 0;
+        balanceEl.innerText = `Outstanding: ₹${bal.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+        balanceEl.style.color = bal > 0 ? '#f59e0b' : '#10b981';
+    }
+}
+
+async function savePayment(e) {
+    e.preventDefault();
+    const type = document.getElementById('pay-type').value;
+    const data = {
+        type: type,
+        date: document.getElementById('pay-date').value,
+        party: document.getElementById('pay-party').value,
+        amount: Number(document.getElementById('pay-amount').value),
+        method: document.getElementById('pay-method').value,
+        refNo: document.getElementById('pay-ref').value
+    };
+
+    if (!data.party) return alert("Please select a party.");
+    if (data.amount <= 0) return alert("Amount must be greater than zero.");
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/payments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ Payment Voucher posted and Ledger updated!");
+            closePaymentModal();
+            await loadPayments();
+            await loadStockists(); // Refresh balances
+        } else {
+            alert("Error: " + result.error);
+        }
+    } catch (e) { alert("Server error posting payment."); }
+}
+
+async function deletePayment(id) {
+    if(!confirm("Warning: Deleting a payment voucher will NOT automatically reverse the balance in the ledger in this version. Proceed?")) return;
+    try {
+        const res = await fetch(`${API_BASE}/admin/payments/${id}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (result.success) {
+            loadPayments();
+            loadStockists();
+        }
+    } catch (e) { alert("Delete failed."); }
+}
+
+function filterPayments() {
+    const val = document.getElementById('paymentSearch').value.toLowerCase();
+    const tbody = document.getElementById('paymentTableBody');
+    const filtered = allPayments.filter(p => 
+        p.type === currentPaymentTypeFilter && 
+        (p.paymentNo.toLowerCase().includes(val) || p.partyName.toLowerCase().includes(val))
+    );
+
+    tbody.innerHTML = filtered.map(p => `
+        <tr>
+            <td style="font-family:monospace; font-weight:700;">${p.paymentNo}</td>
+            <td><span class="badge" style="background:${p.type === 'RECEIPT' ? '#10b981' : '#ef4444'}; color:#fff; font-size:0.6rem;">${p.type}</span></td>
+            <td style="font-weight:600;">${p.partyName}</td>
+            <td>${p.method}</td>
+            <td>${p.refNo || '-'}</td>
+            <td style="text-align:right; font-weight:800; color:${p.type === 'RECEIPT' ? '#10b981' : '#ef4444'};">₹${p.amount.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+            <td>${new Date(p.date).toLocaleDateString('en-GB')}</td>
+            <td style="text-align:right;">
+                <button class="btn btn-ghost" style="padding:4px 8px; font-size:0.6rem; color:#ef4444;" onclick="deletePayment('${p._id}')">✕ DELETE</button>
+            </td>
+        </tr>
+    `).join('');
 }

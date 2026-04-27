@@ -1912,6 +1912,14 @@ app.post('/api/admin/payments', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+app.delete('/api/admin/payments/:id', async (req, res) => {
+    try {
+        await Payment.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: "Payment deleted" });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+
 app.get('/api/admin/parties/:id/ledger', async (req, res) => {
     try {
         const partyId = req.params.id;

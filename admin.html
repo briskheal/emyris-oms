@@ -281,24 +281,26 @@
             <div class="nav-item" onclick="switchTab('stockists', this)"><span>🤝</span> Party Master</div>
             <div class="nav-item" onclick="switchTab('masters', this)"><span>📦</span> Global Masters</div>
             <div class="nav-item" onclick="switchTab('orders', this)"><span>📦</span> Order History</div>
-            <div class="nav-item" onclick="switchTab('invoices', this)"><span>🧾</span> Accounting & Invoices</div>
-            
             <div style="margin-bottom: 0.5rem;">
-                <div class="nav-item" onclick="toggleSubmenu('sub-notes', this)">
-                    <span>📝</span> Financial Notes <i style="margin-left: auto; font-size: 0.7rem; opacity: 0.5;">▼</i>
+                <div class="nav-item" onclick="toggleSubmenu('sub-finance', this)">
+                    <span>💰</span> Treasury & Finance <i style="margin-left: auto; font-size: 0.7rem; opacity: 0.5;">▼</i>
                 </div>
-                <div id="sub-notes" class="hidden" style="padding-left: 2.5rem; display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;">
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer; font-weight: 700; color: var(--primary);" onclick="switchTab('notes', null, 'Salable Return')">● Sale Return (CN)</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Exp/Brk/Damg CN')">● Exp/Brk/Damg CN</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Price Diff CN')">● Price Diff CN</div>
+                <div id="sub-finance" class="hidden" style="padding-left: 2.5rem; display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('invoices', null)">● Sales Invoices</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('payments', null, 'RECEIPT')">● Payment In (Receipts)</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('payments', null, 'PAYMENT')">● Payment Out (Payouts)</div>
                     
                     <div style="margin: 5px 0; border-top: 1px dashed rgba(255,255,255,0.05);"></div>
 
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer; font-weight: 700; color: #ef4444;" onclick="switchTab('notes', null, 'Purchase Return')">● Purchase Return (DN)</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Price Diff DN')">● Price Diff DN</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Brk/Dmg/Loss DN')">● Brk/Dmg/Loss DN</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="toggleSubmenu('sub-notes', null)">● Financial Notes (CN/DN) <i style="font-size: 0.6rem; opacity: 0.5;">▶</i></div>
+                    <div id="sub-notes" class="hidden" style="padding-left: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Salable Return')">- Sale Return (CN)</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Exp/Brk/Damg CN')">- Exp/Brk/Damg CN</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Purchase Return')">- Purchase Return (DN)</div>
+                    </div>
                 </div>
             </div>
+
 
             <div class="nav-item" onclick="switchTab('purchase', this)"><span>🛒</span> Purchase Entry</div>
             <div class="nav-item" onclick="switchTab('reports', this)"><span>📊</span> Reports & Compliance</div>
@@ -706,8 +708,57 @@
                 </div>
             </div>
 
+            <!-- TREASURY & PAYMENTS TAB -->
+            <div id="tab-payments" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" id="payment-page-title" style="margin: 0;">💰 Treasury Collections & Payouts</h2>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <input type="text" id="paymentSearch" placeholder="Search by Voucher No or Party..." 
+                            onkeyup="filterPayments()"
+                            style="width: 250px; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; color: #fff;">
+                        <button class="btn btn-primary" onclick="openPaymentModal()">+ NEW PAYMENT ENTRY</button>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                    <div class="glass-card" style="margin:0; padding:1.25rem; border-left: 4px solid #10b981;">
+                        <span style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Monthly Receipts</span>
+                        <div id="stat-receipts-total" style="font-size:1.5rem; font-weight:900; color:#10b981; margin-top:5px;">₹0.00</div>
+                    </div>
+                    <div class="glass-card" style="margin:0; padding:1.25rem; border-left: 4px solid #ef4444;">
+                        <span style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Monthly Payouts</span>
+                        <div id="stat-payouts-total" style="font-size:1.5rem; font-weight:900; color:#ef4444; margin-top:5px;">₹0.00</div>
+                    </div>
+                    <div class="glass-card" style="margin:0; padding:1.25rem; border-left: 4px solid var(--primary);">
+                        <span style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Net Cash Flow</span>
+                        <div id="stat-net-flow" style="font-size:1.5rem; font-weight:900; color:var(--primary); margin-top:5px;">₹0.00</div>
+                    </div>
+                </div>
+
+                <div class="glass-card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Voucher No</th>
+                                    <th>Type</th>
+                                    <th>Party Name</th>
+                                    <th>Method</th>
+                                    <th>Ref / Chq No</th>
+                                    <th style="text-align: right;">Amount</th>
+                                    <th>Date</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paymentTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- FINANCIAL NOTES TAB -->
             <div id="tab-notes" class="hidden">
+
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                     <h2 class="section-title" id="notes-page-title" style="margin: 0;">📝 Global Financial Adjustments</h2>
                     <div style="display: flex; gap: 1rem; align-items: center;">
@@ -1995,7 +2046,71 @@
         </div>
     </div>
 
+    <!-- MODAL (Payment Entry) -->
+    <div id="paymentModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="glass-card" style="width: 600px; margin: 0; border-top: 4px solid var(--primary); padding: 1.5rem 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
+                <div>
+                    <div style="font-size:0.55rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--primary);margin-bottom:4px;opacity:0.9;">TREASURY MANAGEMENT</div>
+                    <div id="payment-modal-title" style="font-size:1.2rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">💰 New Receipt / Payment</div>
+                </div>
+                <button type="button" class="btn btn-ghost" onclick="closePaymentModal()" style="padding:6px 14px;font-size:0.75rem;">✕ CLOSE</button>
+            </div>
+
+            <form id="paymentForm" onsubmit="savePayment(event)">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label>Transaction Type</label>
+                        <select id="pay-type" required onchange="updatePaymentContext()">
+                            <option value="RECEIPT">RECEIPT (Payment In)</option>
+                            <option value="PAYMENT">PAYMENT (Payment Out)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Transaction Date</label>
+                        <input type="date" id="pay-date" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label id="pay-party-label">Select Stockist / Party</label>
+                    <select id="pay-party" required onchange="updatePartyBalanceDisplay()">
+                        <option value="">-- Choose Party --</option>
+                    </select>
+                    <div id="pay-party-balance" style="font-size: 0.65rem; color: var(--accent); margin-top: 5px; font-weight: 700;">Outstanding: ₹0.00</div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+                    <div class="form-group">
+                        <label>Amount (₹)</label>
+                        <input type="number" id="pay-amount" required step="0.01" placeholder="0.00" style="font-size: 1.2rem; font-weight: 900; color: var(--primary);">
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Method</label>
+                        <select id="pay-method" required>
+                            <option value="Bank Transfer">Bank Transfer (NEFT/IMPS)</option>
+                            <option value="Cash">Cash</option>
+                            <option value="UPI">UPI / GPay / PhonePe</option>
+                            <option value="Cheque">Cheque</option>
+                            <option value="Adjustment">Accounting Adjustment</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Reference No / Cheque No / Remarks</label>
+                    <input type="text" id="pay-ref" placeholder="TXN ID or Chq No">
+                </div>
+
+                <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 2; justify-content: center; padding: 12px; font-weight: 800; letter-spacing: 1px;">💾 POST VOUCHER ENTRY</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="admin-script.js"></script>
+
     <audio id="bgMusic" loop preload="auto"></audio>
 </body>
 </html>
