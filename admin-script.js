@@ -3333,11 +3333,22 @@ function updatePaymentContext() {
     const partySelect = document.getElementById('pay-party');
     const partyLabel = document.getElementById('pay-party-label');
     const modalTitle = document.getElementById('payment-modal-title');
+    const badge = document.getElementById('pay-badge');
+    const vPlaceholder = document.getElementById('pay-voucher-placeholder');
 
-    modalTitle.innerText = type === 'RECEIPT' ? "💰 New Customer Collection" : "💸 New Supplier Payout";
-    partyLabel.innerText = type === 'RECEIPT' ? "Select Stockist (Customer)" : "Select Supplier (Vendor)";
+    const month = new Date().getMonth() + 1;
+    const year  = new Date().getFullYear();
+    const fiscalStart = month >= 4 ? year : year - 1;
+    const fiscalEnd   = (fiscalStart + 1).toString().slice(-2);
+    const yearTag     = `${fiscalStart.toString().slice(-2)}${fiscalEnd}`;
 
-    // Populate party options based on type
+    badge.innerText = type === 'RECEIPT' ? "RECEIPT" : "PAYMENT OUT";
+    badge.style.background = type === 'RECEIPT' ? '#10b981' : '#ef4444';
+    vPlaceholder.innerText = `PAY${type === 'RECEIPT' ? 'IN' : 'OUT'}-${yearTag}-XXXX`;
+
+    modalTitle.innerText = type === 'RECEIPT' ? "💰 Customer Collection (Pay-In)" : "💸 Supplier Settlement (Pay-Out)";
+    partyLabel.innerText = type === 'RECEIPT' ? "1. SELECT CUSTOMER / STOCKIST" : "1. SELECT SUPPLIER / VENDOR";
+
     partySelect.innerHTML = `<option value="">-- Choose Party --</option>`;
     const filteredParties = allStockists.filter(s => type === 'RECEIPT' ? (s.partyType || 'STOCKIST') === 'STOCKIST' : s.partyType === 'SUPPLIER');
     
@@ -3350,22 +3361,82 @@ function updatePaymentContext() {
 
 function updatePartyBalanceDisplay() {
     const partyId = document.getElementById('pay-party').value;
-    const balanceEl = document.getElementById('pay-party-balance');
+    const balanceEl = document.getElementById('party-total-due');
+    const listEl = document.getElementById('bill-preview-list');
+
     if (!partyId) {
         balanceEl.innerText = "Outstanding: ₹0.00";
+        listEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 1rem; font-style: italic;">Select a party to see outstanding bills...</div>`;
         return;
     }
+
     const s = allStockists.find(x => x._id === partyId);
     if (s) {
         const bal = s.outstandingBalance || 0;
         balanceEl.innerText = `Outstanding: ₹${bal.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
         balanceEl.style.color = bal > 0 ? '#f59e0b' : '#10b981';
     }
+    previewBillAdjustment();
 }
+
+function previewBillAdjustment() {
+    const partyId = document.getElementById('pay-party').value;
+    const amount = Number(document.getElementById('pay-amount').value) || 0;
+    const type = document.getElementById('pay-type').value;
+    const listEl = document.getElementById('bill-preview-list');
+
+    if (!partyId) return;
+
+    let remaining = amount;
+    let html = `<table style="width:100%; border-collapse:collapse; font-size:0.75rem;">
+        <thead style="background:rgba(255,255,255,0.02); color:var(--primary);">
+            <tr><th style="text-align:left; padding:8px;">Bill No</th><th style="text-align:right;">Due</th><th style="text-align:right; color:var(--accent);">Adjusting</th></tr>
+        </thead>
+        <tbody>`;
+
+    const bills = type === 'RECEIPT' 
+        ? allInvoices.filter(i => i.stockist?._id === partyId && (i.outstandingAmount ?? i.grandTotal) > 0).sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt))
+        : allPurchaseEntries.filter(p => p.supplier === partyId && (p.outstandingAmount ?? p.grandTotal) > 0).sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+    if (bills.length === 0) {
+        listEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 1rem; font-style: italic;">No outstanding bills found for this party.</div>`;
+        return;
+    }
+
+    let totalAdjusted = 0;
+    bills.forEach(b => {
+        const due = b.outstandingAmount ?? b.grandTotal;
+        const adj = Math.min(remaining, due);
+        if (adj > 0) {
+            html += `<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                <td style="padding:8px; font-family:monospace;">${b.invoiceNo || b.purchaseNo}</td>
+                <td style="text-align:right; padding:8px;">₹${due.toLocaleString('en-IN')}</td>
+                <td style="text-align:right; padding:8px; font-weight:800; color:var(--accent);">₹${adj.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+            </tr>`;
+            remaining -= adj;
+            totalAdjusted += adj;
+        }
+    });
+
+    if (remaining > 0) {
+        html += `<tr style="background:rgba(16,185,129,0.05);">
+            <td style="padding:8px; font-weight:700;">🏦 UNADJUSTED / ADVANCE</td>
+            <td></td>
+            <td style="text-align:right; padding:8px; font-weight:900; color:#10b981;">₹${remaining.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+        </tr>`;
+    }
+
+    html += `</tbody></table>`;
+    listEl.innerHTML = html;
+}
+
 
 async function savePayment(e) {
     e.preventDefault();
     const type = document.getElementById('pay-type').value;
+    const btn = document.getElementById('pay-submit-btn');
+    const originalText = btn.innerHTML;
+
     const data = {
         type: type,
         date: document.getElementById('pay-date').value,
@@ -3379,6 +3450,9 @@ async function savePayment(e) {
     if (data.amount <= 0) return alert("Amount must be greater than zero.");
 
     try {
+        btn.disabled = true;
+        btn.innerHTML = "⏳ POSTING VOUCHER...";
+
         const res = await fetch(`${API_BASE}/admin/payments`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -3386,15 +3460,22 @@ async function savePayment(e) {
         });
         const result = await res.json();
         if (result.success) {
-            alert("✅ Payment Voucher posted and Ledger updated!");
+            alert(`✅ Voucher ${result.payment.paymentNo} posted successfully!\nBalance adjusted across ${result.payment.linkedBills.length} bills.`);
             closePaymentModal();
             await loadPayments();
-            await loadStockists(); // Refresh balances
+            await loadInvoices(); // Refresh bill balances
+            await loadPurchaseEntries();
+            await loadStockists(); // Refresh party balances
         } else {
             alert("Error: " + result.error);
         }
     } catch (e) { alert("Server error posting payment."); }
+    finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
 }
+
 
 async function deletePayment(id) {
     if(!confirm("Warning: Deleting a payment voucher will NOT automatically reverse the balance in the ledger in this version. Proceed?")) return;

@@ -359,8 +359,10 @@ const invoiceSchema = new mongoose.Schema({
     grandTotal: Number,
     amountInWords: String,
     hq: String,
+    outstandingAmount: { type: Number, default: function() { return this.grandTotal; } },
     createdAt: { type: Date, default: Date.now }
 });
+
 
 // 6. Purchase Entry (Stock-In)
 const purchaseEntrySchema = new mongoose.Schema({
@@ -390,8 +392,10 @@ const purchaseEntrySchema = new mongoose.Schema({
     subTotal: Number,
     gstAmount: Number,
     grandTotal: Number,
+    outstandingAmount: { type: Number, default: function() { return this.grandTotal; } },
     createdAt: { type: Date, default: Date.now }
 });
+
 
 // 7. Financial Notes (Credit Note / Debit Note)
 const financialNoteSchema = new mongoose.Schema({
@@ -431,8 +435,14 @@ const paymentSchema = new mongoose.Schema({
     method: { type: String, enum: ['Cash', 'Bank Transfer', 'Cheque', 'UPI', 'Adjustment'], default: 'Bank Transfer' },
     refNo: String,
     type: { type: String, enum: ['RECEIPT', 'PAYMENT'], required: true }, // RECEIPT (In) from Stockist, PAYMENT (Out) to Supplier
-    date: { type: Date, default: Date.now }
+    date: { type: Date, default: Date.now },
+    linkedBills: [{
+        billId: { type: mongoose.Schema.Types.ObjectId },
+        billNo: String,
+        adjustedAmount: Number
+    }]
 });
+
 
 // 9. Failed Emails Log
 const failedEmailSchema = new mongoose.Schema({
@@ -1910,29 +1920,62 @@ app.get('/api/admin/payments', async (req, res) => {
 app.post('/api/admin/payments', async (req, res) => {
     try {
         const { party, amount, method, refNo, type, date } = req.body;
+        const entryDate = date ? new Date(date) : new Date();
         
-        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        const count = await Payment.countDocuments({ type });
-        const paymentNo = `PAY-${type === 'RECEIPT' ? 'REC' : 'OUT'}-${dateStr}-${(count + 1).toString().padStart(4, '0')}`;
+        // 1. Generate Accounting Year Sequential Voucher No
+        const month = entryDate.getMonth() + 1;
+        const year  = entryDate.getFullYear();
+        const fiscalStart = month >= 4 ? year : year - 1;
+        const fiscalEnd   = (fiscalStart + 1).toString().slice(-2);
+        const yearTag     = `${fiscalStart.toString().slice(-2)}${fiscalEnd}`; // e.g. 2425
+        
+        const count = await Payment.countDocuments({ type, paymentNo: new RegExp(`^PAY${type === 'RECEIPT' ? 'IN' : 'OUT'}-${yearTag}`) });
+        const paymentNo = `PAY${type === 'RECEIPT' ? 'IN' : 'OUT'}-${yearTag}-${(count + 1).toString().padStart(4, '0')}`;
 
         const partyObj = await Stockist.findById(party);
         const newPayment = new Payment({
             paymentNo, party, partyName: partyObj ? partyObj.name : 'Unknown',
-            amount, method, refNo, type, date: date || new Date()
+            amount, method, refNo, type, date: entryDate,
+            linkedBills: []
         });
-        await newPayment.save();
 
-        // Update Balance
+        // 2. FIFO Bill Adjustment Logic
+        let remainingAmount = Number(amount);
         if (partyObj) {
-            // Receipt from Stockist decreases what they owe (Outstanding decreases)
-            // Payment to Supplier decreases what we owe them (Negative balance moves towards zero)
-            const adjustment = type === 'RECEIPT' ? -amount : amount; 
-            await Stockist.findByIdAndUpdate(party, { $inc: { outstandingBalance: adjustment } });
+            if (type === 'RECEIPT') {
+                // Adjust against Invoices
+                const bills = await Invoice.find({ stockist: party, outstandingAmount: { $gt: 0 } }).sort({ createdAt: 1 });
+                for (let bill of bills) {
+                    if (remainingAmount <= 0) break;
+                    const adjustment = Math.min(remainingAmount, bill.outstandingAmount || bill.grandTotal);
+                    bill.outstandingAmount = Number(((bill.outstandingAmount || bill.grandTotal) - adjustment).toFixed(2));
+                    await bill.save();
+                    newPayment.linkedBills.push({ billId: bill._id, billNo: bill.invoiceNo, adjustedAmount: adjustment });
+                    remainingAmount -= adjustment;
+                }
+            } else {
+                // Adjust against Purchase Entries
+                const bills = await PurchaseEntry.find({ supplier: party, outstandingAmount: { $gt: 0 } }).sort({ createdAt: 1 });
+                for (let bill of bills) {
+                    if (remainingAmount <= 0) break;
+                    const adjustment = Math.min(remainingAmount, bill.outstandingAmount || bill.grandTotal);
+                    bill.outstandingAmount = Number(((bill.outstandingAmount || bill.grandTotal) - adjustment).toFixed(2));
+                    await bill.save();
+                    newPayment.linkedBills.push({ billId: bill._id, billNo: bill.purchaseNo, adjustedAmount: adjustment });
+                    remainingAmount -= adjustment;
+                }
+            }
+
+            // 3. Update Overall Party Balance
+            const balanceAdj = type === 'RECEIPT' ? -amount : amount; 
+            await Stockist.findByIdAndUpdate(party, { $inc: { outstandingBalance: balanceAdj } });
         }
 
+        await newPayment.save();
         res.json({ success: true, payment: newPayment });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
+
 
 app.delete('/api/admin/payments/:id', async (req, res) => {
     try {
