@@ -444,6 +444,25 @@ const failedEmailSchema = new mongoose.Schema({
     lastAttempt: { type: Date, default: Date.now }
 });
 
+// 10. Expense Categories
+const expenseCategorySchema = new mongoose.Schema({
+    name: { type: String, required: true, unique: true },
+    type: { type: String, enum: ['Direct', 'Indirect'], default: 'Indirect' }
+});
+
+// 11. Expenses
+const expenseSchema = new mongoose.Schema({
+    expenseNo: { type: String, unique: true },
+    category: { type: mongoose.Schema.Types.ObjectId, ref: 'ExpenseCategory' },
+    categoryName: String,
+    title: String,
+    amount: { type: Number, required: true },
+    date: { type: Date, default: Date.now },
+    paymentMethod: String,
+    refNo: String,
+    notes: String
+});
+
 const mediaSchema = new mongoose.Schema({
     name: String,
     url: String,
@@ -466,7 +485,10 @@ const Invoice = mongoose.model('Invoice', invoiceSchema);
 const PurchaseEntry = mongoose.model('PurchaseEntry', purchaseEntrySchema);
 const FinancialNote = mongoose.model('FinancialNote', financialNoteSchema);
 const Payment = mongoose.model('Payment', paymentSchema);
+const ExpenseCategory = mongoose.model('ExpenseCategory', expenseCategorySchema);
+const Expense = mongoose.model('Expense', expenseSchema);
 const FailedEmail = mongoose.model('FailedEmail', failedEmailSchema);
+
 
 // --- NEGOTIATION ENDPOINTS ---
 
@@ -1919,6 +1941,80 @@ app.delete('/api/admin/payments/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- EXPENSE MODULE ---
+
+app.get('/api/admin/expenseCategories', async (req, res) => {
+    try {
+        const cats = await ExpenseCategory.find();
+        res.json(cats);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/expenseCategories', async (req, res) => {
+    try {
+        const newCat = new ExpenseCategory(req.body);
+        await newCat.save();
+        res.json({ success: true, category: newCat });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.delete('/api/admin/expenseCategories/:id', async (req, res) => {
+    try {
+        await ExpenseCategory.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/admin/expenses', async (req, res) => {
+    try {
+        const expenses = await Expense.find().populate('category').sort({ date: -1 });
+        res.json(expenses);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/expenses', async (req, res) => {
+    try {
+        const { category, title, amount, date, paymentMethod, refNo, notes } = req.body;
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const count = await Expense.countDocuments();
+        const expenseNo = `EXP-${dateStr}-${(count + 1).toString().padStart(4, '0')}`;
+
+        const catObj = await ExpenseCategory.findById(category);
+        const newExp = new Expense({
+            expenseNo, category, categoryName: catObj ? catObj.name : 'Uncategorized',
+            title, amount, date: date || new Date(), paymentMethod, refNo, notes
+        });
+        await newExp.save();
+        res.json({ success: true, expense: newExp });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.delete('/api/admin/expenses/:id', async (req, res) => {
+    try {
+        await Expense.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// --- ADVANCED REPORTING AGGREGATOR ---
+
+app.get('/api/admin/reports/full-audit', async (req, res) => {
+    try {
+        const [invoices, purchases, payments, notes, expenses, products, stockists] = await Promise.all([
+            Invoice.find().populate('stockist'),
+            PurchaseEntry.find(),
+            Payment.find().populate('party'),
+            FinancialNote.find().populate('party'),
+            Expense.find().populate('category'),
+            Product.find(),
+            Stockist.find()
+        ]);
+        res.json({
+            invoices, purchases, payments, notes, expenses, products, stockists,
+            timestamp: new Date()
+        });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 app.get('/api/admin/parties/:id/ledger', async (req, res) => {
     try {

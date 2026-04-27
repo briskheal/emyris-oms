@@ -543,7 +543,24 @@
                         <div id="master-hq-list" style="max-height: 200px; overflow-y: auto;"></div>
                     </div>
 
+                    <!-- Expense Categories Master -->
+                    <div class="glass-card">
+                        <h3 class="section-title" style="font-size: 1rem;">💸 Expense Categories</h3>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div class="form-group" style="display: flex; gap: 5px;">
+                                <input type="text" id="new-exp-cat-name" placeholder="Category (e.g. Rent)">
+                                <select id="new-exp-cat-type" style="width: 100px; padding: 5px;">
+                                    <option value="Indirect">Indirect</option>
+                                    <option value="Direct">Direct</option>
+                                </select>
+                                <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('expenseCategories')">ADD</button>
+                            </div>
+                            <div id="master-exp-cat-list" style="max-height: 200px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+
                     <!-- Multimedia Center (Full Width Horizontal) -->
+
                     <div class="glass-card" style="grid-column: 1 / -1; border: 1px solid var(--accent-glow); padding: 1.5rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.75rem;">
                             <h3 class="section-title" style="font-size: 1rem; color: var(--accent); margin: 0;">🎬 Multimedia Command Center</h3>
@@ -789,71 +806,21 @@
                 </div>
             </div>
 
-            <!-- REPORTS TAB -->
+            <!-- REPORTS TAB (OVERHAULED) -->
             <div id="tab-reports" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <h2 class="section-title" style="margin: 0;">📊 Tax Compliance & Business Analytics</h2>
+                    <div>
+                        <h2 class="section-title" style="margin: 0;">📊 Intelligence & Compliance Center</h2>
+                        <p style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-top: 5px;">Strategic reporting and tax audit portal</p>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                         <button class="btn btn-ghost" onclick="window.print()" style="font-size: 0.7rem;">⎙ PRINT VIEW</button>
+                         <button class="btn btn-primary" style="font-size: 0.7rem; background: var(--accent);" onclick="exportAllReports()">📦 EXCEL CONSOLIDATED</button>
+                    </div>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
                     
-                    <!-- SALES REPORTS GROUP -->
-                    <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid var(--primary);">
-                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 1.5rem;"><span style="opacity: 0.8;">📈</span> Sales Analytics</h3>
-                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('sales-summary')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Monthly Sales Register</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Detailed invoice-wise sales with GST breakdown.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('party-sales')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Party-wise Sales Analysis</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Revenue contribution per stockist/party.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('product-sales')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Product Movement Report</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Identify best-selling and slow-moving items.</span>
-                                </div>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- PROCUREMENT & INVENTORY -->
-                    <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid var(--accent);">
-                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 1.5rem;"><span style="opacity: 0.8;">🛒</span> Procurement & Stock</h3>
-                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('purchase-register')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Purchase Register</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">List of all stock-in entries and supplier inv.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('inventory-val')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Closing Stock Valuation</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Current value of all items in warehouse.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('low-stock')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Shortage / Reorder List</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Items below safety stock threshold.</span>
-                                </div>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- FINANCIAL & OUTSTANDING -->
-                    <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid #ef4444;">
-                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 1.5rem;"><span style="opacity: 0.8;">💰</span> Outstanding & Dues</h3>
-                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('outstanding-summary')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Outstanding Summary</span>
                                     <span style="font-size: 0.65rem; color: var(--text-muted);">List of all parties with balances.</span>
                                 </div>
                             </button>

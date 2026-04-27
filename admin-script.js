@@ -516,9 +516,11 @@ async function loadMasters() {
             fetch(`${API_BASE}/admin/hsns`).then(r => r.json()),
             fetch(`${API_BASE}/admin/gst`).then(r => r.json()),
             fetch(`${API_BASE}/admin/groups`).then(r => r.json()),
-            fetch(`${API_BASE}/admin/masters/hq`).then(r => r.json())
+            fetch(`${API_BASE}/admin/masters/hq`).then(r => r.json()),
+            fetch(`${API_BASE}/admin/expenseCategories`).then(r => r.json())
         ]);
-        window.masters = { categories: cats, hsns, gst, groups, hq };
+        window.masters = { categories: cats, hsns, gst, groups, hq, expenseCategories: expCats };
+
         renderMasterLists();
         updateDatalists();
     } catch (e) { console.error("Load masters fail", e); }
@@ -752,7 +754,9 @@ function renderMasterLists() {
     render('master-hsn-list', window.masters.hsns, 'code', 'hsns');
     render('master-gst-list', window.masters.gst, 'rate', 'gst');
     render('master-hq-list', window.masters.hq || [], 'name', 'masters/hq');
+    render('master-exp-cat-list', window.masters.expenseCategories || [], 'name', 'expenseCategories');
 }
+
 
 async function addMaster(type) {
     let val = "";
@@ -772,7 +776,12 @@ async function addMaster(type) {
     } else if (type === 'hq') {
         val = document.getElementById('new-hq-name').value;
         body = { name: val };
+    } else if (type === 'expenseCategories') {
+        val = document.getElementById('new-exp-cat-name').value;
+        const eType = document.getElementById('new-exp-cat-type').value;
+        body = { name: val, type: eType };
     }
+
 
     if (!val) return alert("Please enter a value");
     try {
@@ -3422,3 +3431,171 @@ function filterPayments() {
         </tr>
     `).join('');
 }
+
+// --- INTELLIGENCE & REPORTING ENGINE ---
+
+async function generateReport(type) {
+    try {
+        console.log(`🚀 Generating Report: ${type}`);
+        const res = await fetch(`${API_BASE}/admin/reports/full-audit`);
+        const data = await res.json();
+        const { invoices, purchases, payments, notes, expenses, products, stockists } = data;
+
+        let reportData = [];
+        let fileName = `Emyris_${type}_${new Date().toISOString().split('T')[0]}`;
+
+        switch (type) {
+            case 'bill-profit':
+                invoices.forEach(inv => {
+                    inv.items.forEach(item => {
+                        const prod = products.find(p => p._id.toString() === item.product.toString());
+                        const costPrice = prod ? prod.pts : 0;
+                        const profit = (item.priceUsed - costPrice) * item.qty;
+                        reportData.push({
+                            "Invoice No": inv.invoiceNo,
+                            "Date": new Date(inv.createdAt).toLocaleDateString('en-GB'),
+                            "Party": inv.stockistName,
+                            "Product": item.name,
+                            "Qty": item.qty,
+                            "Sale Rate": item.priceUsed,
+                            "Cost Rate": costPrice,
+                            "Profit Amount": profit.toFixed(2),
+                            "Margin %": costPrice > 0 ? (((item.priceUsed - costPrice) / costPrice) * 100).toFixed(2) : '100'
+                        });
+                    });
+                });
+                break;
+
+            case 'p-and-l':
+                const totalSales = invoices.reduce((s, x) => s + x.subTotal, 0);
+                const totalExpenses = expenses.reduce((s, x) => s + x.amount, 0);
+                let totalCogs = 0;
+                invoices.forEach(inv => {
+                    inv.items.forEach(item => {
+                        const prod = products.find(p => p._id.toString() === item.product.toString());
+                        totalCogs += (prod ? prod.pts : 0) * item.qty;
+                    });
+                });
+                reportData = [{
+                    "Metric": "Total Sales (Revenue)",
+                    "Amount": totalSales.toFixed(2)
+                }, {
+                    "Metric": "Cost of Goods Sold (COGS)",
+                    "Amount": totalCogs.toFixed(2)
+                }, {
+                    "Metric": "Gross Profit",
+                    "Amount": (totalSales - totalCogs).toFixed(2)
+                }, {
+                    "Metric": "Total Indirect Expenses",
+                    "Amount": totalExpenses.toFixed(2)
+                }, {
+                    "Metric": "NET PROFIT / LOSS",
+                    "Amount": (totalSales - totalCogs - totalExpenses).toFixed(2)
+                }];
+                break;
+
+            case 'stock-summary':
+                reportData = products.map(p => ({
+                    "Product Name": p.name,
+                    "HSN": p.hsn,
+                    "Category": p.category,
+                    "Group": p.group,
+                    "Current Stock": p.qtyAvailable,
+                    "Valuation (PTS)": (p.qtyAvailable * p.pts).toFixed(2),
+                    "Valuation (MRP)": (p.qtyAvailable * p.mrp).toFixed(2)
+                }));
+                break;
+
+            case 'exp-txn':
+                reportData = expenses.map(e => ({
+                    "Exp No": e.expenseNo,
+                    "Date": new Date(e.date).toLocaleDateString('en-GB'),
+                    "Category": e.categoryName,
+                    "Title": e.title,
+                    "Method": e.paymentMethod,
+                    "Ref No": e.refNo || '-',
+                    "Amount": e.amount
+                }));
+                break;
+
+            case 'gstr1':
+                reportData = invoices.map(inv => {
+                    const party = inv.stockist;
+                    return {
+                        "GSTIN": party ? party.gstNo : "N/A",
+                        "Receiver Name": inv.stockistName,
+                        "Invoice No": inv.invoiceNo,
+                        "Date": new Date(inv.createdAt).toLocaleDateString('en-GB'),
+                        "Total Value": inv.grandTotal,
+                        "Taxable Value": inv.subTotal,
+                        "IGST": party && party.state !== "TELANGANA" ? inv.gstAmount : 0,
+                        "CGST": party && party.state === "TELANGANA" ? inv.gstAmount / 2 : 0,
+                        "SGST": party && party.state === "TELANGANA" ? inv.gstAmount / 2 : 0
+                    };
+                });
+                break;
+
+            case 'low-stock':
+                reportData = products.filter(p => p.qtyAvailable < 10).map(p => ({
+                    "Product": p.name,
+                    "Current Qty": p.qtyAvailable,
+                    "Status": "REORDER REQUIRED"
+                }));
+                break;
+
+            case 'bank-statement':
+                const bankTxns = payments.filter(p => p.method === 'Bank Transfer' || p.method === 'UPI');
+                reportData = bankTxns.map(p => ({
+                    "Date": new Date(p.date).toLocaleDateString('en-GB'),
+                    "Ref No": p.refNo,
+                    "Party": p.partyName,
+                    "Type": p.type,
+                    "Amount": p.amount
+                }));
+                break;
+
+            case 'consolidated-ledger':
+                fileName = "Consolidated_Master_Ledger";
+                stockists.forEach(s => {
+                    reportData.push({
+                        "Party Name": s.name,
+                        "City": s.city,
+                        "Opening Balance": 0,
+                        "Closing Outstanding": s.outstandingBalance || 0
+                    });
+                });
+                break;
+
+            default:
+                alert(`Report "${type}" is being prepared for the next module update. Using basic data dump for now.`);
+                reportData = invoices.map(i => ({ "Date": i.createdAt, "No": i.invoiceNo, "Party": i.stockistName, "Amount": i.grandTotal }));
+        }
+
+        if (reportData.length === 0) {
+            alert("No data found for the selected period/criteria.");
+            return;
+        }
+
+        downloadExcel(reportData, fileName);
+    } catch (e) {
+        console.error("Report Generation Error:", e);
+        alert("Failed to generate report. Check console.");
+    }
+}
+
+async function exportAllReports() {
+    alert("🚀 Generating Consolidated Intelligence Pack... Please wait.");
+    const reports = ['bill-profit', 'stock-summary', 'exp-txn', 'gstr1', 'low-stock'];
+    for (const r of reports) {
+        await generateReport(r);
+        await new Promise(res => setTimeout(res, 500)); 
+    }
+}
+
+function downloadExcel(data, fileName) {
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Report");
+    XLSX.writeFile(wb, `${fileName}.xlsx`);
+}
+
