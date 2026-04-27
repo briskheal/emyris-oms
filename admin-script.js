@@ -902,13 +902,21 @@ async function loadSettings() {
                 const targetSrc = s.musicUrl.startsWith('http') ? s.musicUrl : window.location.origin + s.musicUrl;
                 if (audio.src !== targetSrc) {
                     audio.src = targetSrc;
+                    audio.load(); // Force reload the new source
                 }
+                
+                // Set crossorigin for external links (Drive, etc.)
+                if (s.musicUrl.includes('google.com') || s.musicUrl.includes('dropbox')) {
+                    audio.crossOrigin = "anonymous";
+                }
+
                 // Persistence
                 if (localStorage.getItem('emyris_music_on') === 'true' && audio.paused) {
                     audio.play().catch(() => {});
                 }
             }
         }
+
 
         if (s.videoUrl) {
             const videoName = s.videoUrl.split('/').pop();
@@ -986,6 +994,31 @@ function updateLocalVolume(val) {
     if (document.getElementById('volumePercent')) document.getElementById('volumePercent').innerText = `${Math.round(val * 100)}%`;
 }
 
+function testMedia(type) {
+    const urlInput = type === 'music' ? 'set-music-url' : 'set-video-url';
+    let url = document.getElementById(urlInput).value.trim();
+    if (!url) return alert("Please paste a link first");
+
+    // Auto-fix Drive Link
+    if (url.includes('drive.google.com') && url.includes('/d/')) {
+        const id = url.split('/d/')[1].split('/')[0];
+        url = `https://drive.google.com/uc?export=download&id=${id}`;
+        document.getElementById(urlInput).value = url;
+    }
+
+    if (type === 'music') {
+        const audio = document.getElementById('bgMusic');
+        if (audio) {
+            audio.src = url;
+            audio.load();
+            audio.play().then(() => alert("🎵 Music test started!")).catch(e => alert("❌ Playback failed. Check if link is a Direct Link."));
+        }
+    } else {
+        alert("📹 Video test: Save settings and check the Landing Page.");
+    }
+}
+
+
 
 
 async function saveSettings(e) {
@@ -1014,6 +1047,7 @@ async function saveSettings(e) {
     if (document.getElementById('set-video-url')) document.getElementById('set-video-url').value = vUrl;
 
     const data = {
+
         name: document.getElementById('set-name').value,
         tollFree: document.getElementById('set-tollfree').value,
         websites: [

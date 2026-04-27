@@ -549,18 +549,16 @@
                         <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 1.5rem;">
                             <p style="font-size: 0.65rem; color: #ef4444; line-height: 1.4;">
                                 ⚠️ <strong>IMPORTANT:</strong> Files uploaded here will be <strong>deleted</strong> during code updates (Git Push). 
-                                For permanent music/video, please paste a <strong>Direct Link</strong> (Google Drive, Dropbox, etc.) into the URL boxes below.
-                            </p>
-                        </div>
-
-                        
-                        <div style="margin-bottom: 1.5rem;">
+                                For permanent music/video, please paste a <strong>Direct Link</strong> (                        <div style="margin-bottom: 1.5rem;">
                             <label style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase;">Background Music (MP3)</label>
                             
                             <!-- URL Input (Share Link) -->
                             <div style="margin-bottom: 0.8rem;">
-                                <input type="text" id="set-music-url" placeholder="Paste Direct Link (Google Drive / Dropbox)" 
-                                    style="width: 100%; padding: 8px; font-size: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: #fff; margin-bottom: 5px;">
+                                <div style="display: flex; gap: 5px;">
+                                    <input type="text" id="set-music-url" placeholder="Paste Direct Link (Drive/Dropbox)" 
+                                        style="flex: 1; padding: 8px; font-size: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: #fff;">
+                                    <button class="btn btn-ghost" style="padding: 5px 12px; font-size: 0.65rem;" onclick="testMedia('music')">▶️ TEST</button>
+                                </div>
                                 <span style="font-size: 0.6rem; color: var(--text-muted);">OR upload from desktop:</span>
                             </div>
 
@@ -571,14 +569,16 @@
                             <p id="current-music-name" style="font-size: 0.65rem; color: var(--primary); margin-top: 5px;"></p>
                         </div>
 
-
                         <div>
                             <label style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase;">Landing Page Video (MP4)</label>
                             
                             <!-- URL Input (Share Link) -->
                             <div style="margin-bottom: 0.8rem;">
-                                <input type="text" id="set-video-url" placeholder="Paste Direct Link (Google Drive / Dropbox / YouTube)" 
-                                    style="width: 100%; padding: 8px; font-size: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: #fff; margin-bottom: 5px;">
+                                <div style="display: flex; gap: 5px;">
+                                    <input type="text" id="set-video-url" placeholder="Paste Direct Link (Drive/Dropbox/YouTube)" 
+                                        style="flex: 1; padding: 8px; font-size: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: #fff;">
+                                    <button class="btn btn-ghost" style="padding: 5px 12px; font-size: 0.65rem;" onclick="testMedia('video')">▶️ TEST</button>
+                                </div>
                                 <span style="font-size: 0.6rem; color: var(--text-muted);">OR upload from desktop:</span>
                             </div>
 
@@ -587,6 +587,8 @@
                                 <button class="btn btn-accent" style="padding: 5px 10px; font-size: 0.7rem;" onclick="uploadMedia('video')">UPLOAD</button>
                             </div>
                             <p id="current-video-name" style="font-size: 0.65rem; color: var(--primary); margin-top: 5px;"></p>
+                        </div>
+                   <p id="current-video-name" style="font-size: 0.65rem; color: var(--primary); margin-top: 5px;"></p>
                         </div>
 
                         <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05);">
