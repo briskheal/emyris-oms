@@ -28,8 +28,9 @@ async function syncProfile() {
 
 // --- INITIALIZATION ---
 window.onload = async () => {
-    // Load company settings immediately for landing page footer/contact
-    await loadSettings();
+    // We already call loadSettings in DOMContentLoaded for faster UI population
+    // but we can sync profile here if user is saved
+
 
     const savedUser = localStorage.getItem('emyris_user');
     if (savedUser) {
@@ -405,24 +406,33 @@ async function loadSettings() {
             const videoContainer = document.querySelector('#view-login .glass-card > div:nth-child(2)') || document.querySelector('#view-login [style*="height: 180px"]');
             if (videoContainer) {
                 const isYoutube = companySettings.videoUrl.includes('youtube.com') || companySettings.videoUrl.includes('youtu.be');
-                if (isYoutube) {
-                    videoContainer.innerHTML = `
-                        <iframe style="width: 100%; height: 100%; border: none; opacity: 0.8; pointer-events: none;" 
-                            src="${companySettings.videoUrl.includes('?') ? companySettings.videoUrl + '&autoplay=1&mute=1&loop=1' : companySettings.videoUrl + '?autoplay=1&mute=1&loop=1'}" 
-                            allow="autoplay; encrypted-media">
-                        </iframe>
-                        <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">EMYRIS LIVE SERIES</div>
-                    `;
-                } else {
-                    videoContainer.innerHTML = `
-                        <video autoplay muted loop playsinline preload="auto" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;">
-                            <source src="${companySettings.videoUrl}" type="video/mp4">
-                        </video>
-                        <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">EMYRIS LIVE SERIES</div>
-                    `;
+                
+                // Idempotent Check: Only update if source changed
+                const currentIframe = videoContainer.querySelector('iframe');
+                const currentVideo = videoContainer.querySelector('video');
+                const currentSrc = currentIframe ? currentIframe.src : (currentVideo ? currentVideo.querySelector('source').src : '');
+                
+                if (!currentSrc.includes(companySettings.videoUrl)) {
+                    if (isYoutube) {
+                        videoContainer.innerHTML = `
+                            <iframe style="width: 100%; height: 100%; border: none; opacity: 0.8; pointer-events: none;" 
+                                src="${companySettings.videoUrl.includes('?') ? companySettings.videoUrl + '&autoplay=1&mute=1&loop=1' : companySettings.videoUrl + '?autoplay=1&mute=1&loop=1'}" 
+                                allow="autoplay; encrypted-media">
+                            </iframe>
+                            <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">EMYRIS LIVE SERIES</div>
+                        `;
+                    } else {
+                        videoContainer.innerHTML = `
+                            <video autoplay muted loop playsinline preload="auto" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;">
+                                <source src="${companySettings.videoUrl}" type="video/mp4">
+                            </video>
+                            <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">EMYRIS LIVE SERIES</div>
+                        `;
+                    }
                 }
             }
         }
+
 
 
 
@@ -951,33 +961,6 @@ function toggleMusic() {
 
 
 
-function startMusic() {
-    const audio = document.getElementById('bgMusic');
-    const btn = document.getElementById('musicToggle');
-    const textEl = document.getElementById('musicText');
-    if (audio && audio.paused) {
-        audio.play().then(() => {
-            isMusicPlaying = true;
-            if (btn) {
-                btn.querySelector('span').innerText = '🔊';
-                if (textEl) textEl.innerText = 'Music On';
-                btn.style.borderColor = 'var(--primary)';
-            }
-        }).catch(e => {
-            console.warn("Music auto-start blocked by browser.");
-        });
-    }
-}
-
-
-function stopMusic() {
-    const audio = document.getElementById('bgMusic');
-    if (audio) {
-        audio.pause();
-        isMusicPlaying = false;
-    }
-}
-
 
 function viewOrderDetails(orderId) {
     const o = myOrdersHistory.find(x => x._id === orderId);
@@ -1250,4 +1233,27 @@ async function generateInvoicePDF(inv) {
 document.addEventListener('DOMContentLoaded', () => {
     loadSettings(); // Populate landing info & marquee on startup
 });
+
+// Resilient Media Handling: Ensure music/video doesn't stop on layout shifts
+window.addEventListener('resize', () => {
+    // Only resume if it was already playing
+    if (isMusicPlaying) {
+        const audio = document.getElementById('bgMusic');
+        if (audio && audio.paused) {
+            audio.play().catch(() => {});
+        }
+    }
+});
+
+function startMusic() {
+    const audio = document.getElementById('bgMusic');
+    if (!audio || !audio.src) return;
+    // Only attempt auto-start if music should be playing (state is true)
+    if (isMusicPlaying && audio.paused) {
+        audio.play().catch(e => {
+            console.warn("Music start blocked by browser policies.");
+        });
+    }
+}
+
 
