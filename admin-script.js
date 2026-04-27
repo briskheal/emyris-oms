@@ -1801,19 +1801,33 @@ function closeLedgerModal() {
 
 function openPaymentModalFromLedger() {
     if (!currentLedgerPartyId) return;
-    const partyInput = document.getElementById('payment-party-id');
-    if(partyInput) partyInput.value = currentLedgerPartyId;
-    
+
     const form = document.getElementById('paymentForm');
-    if(form) form.reset();
-    
-    const s = allStockists.find(x => x._id === currentLedgerPartyId);
-    if (s) {
-        document.getElementById('payment-type').value = s.partyType === 'STOCKIST' ? 'RECEIPT' : 'PAYMENT';
-    }
-    
-    document.getElementById('payment-date').value = new Date().toISOString().split('T')[0];
+    if (form) form.reset();
+
+    // Pre-fill date
+    const dateEl = document.getElementById('pay-date');
+    if (dateEl) dateEl.value = new Date().toISOString().split('T')[0];
+
+    // Open modal and set correct type + party
     document.getElementById('paymentModal').classList.remove('hidden');
+
+    // Set type based on party type
+    const s = allStockists.find(x => x._id === currentLedgerPartyId);
+    const typeEl = document.getElementById('pay-type');
+    if (typeEl && s) {
+        typeEl.value = (s.partyType || 'STOCKIST') === 'STOCKIST' ? 'RECEIPT' : 'PAYMENT';
+    }
+
+    // Trigger context update which populates party dropdown
+    updatePaymentContext();
+
+    // Then pre-select the party
+    setTimeout(() => {
+        const partyEl = document.getElementById('pay-party');
+        if (partyEl) partyEl.value = currentLedgerPartyId;
+        updatePartyBalanceDisplay();
+    }, 50);
 }
 
 function closePaymentModal() {
@@ -3675,3 +3689,91 @@ function downloadExcel(data, fileName) {
     XLSX.writeFile(wb, `${fileName}.xlsx`);
 }
 
+
+// --- EXPENSE MODULE ---
+
+const EXPENSE_CATEGORIES = {
+    Direct: [
+        'Raw Material Purchase',
+        'Packaging Material',
+        'Inward Freight / Logistics',
+        'Manufacturing Cost',
+        'Quality Testing / Lab Fees',
+        'Direct Labour',
+        'Commission / Brokerage',
+        'Sales Discount / Scheme Cost',
+        'Other Direct Cost'
+    ],
+    Indirect: [
+        'Office Rent',
+        'Salary & Wages',
+        'Electricity & Utilities',
+        'Telephone / Internet',
+        'Marketing & Advertising',
+        'Travel & Conveyance',
+        'Repairs & Maintenance',
+        'Professional Fees',
+        'Printing & Stationery',
+        'Bank Charges & Interest',
+        'Insurance Premium',
+        'Subscription & Software',
+        'Miscellaneous / Other'
+    ]
+};
+
+function loadExpenseCategoryOptions() {
+    const type = document.getElementById('exp-type').value;
+    const catSelect = document.getElementById('exp-category');
+    catSelect.innerHTML = '<option value="">-- Select Category --</option>';
+    if (!type) return;
+    (EXPENSE_CATEGORIES[type] || []).forEach(c => {
+        catSelect.innerHTML += `<option value="${c}">${c}</option>`;
+    });
+}
+
+async function saveExpense(e) {
+    e.preventDefault();
+    const btn = e.submitter;
+    const originalText = btn.innerHTML;
+
+    const data = {
+        type: document.getElementById('exp-type').value,
+        categoryName: document.getElementById('exp-category').value,
+        title: document.getElementById('exp-title').value,
+        date: document.getElementById('exp-date').value,
+        amount: Number(document.getElementById('exp-amount').value),
+        paymentMethod: document.getElementById('exp-method').value,
+        refNo: document.getElementById('exp-ref').value,
+        notes: document.getElementById('exp-notes').value
+    };
+
+    if (!data.type) return alert('Please select an Expense Type.');
+    if (!data.categoryName) return alert('Please select a Category.');
+    if (data.amount <= 0) return alert('Amount must be greater than zero.');
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ POSTING...';
+
+        const res = await fetch(`${API_BASE}/admin/expenses`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+
+        if (result.success) {
+            alert(`Expense posted successfully!`);
+            document.getElementById('expenseModal').classList.add('hidden');
+            document.getElementById('expenseForm').reset();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Server error. Please try again.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}

@@ -2267,6 +2267,89 @@
         </div>
     </div>
 
+    <!-- MODAL (Expense Entry) -->
+    <div id="expenseModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; z-index: 4000;">
+        <div class="glass-card" style="width: 620px; margin: 0; border-top: 5px solid #ef4444; padding: 0; overflow: hidden; border-radius: 24px;">
+            <!-- Header -->
+            <div style="background: rgba(255,255,255,0.03); padding: 1.5rem 2rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-size:0.55rem; font-weight:900; letter-spacing:0.15em; text-transform:uppercase; color:#ef4444; margin-bottom:4px;">EXPENSE MANAGEMENT</div>
+                    <h2 style="font-size:1.3rem; font-weight:900; color:#fff; margin:0;">💸 Log New Expense</h2>
+                </div>
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('expenseModal').classList.add('hidden')" style="width:40px;height:40px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;">✕</button>
+            </div>
+
+            <form id="expenseForm" onsubmit="saveExpense(event)" style="padding: 2rem;">
+
+                <!-- Row 1: Expense Type & Category -->
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; color:#ef4444; margin-bottom:8px; display:block;">EXPENSE TYPE</label>
+                        <select id="exp-type" required onchange="loadExpenseCategoryOptions()" style="padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px;">
+                            <option value="">-- Select Type --</option>
+                            <option value="Direct">📦 Direct Expense</option>
+                            <option value="Indirect">🏢 Indirect Expense</option>
+                        </select>
+                        <div style="font-size:0.6rem; color:var(--text-muted); margin-top:6px; line-height:1.4;">
+                            <strong style="color:#f59e0b;">Direct:</strong> Raw material, packaging, freight, production<br>
+                            <strong style="color:#10b981;">Indirect:</strong> Rent, salary, utilities, marketing, admin
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; color:#ef4444; margin-bottom:8px; display:block;">EXPENSE HEAD / CATEGORY</label>
+                        <select id="exp-category" required style="padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px;">
+                            <option value="">-- Select Type First --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 2: Title & Date -->
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; margin-bottom:8px; display:block;">EXPENSE TITLE / ITEM</label>
+                        <input type="text" id="exp-title" required placeholder="e.g. Office Rent - April 2026" style="padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; margin-bottom:8px; display:block;">DATE</label>
+                        <input type="date" id="exp-date" required style="padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px;">
+                    </div>
+                </div>
+
+                <!-- Row 3: Amount, Method, Ref -->
+                <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; color:#ef4444; margin-bottom:8px; display:block;">AMOUNT (₹)</label>
+                        <input type="number" id="exp-amount" required step="0.01" placeholder="0.00" style="font-size:1.6rem; font-weight:900; color:#ef4444; background:rgba(239,68,68,0.05); border:2px solid #ef4444; border-radius:16px; padding:12px; text-align:center;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; margin-bottom:8px; display:block;">PAYMENT METHOD</label>
+                        <select id="exp-method" style="padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px;">
+                            <option value="Cash">Cash</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="UPI">UPI / GPay</option>
+                            <option value="Cheque">Cheque</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; margin-bottom:8px; display:block;">REFERENCE NO</label>
+                        <input type="text" id="exp-ref" placeholder="Receipt / TxnID" style="padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px;">
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="form-group" style="margin-bottom:2rem;">
+                    <label style="font-size:0.7rem; font-weight:800; margin-bottom:8px; display:block;">NOTES (Optional)</label>
+                    <textarea id="exp-notes" rows="2" placeholder="Additional details..." style="width:100%; padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px; color:#fff; resize:vertical;"></textarea>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:1.5rem; border-top:1px solid var(--glass-border); padding-top:1.5rem;">
+                    <button type="button" class="btn btn-ghost" onclick="document.getElementById('expenseModal').classList.add('hidden')">CANCEL</button>
+                    <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg,#ef4444,#f97316); border:none; padding:12px 40px; font-weight:900;">💸 POST EXPENSE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="admin-script.js"></script>
 
     <audio id="bgMusic" loop preload="auto"></audio>
