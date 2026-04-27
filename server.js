@@ -199,11 +199,8 @@ const companySchema = new mongoose.Schema({
     bankAccountNo: { type: String, default: "" },
     bankIfsc: { type: String, default: "" },
     // Multimedia
-    musicUrl: { type: String, default: "" },
-    videoUrl: { type: String, default: "" },
-    musicVolume: { type: Number, default: 0.5 },
-
-
+    musicUrl: { type: String, default: "https://archive.org/download/PeacefulMusic/01%20Peaceful%20Mind.mp3" },
+    videoUrl: { type: String, default: "https://www.youtube.com/embed/4m2mN1XmXxE?autoplay=1&mute=1&loop=1&playlist=4m2mN1XmXxE&controls=0&showinfo=0&rel=0&modestbranding=1" },
     // Document Specific Formats
 
     invoiceTerms: { type: String, default: "1. Goods once sold will not be taken back.\n2. Interest @ 24% p.a. will be charged if payment is delayed." },
@@ -880,16 +877,10 @@ app.put('/api/admin/stockists/:id/approve', async (req, res) => {
 // --- SETTINGS & MASTERS ---
 
 app.get('/api/admin/settings', async (req, res) => {
-    try {
-        let settings = await Company.findOne().sort({ _id: 1 }); // Always get the absolute first record
-        if (!settings) {
-            // Return a clean default object without saving to DB yet
-            settings = new Company();
-        }
-        res.json(settings);
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    let settings = await Company.findOne();
+    if (!settings) settings = await Company.create({});
+    res.json(settings);
 });
-
 
 // --- MEDIA UPLOAD ENDPOINTS ---
 
@@ -920,14 +911,11 @@ app.post('/api/admin/settings', async (req, res) => {
             settings = new Company(req.body);
         } else {
             const updateData = { ...req.body };
-            // Protection: Don't overwrite existing media/images with empty strings
+            // Safety: Don't overwrite existing images with empty strings
             if (!updateData.logoImage && settings.logoImage) delete updateData.logoImage;
             if (!updateData.signatureImage && settings.signatureImage) delete updateData.signatureImage;
-            if (!updateData.musicUrl && settings.musicUrl) delete updateData.musicUrl;
-            if (!updateData.videoUrl && settings.videoUrl) delete updateData.videoUrl;
             
             Object.assign(settings, updateData);
-
         }
         await settings.save();
         res.json({ success: true, settings });

@@ -900,18 +900,6 @@ async function loadSettings() {
             const videoName = s.videoUrl.split('/').pop();
             if (document.getElementById('current-video-name')) document.getElementById('current-video-name').innerText = `Current: ${videoName}`;
         }
-        
-        // Sync Volume Slider
-        if (s.musicVolume !== undefined) {
-            const volSlider = document.getElementById('globalVolume');
-            if (volSlider) {
-                volSlider.value = s.musicVolume;
-                document.getElementById('volumePercent').innerText = `${Math.round(s.musicVolume * 100)}%`;
-                const audio = document.getElementById('bgMusic');
-                if (audio) audio.volume = s.musicVolume;
-            }
-        }
-
 
     } catch (e) { console.error("Load settings fail"); }
 }
@@ -927,9 +915,7 @@ function toggleMusic() {
     }
 
     if (audio.paused) {
-        audio.volume = 0.5; // Balanced volume
         audio.play().then(() => {
-
             localStorage.setItem('emyris_music_on', 'true');
             btn.style.background = 'rgba(16, 185, 129, 0.1)';
             btn.style.borderColor = '#10b981';
@@ -974,13 +960,6 @@ async function uploadMedia(type) {
         }
     } catch (e) { alert("Upload failed"); }
 }
-
-function updateLocalVolume(val) {
-    const audio = document.getElementById('bgMusic');
-    if (audio) audio.volume = val;
-    document.getElementById('volumePercent').innerText = `${Math.round(val * 100)}%`;
-}
-
 
 
 async function saveSettings(e) {
@@ -1027,10 +1006,8 @@ async function saveSettings(e) {
             color: document.getElementById('set-msg-color').value,
             speed: Number(document.getElementById('set-msg-speed').value || 30)
         },
-        invoiceStyle: document.getElementById('set-inv-style').value,
-        musicVolume: Number(document.getElementById('globalVolume') ? document.getElementById('globalVolume').value : 0.5)
+        invoiceStyle: document.getElementById('set-inv-style').value
     };
-
 
     try {
         const res = await fetch(`${API_BASE}/admin/settings`, {

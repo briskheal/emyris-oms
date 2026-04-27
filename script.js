@@ -391,26 +391,21 @@ async function loadSettings() {
             }
         }
 
-        // Multimedia Logic (Idempotent & Persistent)
+        // Multimedia Logic (Dynamic)
+        // Multimedia Logic (Dynamic)
         if (companySettings.musicUrl) {
             const audio = document.getElementById('bgMusic');
             if (audio) {
                 const targetSrc = companySettings.musicUrl.startsWith('http') ? companySettings.musicUrl : window.location.origin + companySettings.musicUrl;
+                // STICT CHECK: Only change if the absolute path is different
                 if (audio.src !== targetSrc) {
+                    console.log('🎵 [MUSIC] Source changed, updating...');
                     audio.src = targetSrc;
                 }
                 
-                // Apply Global Volume from Admin
-                if (companySettings.musicVolume !== undefined) {
-                    audio.volume = companySettings.musicVolume;
-                }
-
-                
-                // Sync State
-                const shouldPlay = localStorage.getItem('emyris_music_on') === 'true';
-                updateMusicUI(shouldPlay);
-                if (shouldPlay && audio.paused) {
-                    audio.play().catch(() => {});
+                // Persistence: Auto-resume if state was 'On'
+                if (localStorage.getItem('emyris_music_on') === 'true' && audio.paused) {
+                    audio.play().catch(() => console.warn("Auto-play blocked"));
                 }
             }
         }
@@ -419,25 +414,18 @@ async function loadSettings() {
             const videoContainer = document.getElementById('video-loop-container');
             if (videoContainer) {
                 const isYoutube = companySettings.videoUrl.includes('youtube.com') || companySettings.videoUrl.includes('youtu.be');
+                
+                // Idempotent Check: Avoid resetting if URL matches
                 const currentIframe = videoContainer.querySelector('iframe');
                 const currentVideo = videoContainer.querySelector('video');
+                const currentSrc = (currentIframe && currentIframe.src) || (currentVideo && currentVideo.querySelector('source') && currentVideo.querySelector('source').src) || '';
                 
-                // Better Comparison: Check if the video URL/ID actually changed
-                let needsUpdate = false;
-                if (isYoutube) {
-                    const videoId = companySettings.videoUrl.split('/').pop().split('v=').pop().split('&')[0];
-                    const existingSrc = currentIframe ? currentIframe.src : '';
-                    if (!existingSrc.includes(videoId)) needsUpdate = true;
-                } else {
-                    const existingSrc = (currentVideo && currentVideo.querySelector('source')) ? currentVideo.querySelector('source').src : '';
-                    if (!existingSrc.includes(companySettings.videoUrl)) needsUpdate = true;
-                }
-
-                if (needsUpdate) {
-                    console.log('📹 [VIDEO] Re-initializing player...');
+                if (!currentSrc.includes(companySettings.videoUrl)) {
+                    console.log('📹 [VIDEO] Source mismatch, re-injecting...');
                     if (isYoutube) {
-                        const baseId = companySettings.videoUrl.split('/').pop().split('v=').pop().split('&')[0];
-                        const embedUrl = `https://www.youtube.com/embed/${baseId}?autoplay=1&mute=1&loop=1&playlist=${baseId}&controls=0&showinfo=0&rel=0&modestbranding=1`;
+                        const embedUrl = companySettings.videoUrl.includes('?') ? 
+                            `${companySettings.videoUrl}&autoplay=1&mute=1&loop=1` : 
+                            `${companySettings.videoUrl}?autoplay=1&mute=1&loop=1`;
                         videoContainer.innerHTML = `
                             <iframe style="width: 100%; height: 100%; border: none; opacity: 0.8; pointer-events: none;" 
                                 src="${embedUrl}" allow="autoplay; encrypted-media">
@@ -455,7 +443,6 @@ async function loadSettings() {
                 }
             }
         }
-
 
 
 
@@ -938,57 +925,54 @@ function handleLogout() {
 
 // --- MUSIC LOGIC ---
 var isMusicPlaying = false; 
-
-function updateMusicUI(isPlaying) {
-    const btnLanding = document.getElementById('musicToggle');
-    const btnMain = document.getElementById('musicToggleMain');
-    const btnAdmin = document.getElementById('musicToggleAdmin');
-    
-    const text = isPlaying ? 'Music On' : 'Music Off';
-    const icon = isPlaying ? '🔊' : '🔇';
-    const border = isPlaying ? '#6366f1' : 'rgba(255,255,255,0.1)';
-    const bg = isPlaying ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.05)';
-    const color = isPlaying ? '#6366f1' : '#fff';
-
-    [btnLanding, btnMain, btnAdmin].forEach(btn => {
-        if (btn) {
-            btn.style.borderColor = border;
-            btn.style.background = bg;
-            btn.style.color = color;
-            const iconEl = btn.querySelector('span');
-            if (iconEl) iconEl.innerText = icon;
-            const textEl = btn.querySelector('span:nth-child(2)') || btn.querySelector('#musicTextAdmin');
-            if (textEl) textEl.innerText = text;
-        }
-    });
-}
-
 function toggleMusic() {
     console.log('🎵 [MUSIC] Toggle clicked');
     const audio = document.getElementById('bgMusic');
+    const btnLanding = document.getElementById('musicToggle');
+    const btnMain = document.getElementById('musicToggleMain');
+    
     if (!audio) return;
 
-    if (audio.paused) {
-        audio.volume = 0.5; // Balanced volume
+    const updateUI = (isPlaying) => {
+        const text = isPlaying ? 'Music On' : 'Music Off';
+        const icon = isPlaying ? '🔊' : '🔇';
+        const border = isPlaying ? '#6366f1' : 'rgba(255,255,255,0.1)';
+        const bg = isPlaying ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.05)';
+        const color = isPlaying ? '#6366f1' : '#fff';
 
+        [btnLanding, btnMain].forEach(btn => {
+            if (btn) {
+                btn.style.borderColor = border;
+                btn.style.background = bg;
+                btn.style.color = color;
+                const iconEl = btn.querySelector('span');
+                if (iconEl) iconEl.innerText = icon;
+                const textEl = btn.querySelector('span:nth-child(2)');
+                if (textEl) textEl.innerText = text;
+            }
+        });
+    };
+
+    if (audio.paused) {
+        audio.volume = 0.15;
         audio.play().then(() => {
             isMusicPlaying = true;
             localStorage.setItem('emyris_music_on', 'true');
-            updateMusicUI(true);
+            updateUI(true);
             console.log('✅ [MUSIC] Playing...');
         }).catch(e => {
             console.warn("🎵 [MUSIC] Playback blocked by browser policy. Interaction required.");
-            updateMusicUI(false);
+            updateUI(false);
         });
+
     } else {
         audio.pause();
         isMusicPlaying = false;
         localStorage.setItem('emyris_music_on', 'false');
-        updateMusicUI(false);
+        updateUI(false);
         console.log('⏸️ [MUSIC] Paused');
     }
 }
-
 
 
 
