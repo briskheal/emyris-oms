@@ -895,6 +895,7 @@ async function loadSettings() {
         if (s.musicUrl) {
             const musicName = s.musicUrl.split('/').pop();
             if (document.getElementById('current-music-name')) document.getElementById('current-music-name').innerText = `Current: ${musicName}`;
+            if (document.getElementById('set-music-url')) document.getElementById('set-music-url').value = s.musicUrl;
             
             const audio = document.getElementById('bgMusic');
             if (audio) {
@@ -908,10 +909,13 @@ async function loadSettings() {
                 }
             }
         }
+
         if (s.videoUrl) {
             const videoName = s.videoUrl.split('/').pop();
             if (document.getElementById('current-video-name')) document.getElementById('current-video-name').innerText = `Current: ${videoName}`;
+            if (document.getElementById('set-video-url')) document.getElementById('set-video-url').value = s.videoUrl;
         }
+
 
     } catch (e) { console.error("Load settings fail"); }
 }
@@ -1029,8 +1033,11 @@ async function saveSettings(e) {
             speed: Number(document.getElementById('set-msg-speed').value || 30)
         },
         invoiceStyle: document.getElementById('set-inv-style').value,
-        musicVolume: Number(document.getElementById('globalVolume') ? document.getElementById('globalVolume').value : 0.5)
+        musicVolume: Number(document.getElementById('globalVolume') ? document.getElementById('globalVolume').value : 0.5),
+        musicUrl: document.getElementById('set-music-url') ? document.getElementById('set-music-url').value : '',
+        videoUrl: document.getElementById('set-video-url') ? document.getElementById('set-video-url').value : ''
     };
+
 
 
     try {
