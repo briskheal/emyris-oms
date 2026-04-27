@@ -989,12 +989,29 @@ function updateLocalVolume(val) {
 
 
 async function saveSettings(e) {
-    e.preventDefault();
-    const btn = document.querySelector('button[form="companyForm"]');
-    if (!btn) return;
-    const originalHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = `⏳ SAVING CONFIGURATION...`;
+    if (e) e.preventDefault();
+    
+    let mUrl = document.getElementById('set-music-url') ? document.getElementById('set-music-url').value.trim() : '';
+    let vUrl = document.getElementById('set-video-url') ? document.getElementById('set-video-url').value.trim() : '';
+
+    // Auto-fix Google Drive Links (Convert View to Download)
+    const fixDrive = (url) => {
+        if (url.includes('drive.google.com') && url.includes('/d/')) {
+            const parts = url.split('/d/');
+            if (parts.length > 1) {
+                const id = parts[1].split('/')[0];
+                return `https://drive.google.com/uc?export=download&id=${id}`;
+            }
+        }
+        return url;
+    };
+
+    mUrl = fixDrive(mUrl);
+    vUrl = fixDrive(vUrl);
+
+    // Visual feedback for the auto-fix
+    if (document.getElementById('set-music-url')) document.getElementById('set-music-url').value = mUrl;
+    if (document.getElementById('set-video-url')) document.getElementById('set-video-url').value = vUrl;
 
     const data = {
         name: document.getElementById('set-name').value,
@@ -1025,8 +1042,8 @@ async function saveSettings(e) {
         upiId: document.getElementById('set-upi-id') ? document.getElementById('set-upi-id').value : '',
         bankAccountNo: document.getElementById('set-bank-acc') ? document.getElementById('set-bank-acc').value : '',
         bankIfsc: document.getElementById('set-bank-ifsc') ? document.getElementById('set-bank-ifsc').value : '',
-        signatureImage: document.getElementById('set-signature-b64').value || companyProfile.signatureImage || '',
-        logoImage: (document.getElementById('set-logo-b64') && document.getElementById('set-logo-b64').value) ? document.getElementById('set-logo-b64').value : (companyProfile.logoImage || ''),
+        signatureImage: document.getElementById('set-signature-b64').value || (companyProfile && companyProfile.signatureImage) || '',
+        logoImage: (document.getElementById('set-logo-b64') && document.getElementById('set-logo-b64').value) ? document.getElementById('set-logo-b64').value : ((companyProfile && companyProfile.logoImage) || ''),
         scrollingMessage: {
             text: document.getElementById('set-msg-text').value,
             color: document.getElementById('set-msg-color').value,
@@ -1034,9 +1051,10 @@ async function saveSettings(e) {
         },
         invoiceStyle: document.getElementById('set-inv-style').value,
         musicVolume: Number(document.getElementById('globalVolume') ? document.getElementById('globalVolume').value : 0.5),
-        musicUrl: document.getElementById('set-music-url') ? document.getElementById('set-music-url').value : '',
-        videoUrl: document.getElementById('set-video-url') ? document.getElementById('set-video-url').value : ''
+        musicUrl: mUrl,
+        videoUrl: vUrl
     };
+
 
 
 
