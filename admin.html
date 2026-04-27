@@ -1307,7 +1307,8 @@
                 </div>
                 <div style="display: flex; gap: 0.75rem;">
                     <button type="button" class="btn btn-ghost" onclick="closeProductModal()" style="padding:6px 14px;font-size:0.75rem;border-radius:8px;">CANCEL</button>
-                    <button type="button" class="btn btn-primary" onclick="document.getElementById('productForm').requestSubmit()" style="padding:6px 16px;font-size:0.75rem;border-radius:8px;">SAVE PRODUCT</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-product" onclick="document.getElementById('productForm').requestSubmit()" style="padding:6px 16px;font-size:0.75rem;border-radius:8px;">SAVE PRODUCT</button>
+
                 </div>
             </div>
             <form id="productForm" onsubmit="saveProduct(event)" style="display: flex; flex-direction: column; flex: 1;">
@@ -1410,18 +1411,24 @@
         <div class="glass-card" style="width: 850px; margin: 0; border-top: 4px solid var(--accent); padding: 1.5rem 2rem; max-height: 95vh; overflow-y: auto;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
                 <div>
-                    <div style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;opacity:0.9;">GLOBAL MASTER</div>
-                    <div style="font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🤝 Manage Party Record</div>
+                    <div id="party-modal-subtitle" style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;opacity:0.9;">GLOBAL MASTER</div>
+                    <div id="party-modal-title" style="font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🤝 Manage Party Record</div>
                 </div>
-                <button type="button" class="btn btn-ghost" onclick="closePartyModal()" style="padding:5px 12px;font-size:0.72rem;opacity:0.7;">✕ Close</button>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button type="button" class="btn btn-ghost" onclick="closePartyModal()" style="padding:5px 12px;font-size:0.72rem;opacity:0.7;">✕ Cancel</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-party" onclick="document.getElementById('partyForm').requestSubmit()" style="padding:5px 15px;font-size:0.72rem; background: var(--accent);">SAVE & APPROVE</button>
+                </div>
+
             </div>
             
-            <form id="partyForm" onsubmit="saveParty(event)">
+            <form id="partyForm" onsubmit="saveParty(event)" style="display: flex; flex-direction: column; gap: 1.5rem;">
                 <input type="hidden" id="party-id">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                
+                <!-- TOP GRID: IDENTITY -->
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem;">
                     <div class="form-group">
-                        <label>Firm Name</label>
-                        <input type="text" id="party-name" required>
+                        <label>Firm Name / Entity Name</label>
+                        <input type="text" id="party-name" required placeholder="Full registered name">
                     </div>
                     <div class="form-group">
                         <label>Party Type</label>
@@ -1430,108 +1437,65 @@
                             <option value="SUPPLIER">SUPPLIER (Vendor)</option>
                         </select>
                     </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
                     <div class="form-group">
-                        <label>Login ID / User ID</label>
-                        <input type="text" id="party-login" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Password (Secret)</label>
-                        <input type="text" id="party-pass" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Email Address</label>
-                        <input type="email" id="party-email" required>
+                        <label style="color: #f59e0b; font-weight: 800;">📍 Assign Headquarter (HQ) *</label>
+                        <select id="party-hq" required style="border: 1px solid #f59e0b; box-shadow: 0 0 10px rgba(245, 158, 11, 0.1);">
+                            <option value="">-- Select HQ --</option>
+                        </select>
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                <!-- MIDDLE GRID: AUTH & CONTACT -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 1rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
                     <div class="form-group">
-                        <label>Credit Limit (₹)</label>
-                        <input type="number" id="party-limit" value="0">
+                        <label>Login ID (Email/UID)</label>
+                        <input type="text" id="party-login" required readonly style="background: rgba(255,255,255,0.02); opacity: 0.7; font-family: monospace;">
                     </div>
                     <div class="form-group">
-                        <label>Outstanding (₹)</label>
-                        <input type="number" id="party-balance" value="0">
+                        <label>Security Password</label>
+                        <input type="text" id="party-pass" required readonly style="background: rgba(255,255,255,0.02); opacity: 0.7; font-family: monospace;">
                     </div>
                     <div class="form-group">
-                        <label>PAN Number</label>
-                        <input type="text" id="party-pan" required>
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-                    <div class="form-group">
-                        <label>GST Number</label>
-                        <input type="text" id="party-gst">
-                    </div>
-                    <div class="form-group">
-                        <label>Drug License (DL)</label>
-                        <input type="text" id="party-dl">
-                    </div>
-                    <div class="form-group">
-                        <label>FSSAI Number</label>
-                        <input type="text" id="party-fssai" placeholder="FSSAI Reg No">
+                        <label>Email Address (For Notifications)</label>
+                        <input type="email" id="party-email" required placeholder="contact@example.com">
                     </div>
                 </div>
 
+                <!-- BOTTOM GRID: REGULATORY & FINANCE -->
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                    <div class="form-group"><label>GSTIN Number</label><input type="text" id="party-gst" maxlength="15" placeholder="15-digit GST"></div>
+                    <div class="form-group"><label>Drug License (DL)</label><input type="text" id="party-dl" placeholder="DL-XX-XXXXXX"></div>
+                    <div class="form-group"><label>FSSAI Number</label><input type="text" id="party-fssai" placeholder="14-digit FSSAI"></div>
+                    <div class="form-group"><label>PAN Number</label><input type="text" id="party-pan" maxlength="10"></div>
+                </div>
+
+                <!-- LOCATION GRID -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem;">
-                    <div class="form-group">
-                        <label>City</label>
-                        <input type="text" id="party-city">
-                    </div>
-                    <div class="form-group">
-                        <label>Pincode</label>
-                        <input type="number" id="party-pincode">
-                    </div>
-                    <div class="form-group">
-                        <label>State</label>
-                        <input type="text" id="party-state">
-                    </div>
-                    <div class="form-group">
-                        <label>Phone</label>
-                        <input type="text" id="party-phone">
-                    </div>
+                    <div class="form-group"><label>City</label><input type="text" id="party-city" required></div>
+                    <div class="form-group"><label>Pincode</label><input type="number" id="party-pincode" required></div>
+                    <div class="form-group"><label>State</label><input type="text" id="party-state" required></div>
+                    <div class="form-group"><label>Phone/WhatsApp</label><input type="text" id="party-phone" required></div>
                 </div>
-
 
                 <div class="form-group">
-                    <label>Assigned HQ (Headquarters)</label>
-                    <select id="party-hq">
-                        <option value="">-- Select HQ --</option>
-                    </select>
+                    <label>Complete Mailing Address</label>
+                    <textarea id="party-address" rows="2" style="min-height: 60px; font-size: 0.8rem;"></textarea>
                 </div>
 
-
-                <div class="form-group">
-                    <label>Full Address</label>
-                    <textarea id="party-address" style="min-height: 60px;"></textarea>
+                <!-- ACCOUNTING / HIDDEN -->
+                <div style="display: none;">
+                    <input type="number" id="party-limit" value="50000">
+                    <input type="number" id="party-balance" value="0">
+                    <input type="text" id="party-bank-name">
+                    <input type="text" id="party-bank-acc">
+                    <input type="text" id="party-bank-ifsc">
                 </div>
 
-                <div style="margin-top: 1.5rem; padding: 1.5rem; background: rgba(255,255,255,0.03); border-radius: 16px; border: 1px dashed var(--glass-border);">
-                    <p style="font-size: 0.7rem; color: var(--primary); margin-bottom: 1rem; font-weight: 700; text-transform: uppercase;">🏦 Banking Information (Party Master)</p>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
-                        <div class="form-group">
-                            <label>Bank Name</label>
-                            <input type="text" id="party-bank-name" placeholder="e.g. HDFC Bank">
-                        </div>
-                        <div class="form-group">
-                            <label>Account Number</label>
-                            <input type="text" id="party-bank-acc" placeholder="Account No">
-                        </div>
-                        <div class="form-group">
-                            <label>IFSC Code</label>
-                            <input type="text" id="party-bank-ifsc" placeholder="IFSC000XXXX">
-                        </div>
-                    </div>
+                <div style="padding-top: 1rem; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: flex-end; gap: 1rem;">
+                    <p style="margin: 0; align-self: center; font-size: 0.7rem; color: var(--text-muted); font-style: italic;">* Mandatory HQ assignment required for approval.</p>
                 </div>
+            </form>
 
-                <div style="margin-top: 2rem; display: flex; gap: 1rem;">
-                    <button type="button" class="btn btn-ghost" onclick="closePartyModal()" style="flex: 1;">CANCEL</button>
-                    <button type="submit" class="btn btn-primary" style="flex: 2;">SAVE PARTY RECORD</button>
-                </div>
             </form>
         </div>
     </div>

@@ -1253,10 +1253,13 @@ function renderStockists(list = null) {
             <td><span class="badge ${s.approved ? 'badge-approved' : 'badge-pending'}" style="font-size:0.6rem;">${s.approved ? 'APPROVED' : 'PENDING'}</span></td>
             <td style="text-align:right; white-space:nowrap;">
                 <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem; color:var(--primary);" onclick="viewLedger('${s._id}')">LEDGER</button>
-                <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem;" onclick="openPartyModal('${s._id}')">EDIT</button>
+                <button class="btn ${s.approved ? 'btn-ghost' : 'btn-primary'}" style="padding:6px 12px; font-size: 0.65rem; ${s.approved ? '' : 'background:var(--accent);'}" onclick="openPartyModal('${s._id}')">
+                    ${s.approved ? 'EDIT' : 'VERIFY & APPROVE'}
+                </button>
                 <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem; color:#ef4444;" onclick="deleteStockist('${s._id}')">DELETE</button>
             </td>
         </tr>
+
     `).join('');
 }
 
@@ -1295,7 +1298,7 @@ function openPartyModal(id = null) {
             document.getElementById('party-login').value = s.loginId || '';
             document.getElementById('party-pass').value = s.password || '';
             document.getElementById('party-email').value = s.email || '';
-            document.getElementById('party-limit').value = s.creditLimit || 0;
+            document.getElementById('party-limit').value = s.creditLimit || 50000;
             document.getElementById('party-balance').value = s.outstandingBalance || 0;
             document.getElementById('party-pan').value = s.panNo || '';
             document.getElementById('party-gst').value = s.gstNo || '';
@@ -1306,13 +1309,26 @@ function openPartyModal(id = null) {
             document.getElementById('party-phone').value = s.phone || '';
             document.getElementById('party-address').value = s.address || '';
             document.getElementById('party-pincode').value = s.pincode || '';
-
-            document.getElementById('party-bank-name').value = s.bankName || '';
-            document.getElementById('party-bank-acc').value = s.bankAccountNo || '';
-            document.getElementById('party-bank-ifsc').value = s.bankIfsc || '';
             document.getElementById('party-hq').value = s.hq || '';
 
+            // Dynamic Header & Button for Approval
+            if (!s.approved) {
+                document.getElementById('party-modal-subtitle').innerText = "NEW REGISTRATION";
+                document.getElementById('party-modal-title').innerText = "📋 Verify & Approve Stockist";
+                document.getElementById('btn-save-party').innerText = "SAVE & APPROVE";
+                document.getElementById('btn-save-party').style.background = "var(--accent)";
+            } else {
+                document.getElementById('party-modal-subtitle').innerText = "GLOBAL MASTER";
+                document.getElementById('party-modal-title').innerText = "🤝 Update Party Record";
+                document.getElementById('btn-save-party').innerText = "UPDATE RECORD";
+                document.getElementById('btn-save-party').style.background = "var(--primary)";
+            }
         }
+    } else {
+        document.getElementById('party-modal-subtitle').innerText = "GLOBAL MASTER";
+        document.getElementById('party-modal-title').innerText = "🤝 Create New Party";
+        document.getElementById('btn-save-party').innerText = "SAVE PARTY";
+        document.getElementById('btn-save-party').style.background = "var(--primary)";
     }
     modal.classList.remove('hidden');
 }
@@ -1324,6 +1340,13 @@ function closePartyModal() {
 async function saveParty(e) {
     e.preventDefault();
     const id = document.getElementById('party-id').value;
+    const hq = document.getElementById('party-hq').value;
+
+    // Enforce HQ Selection
+    if (!hq) {
+        return alert("❌ ACTION REQUIRED: Please assign a Headquarter (HQ) for this party before saving/approving.");
+    }
+
     const data = {
         name: document.getElementById('party-name').value,
         partyType: document.getElementById('party-type').value,
@@ -1341,11 +1364,7 @@ async function saveParty(e) {
         phone: document.getElementById('party-phone').value,
         address: document.getElementById('party-address').value,
         pincode: document.getElementById('party-pincode').value,
-        bankName: document.getElementById('party-bank-name').value,
-
-        bankAccountNo: document.getElementById('party-bank-acc').value,
-        bankIfsc: document.getElementById('party-bank-ifsc').value,
-        hq: document.getElementById('party-hq').value,
+        hq: hq,
         approved: true 
     };
 
@@ -1360,7 +1379,7 @@ async function saveParty(e) {
         });
         const result = await res.json();
         if (result.success) {
-            alert("✅ Party record saved successfully!");
+            alert("✅ Party record saved and activated!");
             closePartyModal();
             loadStockists();
         } else {
@@ -1368,6 +1387,7 @@ async function saveParty(e) {
         }
     } catch (e) { alert("Error saving party record."); }
 }
+
 
 function closeStockistModal() {
     document.getElementById('partyModal').classList.add('hidden');
