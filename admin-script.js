@@ -7,18 +7,19 @@ let companyProfile = {};
 function toggleSidebar() {
     if (window.innerWidth > 1024) return; // Desktop: sidebar always visible
     const sidebar = document.querySelector('.sidebar');
-    if (sidebar) sidebar.classList.toggle('show');
+    const overlay = document.getElementById('sidebarOverlay');
+    const isOpen = sidebar && sidebar.classList.contains('show');
+    if (sidebar) sidebar.classList.toggle('show', !isOpen);
+    if (overlay) overlay.classList.toggle('show', !isOpen);
 }
 
-// Close sidebar on item click for mobile
-document.addEventListener('click', (e) => {
-    if (window.innerWidth <= 1024) {
-        const sidebar = document.querySelector('.sidebar');
-        if (sidebar && sidebar.classList.contains('show') && !sidebar.contains(e.target) && !e.target.closest('.menu-toggle')) {
-            sidebar.classList.remove('show');
-        }
-    }
-});
+function closeSidebar() {
+    if (window.innerWidth > 1024) return;
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (sidebar) sidebar.classList.remove('show');
+    if (overlay) overlay.classList.remove('show');
+}
 
 function formatMMYY(el) {
     let v = el.value.replace(/\D/g, '');
@@ -247,20 +248,19 @@ function toggleSubmenu(id, el) {
     const submenu = document.getElementById(id);
     if (!submenu) return;
     
-    const isHidden = submenu.classList.contains('hidden');
+    const isVisible = submenu.style.display !== 'none' && submenu.style.display !== '';
     
+    // Close all other sub-menus
     document.querySelectorAll('[id^="sub-"]').forEach(sub => {
-        if (sub.id !== id && !sub.contains(submenu)) {
-            sub.classList.add('hidden');
-        }
+        if (sub.id !== id) sub.style.display = 'none';
     });
 
-    if (isHidden) {
-        submenu.classList.remove('hidden');
-        if (el) el.classList.add('active');
-    } else {
-        submenu.classList.add('hidden');
+    if (isVisible) {
+        submenu.style.display = 'none';
         if (el) el.classList.remove('active');
+    } else {
+        submenu.style.display = 'flex';
+        if (el) el.classList.add('active');
     }
 }
 

@@ -80,8 +80,16 @@
         }
         @media (max-width: 1024px) {
             .menu-toggle { display: flex; }
-            .sidebar { position: fixed; left: -280px; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-            .sidebar.show { left: 0; box-shadow: 20px 0 50px rgba(0,0,0,0.8); }
+            .sidebar { 
+                position: fixed; 
+                left: -300px; 
+                top: 0;
+                height: 100vh;
+                z-index: 1010;
+                transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: none;
+            }
+            .sidebar.show { left: 0; box-shadow: 20px 0 60px rgba(0,0,0,0.9); }
         }
         .total-cell { color: #facc15 !important; font-weight: 900 !important; font-size: 1rem !important; }
 
@@ -103,6 +111,15 @@
             overflow-y: auto;
             z-index: 100;
         }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 1009;
+            backdrop-filter: blur(2px);
+        }
+        .sidebar-overlay.show { display: block; }
         .sidebar::-webkit-scrollbar { width: 4px; }
         .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
         .content { flex: 1; padding: 1.25rem 1.5rem; position: relative; overflow-x: hidden; }
@@ -120,6 +137,7 @@
             font-weight: 500; 
             font-size: 0.9rem;
             border: 1px solid transparent;
+            position: relative;
         }
         .nav-item:hover { background: rgba(255, 255, 255, 0.04); color: #fff; border-color: rgba(255,255,255,0.05); }
         .nav-item.active { 
@@ -133,6 +151,8 @@
             content: '';
             position: absolute;
             left: 0;
+            top: 50%;
+            transform: translateY(-50%);
             height: 20px;
             width: 4px;
             background: var(--grad-primary);
@@ -270,7 +290,7 @@
 <body>
     <div class="blob blob-1"></div>
     <div class="blob blob-2"></div>
-
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
     <div class="marquee-container">
         <div class="marquee-text">Welcome to EMYRIS OMS Admin Command Center • System Status: Active • Monitoring Real-time Orders</div>
     </div>
@@ -315,27 +335,27 @@
 
     <div class="main-container">
         <aside class="sidebar">
-            <div class="nav-item active" onclick="switchTab('dashboard', this); toggleSidebar()"><span>📊</span> Dashboard</div>
-            <div class="nav-item" onclick="switchTab('products', this); toggleSidebar()"><span>💊</span> Product Master</div>
-            <div class="nav-item" onclick="switchTab('stockists', this); toggleSidebar()"><span>🤝</span> Party Master</div>
-            <div class="nav-item" onclick="switchTab('masters', this); toggleSidebar()"><span>📋</span> Global Masters</div>
-            <div class="nav-item" onclick="switchTab('orders', this); toggleSidebar()"><span>🛒</span> Order History</div>
+            <div class="nav-item active" onclick="switchTab('dashboard', this); closeSidebar()"><span>📊</span> Dashboard</div>
+            <div class="nav-item" onclick="switchTab('products', this); closeSidebar()"><span>💊</span> Product Master</div>
+            <div class="nav-item" onclick="switchTab('stockists', this); closeSidebar()"><span>🤝</span> Party Master</div>
+            <div class="nav-item" onclick="switchTab('masters', this); closeSidebar()"><span>📋</span> Global Masters</div>
+            <div class="nav-item" onclick="switchTab('orders', this); closeSidebar()"><span>🛒</span> Order History</div>
             <div style="margin-bottom: 0.5rem;">
                 <div class="nav-item" onclick="toggleSubmenu('sub-finance', this)">
                     <span>💰</span> Treasury & Finance <i style="margin-left: auto; font-size: 0.7rem; opacity: 0.5;">▼</i>
                 </div>
-                <div id="sub-finance" class="hidden" style="padding-left: 2.5rem; display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;">
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('invoices', null)">● Sales Invoices</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('payments', null, 'RECEIPT')">● Payment In (Receipts)</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('payments', null, 'PAYMENT')">● Payment Out (Payouts)</div>
+                <div id="sub-finance" style="display:none; padding-left: 2.5rem; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('invoices', null); closeSidebar()">● Sales Invoices</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('payments', null, 'RECEIPT'); closeSidebar()">● Payment In (Receipts)</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('payments', null, 'PAYMENT'); closeSidebar()">● Payment Out (Payouts)</div>
                     
                     <div style="margin: 5px 0; border-top: 1px dashed rgba(255,255,255,0.05);"></div>
 
                     <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="toggleSubmenu('sub-notes', null)">● Financial Notes (CN/DN) <i style="font-size: 0.6rem; opacity: 0.5;">▶</i></div>
-                    <div id="sub-notes" class="hidden" style="padding-left: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                        <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Salable Return')">- Sales Linked CN</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Purchase Return')">- Purc. Linked DN</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Price Diff')">- Price Difference (CN/DN)</div>
+                    <div id="sub-notes" style="display:none; padding-left: 1rem; flex-direction: column; gap: 0.5rem;">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Salable Return'); closeSidebar()">- Sales Linked CN</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Purchase Return'); closeSidebar()">- Purc. Linked DN</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Price Diff'); closeSidebar()">- Price Difference (CN/DN)</div>
                     </div>
                 </div>
             </div>
@@ -343,16 +363,16 @@
                 <div class="nav-item" onclick="toggleSubmenu('sub-direct-sales', this)">
                     <span>🌐</span> Direct Sales <i style="margin-left: auto; font-size: 0.7rem; opacity: 0.5;">▼</i>
                 </div>
-                <div id="sub-direct-sales" class="hidden" style="padding-left: 2.5rem; display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;">
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="openOnlineOrderModal()">● Online Orders</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="openDirectOrderModal()">● Direct Order to Company</div>
+                <div id="sub-direct-sales" style="display:none; padding-left: 2.5rem; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="openOnlineOrderModal(); closeSidebar()">● Online Orders</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="openDirectOrderModal(); closeSidebar()">● Direct Order to Company</div>
                 </div>
             </div>
 
-            <div class="nav-item" onclick="switchTab('purchase', this)"><span>🛒</span> Purchase Entry</div>
-            <div class="nav-item" onclick="switchTab('reports', this)"><span>📊</span> Reports & Compliance</div>
-            <div class="nav-item" onclick="switchTab('system', this)"><span>🛠️</span> System Health</div>
-            <div class="nav-item" onclick="switchTab('settings', this)"><span>⚙️</span> Company Settings</div>
+            <div class="nav-item" onclick="switchTab('purchase', this); closeSidebar()"><span>🛒</span> Purchase Entry</div>
+            <div class="nav-item" onclick="switchTab('reports', this); closeSidebar()"><span>📊</span> Reports & Compliance</div>
+            <div class="nav-item" onclick="switchTab('system', this); closeSidebar()"><span>🛠️</span> System Health</div>
+            <div class="nav-item" onclick="switchTab('settings', this); closeSidebar()"><span>⚙️</span> Company Settings</div>
         </aside>
 
         <main class="content">
