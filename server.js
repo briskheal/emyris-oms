@@ -1352,16 +1352,17 @@ app.post('/api/admin/direct-sale', async (req, res) => {
             if (!product) continue;
 
             const qtyToDeduct = Number(item.qty || 0);
+            // Find the specific batch (must be in outer scope for processedItems)
+            const batch = product.batches.find(b => b.batchNo === item.batch) || null;
+
             if (qtyToDeduct > 0) {
                 // Update overall stock
                 product.qtyAvailable -= qtyToDeduct;
 
-                // Find the specific batch
-                const batch = product.batches.find(b => b.batchNo === item.batch);
                 if (batch) {
                     batch.qtyAvailable -= qtyToDeduct;
                 } else {
-                    // Fallback to FIFO if batch not found (shouldn't happen with UI selection)
+                    // Fallback to FIFO if batch not found
                     let remaining = qtyToDeduct;
                     for (let b of product.batches) {
                         if (remaining <= 0) break;

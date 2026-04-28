@@ -3391,7 +3391,8 @@ function editPurchaseEntry(id) {
 }
 
 function setInvoiceStyle(style) {
-    document.getElementById('set-inv-style').value = style;
+    const styleEl = document.getElementById('set-inv-style');
+    if (styleEl) styleEl.value = style;
     const styles = ['classic', 'modern', 'compact', 'sample'];
     const colors = {
         classic: { border: '2px solid var(--primary)', shadow: '0 0 20px rgba(99,102,241,0.3)', bg: 'rgba(99,102,241,0.05)' },
