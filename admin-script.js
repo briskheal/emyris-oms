@@ -133,7 +133,7 @@ let allNotes = [];
 let currentNoteReason = 'ALL';
 let purchaseItems = []; // Temporary storage for new purchase entry
 let directSaleItems = []; // Temporary storage for direct sales entry
-let companyProfile = {};
+// companyProfile declared at top of file
 let currentEditingNoteId = null; 
 let allPayments = [];
 let currentPaymentTypeFilter = 'RECEIPT';
