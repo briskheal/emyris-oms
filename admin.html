@@ -629,7 +629,70 @@
                         </div>
                     </div>
 
-                    <!-- Multimedia Center (Full Width Horizontal) -->
+                    <!-- DOCUMENT NUMBERING MASTER -->
+                    <div class="glass-card" style="grid-column: 1 / -1; margin-top: 1rem; border: 1px solid var(--primary);">
+                        <h3 class="section-title" style="font-size: 1rem; color: var(--primary);">🧾 Document Numbering & Counters</h3>
+                        <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 1.5rem;">Define prefixes (e.g., INV-24-) and starting numbers for all financial documents.</p>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">SALES INVOICE</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-inv-pre" placeholder="Prefix (INV-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-inv-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">PURCHASE ENTRY</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-pur-pre" placeholder="Prefix (PUR-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-pur-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">SALES RETURN (S-CN)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-scn-pre" placeholder="Prefix (S-CN-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-scn-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">PURCHASE RETURN (P-DN)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-pdn-pre" placeholder="Prefix (P-DN-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-pdn-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">PRICE DIFF CN (PD-CN)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-pdcn-pre" placeholder="Prefix (PD-CN-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-pdcn-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">PRICE DIFF DN (PD-DN)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-pddn-pre" placeholder="Prefix (PD-DN-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-pddn-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">LOSS DN (BD-DN)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-ldn-pre" placeholder="Prefix (BD-DN-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-ldn-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">LOSS CN (EB-CN)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-lcn-pre" placeholder="Prefix (EB-CN-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-lcn-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="glass-card" style="grid-column: 1 / -1; border: 1px solid var(--accent-glow); padding: 1.5rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.75rem;">

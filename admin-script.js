@@ -1065,7 +1065,6 @@ async function loadSettings() {
         }
 
         const designBadge = document.getElementById('design-status-badge');
-        const designLink = document.getElementById('design-preview-link');
         if (s.referenceInvoiceUrl) {
             if (designBadge) designBadge.innerHTML = '<span class="badge badge-approved" style="font-size:0.6rem;">READY TO MATCH</span>';
             if (designLink) designLink.innerHTML = `<a href="${s.referenceInvoiceUrl}" target="_blank" style="color:var(--accent); text-decoration:none;">📄 View Uploaded Sample</a>`;
@@ -1073,6 +1072,44 @@ async function loadSettings() {
             if (designBadge) designBadge.innerHTML = '<span class="badge badge-pending" style="font-size:0.6rem;">NO SAMPLE</span>';
         }
 
+        if (companyProfile.defaultPlaceOfSupply) document.getElementById('set-supply').value = companyProfile.defaultPlaceOfSupply;
+
+        // Load Counters
+        if (s.documentCounters) {
+            const dc = s.documentCounters;
+            if (dc.invoice) {
+                document.getElementById('cnt-inv-pre').value = dc.invoice.prefix || '';
+                document.getElementById('cnt-inv-next').value = dc.invoice.nextNumber || 1;
+            }
+            if (dc.purchase) {
+                document.getElementById('cnt-pur-pre').value = dc.purchase.prefix || '';
+                document.getElementById('cnt-pur-next').value = dc.purchase.nextNumber || 1;
+            }
+            if (dc.saleReturn) {
+                document.getElementById('cnt-scn-pre').value = dc.saleReturn.prefix || '';
+                document.getElementById('cnt-scn-next').value = dc.saleReturn.nextNumber || 1;
+            }
+            if (dc.purchaseReturn) {
+                document.getElementById('cnt-pdn-pre').value = dc.purchaseReturn.prefix || '';
+                document.getElementById('cnt-pdn-next').value = dc.purchaseReturn.nextNumber || 1;
+            }
+            if (dc.pdcn) {
+                document.getElementById('cnt-pdcn-pre').value = dc.pdcn.prefix || '';
+                document.getElementById('cnt-pdcn-next').value = dc.pdcn.nextNumber || 1;
+            }
+            if (dc.pddn) {
+                document.getElementById('cnt-pddn-pre').value = dc.pddn.prefix || '';
+                document.getElementById('cnt-pddn-next').value = dc.pddn.nextNumber || 1;
+            }
+            if (dc.lossDn) {
+                document.getElementById('cnt-ldn-pre').value = dc.lossDn.prefix || '';
+                document.getElementById('cnt-ldn-next').value = dc.lossDn.nextNumber || 1;
+            }
+            if (dc.lossCn) {
+                document.getElementById('cnt-lcn-pre').value = dc.lossCn.prefix || '';
+                document.getElementById('cnt-lcn-next').value = dc.lossCn.nextNumber || 1;
+            }
+        }
     } catch (e) { console.error("Load settings fail", e); }
 }
 
@@ -1329,7 +1366,7 @@ async function saveSettings(e) {
             bankAccountNo: safeGetVal('set-bank-acc'),
             bankIfsc: safeGetVal('set-bank-ifsc'),
             paymentDueDays: Number(safeGetVal('set-payment-due-days')) || 21,
-            defaultPlaceOfSupply: safeGetVal('set-default-supply'),
+            defaultPlaceOfSupply: safeGetVal('set-supply'),
             signatureImage: safeGetVal('set-signature-b64'),
             logoImage: safeGetVal('set-logo-b64'),
             scrollingMessage: {
@@ -1340,7 +1377,17 @@ async function saveSettings(e) {
             invoiceStyle: safeGetVal('set-inv-style'),
             musicVolume: Number(safeGetVal('globalVolume')),
             musicUrl: fixDrive(safeGetVal('set-music-url')),
-            videoUrl: fixDrive(safeGetVal('set-video-url'))
+            videoUrl: fixDrive(safeGetVal('set-video-url')),
+            documentCounters: {
+                invoice: { prefix: document.getElementById('cnt-inv-pre').value, nextNumber: Number(document.getElementById('cnt-inv-next').value) },
+                purchase: { prefix: document.getElementById('cnt-pur-pre').value, nextNumber: Number(document.getElementById('cnt-pur-next').value) },
+                saleReturn: { prefix: document.getElementById('cnt-scn-pre').value, nextNumber: Number(document.getElementById('cnt-scn-next').value) },
+                purchaseReturn: { prefix: document.getElementById('cnt-pdn-pre').value, nextNumber: Number(document.getElementById('cnt-pdn-next').value) },
+                pdcn: { prefix: document.getElementById('cnt-pdcn-pre').value, nextNumber: Number(document.getElementById('cnt-pdcn-next').value) },
+                pddn: { prefix: document.getElementById('cnt-pddn-pre').value, nextNumber: Number(document.getElementById('cnt-pddn-next').value) },
+                lossDn: { prefix: document.getElementById('cnt-ldn-pre').value, nextNumber: Number(document.getElementById('cnt-ldn-next').value) },
+                lossCn: { prefix: document.getElementById('cnt-lcn-pre').value, nextNumber: Number(document.getElementById('cnt-lcn-next').value) }
+            }
         };
 
         const res = await fetch(`${API_BASE}/admin/settings`, {
@@ -2026,6 +2073,9 @@ function renderInvoices() {
             <td style="text-align:right;">
                 <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem; color:var(--primary);" onclick="downloadInvoicePDF('${inv._id}')">DOWNLOAD PDF</button>
             </td>
+            <td style="text-align:center;">
+                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewInvoicePDF('${inv._id}')" title="View PDF">👁️</button>
+            </td>
         </tr>
     `).join('');
 }
@@ -2550,10 +2600,12 @@ function renderFinancialNotes(data = allNotes) {
                         <button class="btn btn-primary" style="padding:4px 8px; font-size:0.65rem; background:#10b981;" onclick="reviewPDCNClaim('${n._id}', 'approve')">APPROVE</button>
                         <button class="btn btn-primary" style="padding:4px 8px; font-size:0.65rem; background:#ef4444;" onclick="reviewPDCNClaim('${n._id}', 'reject')">REJECT</button>
                     ` : ''}
-                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewNotePDF('${n._id}')" title="View PDF">👁️</button>
                     <button class="btn btn-ghost" style="padding:5px 10px;" onclick="editNote('${n._id}')" title="Edit Record">✏️</button>
                     <button class="btn btn-ghost" style="padding:5px 10px;" onclick="downloadNotePDF('${n._id}')" title="Download PDF">📥</button>
                     <button class="btn btn-ghost" style="padding:5px 10px; color:#ef4444;" onclick="deleteNote('${n._id}')" title="Delete Record">✕</button>
+                </td>
+                <td style="text-align:center;">
+                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewNotePDF('${n._id}')" title="View PDF">👁️</button>
                 </td>
             </tr>
         `;

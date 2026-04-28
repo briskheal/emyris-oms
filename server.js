@@ -240,7 +240,17 @@ const companySchema = new mongoose.Schema({
     invoiceStyle: { type: String, default: 'classic' },
     referenceInvoiceUrl: { type: String, default: "" },
     paymentDueDays: { type: Number, default: 21 },
-    defaultPlaceOfSupply: { type: String, default: "GUJARAT" }
+    defaultPlaceOfSupply: { type: String, default: "GUJARAT" },
+    documentCounters: {
+        invoice: { prefix: { type: String, default: "INV-24-" }, nextNumber: { type: Number, default: 1 } },
+        purchase: { prefix: { type: String, default: "PUR-24-" }, nextNumber: { type: Number, default: 1 } },
+        saleReturn: { prefix: { type: String, default: "S-CN-24-" }, nextNumber: { type: Number, default: 1 } },
+        purchaseReturn: { prefix: { type: String, default: "P-DN-24-" }, nextNumber: { type: Number, default: 1 } },
+        pdcn: { prefix: { type: String, default: "PD-CN-24-" }, nextNumber: { type: Number, default: 1 } },
+        pddn: { prefix: { type: String, default: "PD-DN-24-" }, nextNumber: { type: Number, default: 1 } },
+        lossDn: { prefix: { type: String, default: "BD-DN-24-" }, nextNumber: { type: Number, default: 1 } },
+        lossCn: { prefix: { type: String, default: "EB-CN-24-" }, nextNumber: { type: Number, default: 1 } }
+    }
 });
 
 // 2. Global Masters
@@ -515,6 +525,25 @@ const Payment = mongoose.model('Payment', paymentSchema);
 const ExpenseCategory = mongoose.model('ExpenseCategory', expenseCategorySchema);
 const Expense = mongoose.model('Expense', expenseSchema);
 const FailedEmail = mongoose.model('FailedEmail', failedEmailSchema);
+
+// --- HELPER: Atomic Document Counters ---
+async function getNextDocNo(type) {
+    try {
+        const key = `documentCounters.${type}.nextNumber`;
+        const company = await Company.findOneAndUpdate(
+            {}, 
+            { $inc: { [key]: 1 } }, 
+            { new: false } // We want the value BEFORE increment
+        );
+        if (!company || !company.documentCounters || !company.documentCounters[type]) return null;
+        const counter = company.documentCounters[type];
+        // Format: Prefix + Number padded to 3 digits (or more if user wants, but 3 is requested via '000')
+        return `${counter.prefix}${counter.nextNumber.toString().padStart(3, '0')}`;
+    } catch (e) {
+        console.error(`Counter error for ${type}:`, e);
+        return null;
+    }
+}
 
 
 // --- NEGOTIATION ENDPOINTS ---
@@ -1346,10 +1375,13 @@ app.post('/api/admin/direct-sale', async (req, res) => {
         const { party, partyName, refNo, date, channel, paymentMode, remarks, items, subTotal, gstAmount, grandTotal, type, placeOfSupply, dueDate } = req.body;
         const settings = await Company.findOne() || { paymentDueDays: 21, defaultPlaceOfSupply: "GUJARAT" };
 
-        // 1. Generate Order No (EMY-DIR-YYYYMMDD-XXXX)
+        // 1. Generate Order No
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
         const orderCount = await Order.countDocuments();
         const orderNo = `EMY-DIR-${dateStr}-${(orderCount + 1).toString().padStart(4, '0')}`;
+        
+        // Generate Invoice No using Custom Counter
+        const invoiceNo = await getNextDocNo('invoice') || `EMY-INV-${dateStr}-${(orderCount + 1).toString().padStart(4, '0')}`;
 
         const stockist = await Stockist.findById(party);
         
@@ -1414,9 +1446,7 @@ app.post('/api/admin/direct-sale', async (req, res) => {
         });
         await newOrder.save();
 
-        // 4. Generate Invoice
-        const invCount = await Invoice.countDocuments();
-        const invoiceNo = `EMY-INV-${dateStr}-${(invCount + 1).toString().padStart(4, '0')}`;
+        // 4. Generate Invoice (Handled above for Direct Sale)
 
         const newInvoice = new Invoice({
             invoiceNo,
@@ -1469,10 +1499,8 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
         const existing = await Invoice.findOne({ order: order._id });
         if (existing) return res.json({ success: true, invoice: existing, message: "Invoice already exists" });
 
-        // Generate Invoice No (EMY-INV-YYYYMMDD-XXXX)
-        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        const count = await Invoice.countDocuments();
-        const invoiceNo = `EMY-INV-${dateStr}-${(count + 1).toString().padStart(4, '0')}`;
+        // Generate Invoice No using Custom Counter
+        const invoiceNo = await getNextDocNo('invoice') || `EMY-INV-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${(await Invoice.countDocuments() + 1).toString().padStart(4, '0')}`;
         const settings = await Company.findOne() || { paymentDueDays: 21, defaultPlaceOfSupply: "GUJARAT" };
 
         // Fetch products to get GST Snapshot
@@ -1547,8 +1575,8 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
         
         // Generate Purchase No
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        const count = await PurchaseEntry.countDocuments();
-        const purchaseNo = `EMY-PUR-${dateStr}-${(count + 1).toString().padStart(4, '0')}`;
+        // Generate Purchase No using Custom Counter
+        const purchaseNo = await getNextDocNo('purchase') || `PUR-${new Date().getFullYear()}-${((await PurchaseEntry.countDocuments()) + 1).toString().padStart(4, '0')}`;
 
         const newEntry = new PurchaseEntry({
             purchaseNo,
@@ -1676,19 +1704,32 @@ app.post('/api/admin/financial-notes', async (req, res) => {
     try {
         const { noteType, party, amount, reason, description, refInvoiceNo, refInvoiceDate, items, subTotal, gstAmount, placeOfSupply } = req.body;
         
-        // Generate Note No — unique series per module
-        const reasonNoteMap = {
-            'Salable Return':   { prefix: 'S-CN',  type: 'CN' },
-            'Exp/Brk/Damg CN':  { prefix: 'EB-CN', type: 'CN' },
-            'Price Diff CN':    { prefix: 'PD-CN', type: 'CN' },
-            'Purchase Return':  { prefix: 'P-DN',  type: 'DN' },
-            'Price Diff DN':    { prefix: 'PD-DN', type: 'DN' },
-            'Brk/Dmg/Loss DN':  { prefix: 'BD-DN', type: 'DN' }
+        // Generate Note No — using Custom Counter if available
+        const reasonCounterMap = {
+            'Salable Return':   'saleReturn',
+            'Exp/Brk/Damg CN':  'lossCn',
+            'Price Diff CN':    'pdcn',
+            'Purchase Return':  'purchaseReturn',
+            'Price Diff DN':    'pddn',
+            'Brk/Dmg/Loss DN':  'lossDn'
         };
-        const noteMap = reasonNoteMap[reason] || { prefix: `EMY-${noteType}`, type: noteType };
-        const count = await FinancialNote.countDocuments({ reason });
-        const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
-        const noteNo = `${noteMap.prefix}-${dateStr}-${(count+1).toString().padStart(4,'0')}`;
+        const counterType = reasonCounterMap[reason] || (noteType === 'CN' ? 'lossCn' : 'lossDn');
+        let noteNo = await getNextDocNo(counterType);
+        
+        if (!noteNo) {
+            const reasonNoteMap = {
+                'Salable Return':   { prefix: 'S-CN',  type: 'CN' },
+                'Exp/Brk/Damg CN':  { prefix: 'EB-CN', type: 'CN' },
+                'Price Diff CN':    { prefix: 'PD-CN', type: 'CN' },
+                'Purchase Return':  { prefix: 'P-DN',  type: 'DN' },
+                'Price Diff DN':    { prefix: 'PD-DN', type: 'DN' },
+                'Brk/Dmg/Loss DN':  { prefix: 'BD-DN', type: 'DN' }
+            };
+            const noteMap = reasonNoteMap[reason] || { prefix: `EMY-${noteType}`, type: noteType };
+            const count = await FinancialNote.countDocuments({ reason });
+            const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+            noteNo = `${noteMap.prefix}-${dateStr}-${(count+1).toString().padStart(4,'0')}`;
+        }
 
         const partyObj = await Stockist.findById(party);
         
