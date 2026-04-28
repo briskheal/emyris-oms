@@ -955,7 +955,6 @@ async function loadSettings() {
 
     } catch (e) { console.error("Load settings fail", e); }
 }
-}
 
 async function uploadInvoiceDesign() {
     const fileInput = document.getElementById('invoice-design-file');
