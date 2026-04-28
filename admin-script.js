@@ -4,16 +4,37 @@ let allProducts = [];
 let currentProductBatches = [];
 let companyProfile = {};
 
+function formatMMYY(el) {
+    let v = el.value.replace(/\D/g, '');
+    if (v.length > 2) {
+        el.value = v.slice(0, 2) + '-' + v.slice(2, 4);
+    } else {
+        el.value = v;
+    }
+}
+
 function checkBatchStatus(expDate) {
     if (!expDate || expDate === 'N/A' || expDate === '-') return { status: 'ok', label: '' };
-    // Handle YYYY-MM or MM/YY
+    
     let year, month;
+    // Handle MM-YY, MM/YY or YYYY-MM
     if (expDate.includes('-')) {
-        [year, month] = expDate.split('-').map(Number);
+        const parts = expDate.split('-');
+        if (parts[0].length === 4) { // YYYY-MM
+            year = Number(parts[0]);
+            month = Number(parts[1]);
+        } else { // MM-YY
+            month = Number(parts[0]);
+            year = Number(parts[1]) + 2000;
+        }
     } else if (expDate.includes('/')) {
-        [month, year] = expDate.split('/').map(Number);
-        year += 2000;
+        const parts = expDate.split('/');
+        month = Number(parts[0]);
+        year = Number(parts[1]);
+        if (year < 100) year += 2000;
     } else return { status: 'ok', label: '' };
+
+    if (isNaN(year) || isNaN(month)) return { status: 'ok', label: '' };
 
     const exp = new Date(year, month - 1, 1);
     const today = new Date();
@@ -2692,16 +2713,9 @@ function openReturnModal(reason, editData = null) {
             if (row) row.querySelector('.return-prod-select').value = item.productId;
             document.getElementById(`return-hsn-${rowId}`).value   = item.hsn      || '';
             document.getElementById(`return-batch-${rowId}`).value = item.batchNo  || '';
-            // Populate MM/YY selects from stored expDate (MM/YY)
+            // Populate MM-YY from stored expDate
             if (item.expDate) {
-                const parts = item.expDate.split('/');
-                const mm = (parts[0] || '').padStart(2,'0');
-                const yy = parts[1] || '';
-                const fullYear = yy.length === 2 ? '20' + yy : yy;
-                const mSel = document.getElementById(`return-exp-mm-${rowId}`);
-                const ySel = document.getElementById(`return-exp-yy-${rowId}`);
-                if (mSel) mSel.value = mm;
-                if (ySel) ySel.value = fullYear;
+                document.getElementById(`return-exp-${rowId}`).value = item.expDate.replace('/', '-');
             }
             document.getElementById(`return-qty-${rowId}`).value     = item.qty;
             document.getElementById(`return-price-${rowId}`).value   = item.price;
@@ -2766,14 +2780,9 @@ function addReturnRow() {
                 style="${inputBase}">
         </td>
         <td style="${cellStyle}">
-            <select id="return-exp-mm-${id}" onchange="calculateReturnTotals()" style="${selBase}text-align:center;">
-                <option value="">MM</option>${months}
-            </select>
-        </td>
-        <td style="${cellStyle}">
-            <select id="return-exp-yy-${id}" onchange="calculateReturnTotals()" style="${selBase}text-align:center;">
-                <option value="">YY</option>${years}
-            </select>
+            <input type="text" id="return-exp-${id}" placeholder="MM-YY"
+                oninput="formatMMYY(this); calculateReturnTotals()" maxlength="5"
+                style="${inputBase}text-align:center;">
         </td>
         <td style="${cellStyle}">
             <input type="number" id="return-qty-${id}" oninput="calculateReturnTotals()" min="1" required
@@ -2814,16 +2823,10 @@ function updateReturnRowData(rowId, productId) {
         if (p.batches && p.batches.length > 0) {
             const b = p.batches[0];
             document.getElementById(`return-batch-${rowId}`).value = b.batchNo || '';
-            // Auto-fill MM / Year selects from batch expDate (stored as MM/YY or MM/YYYY)
+            // Auto-fill MM-YY from batch expDate
             if (b.expDate) {
-                const parts = b.expDate.split('/');
-                const mm = (parts[0] || '').padStart(2,'0');
-                const yy = parts[1] || '';
-                const fullYear = yy.length === 2 ? '20' + yy : yy;
-                const mSel = document.getElementById(`return-exp-mm-${rowId}`);
-                const ySel = document.getElementById(`return-exp-yy-${rowId}`);
-                if (mSel) mSel.value = mm;
-                if (ySel) ySel.value = fullYear;
+                const el = document.getElementById(`return-exp-${rowId}`);
+                if (el) el.value = b.expDate.replace('/', '-');
             }
         }
     }
@@ -2877,10 +2880,8 @@ async function saveMultiItemReturn(e) {
             const gstPct = Number(document.getElementById(`return-gst-pct-${id}`).value);
             const batch  = document.getElementById(`return-batch-${id}`).value;
             const hsn    = document.getElementById(`return-hsn-${id}`).value;
-            // Read MM/YY from dropdowns
-            const expMM  = (document.getElementById(`return-exp-mm-${id}`)?.value || '');
-            const expYY  = (document.getElementById(`return-exp-yy-${id}`)?.value || '');
-            const exp    = (expMM && expYY) ? `${expMM}/${String(expYY).slice(-2)}` : '';
+            // Read MM-YY from input
+            const exp = document.getElementById(`return-exp-${id}`).value || 'N/A';
 
             if (!prodId || !qty || !price || !batch || !exp) {
                 throw new Error('All columns (Product, Batch, Exp Month/Year, Qty, Price) are mandatory.');

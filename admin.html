@@ -1406,7 +1406,7 @@
                                     <thead style="background: rgba(255,255,255,0.05); position: sticky; top: 0; backdrop-filter: blur(8px);">
                                         <tr>
                                             <th style="padding: 12px 14px; text-align: left; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.1);">Batch No</th>
-                                            <th style="padding: 12px 14px; text-align: center; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.1);">Exp (MM/YY)</th>
+                                            <th style="padding: 12px 14px; text-align: center; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.1);">Exp (MM-YY)</th>
                                             <th style="padding: 12px 14px; text-align: right; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.1);">MRP</th>
                                             <th style="padding: 12px 14px; text-align: right; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.1);">PTS</th>
                                             <th style="padding: 12px 14px; text-align: right; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.1);">PTR</th>
@@ -1423,7 +1423,7 @@
                                 <table style="width: 100%; border-collapse: collapse;">
                                     <tr>
                                         <td style="padding: 4px 6px;"><input type="text" id="new-batch-no" placeholder="B.No" style="padding: 8px 10px; font-size: 0.75rem; background: rgba(0,0,0,0.5);"></td>
-                                        <td style="padding: 4px 6px;"><input type="month" id="new-batch-exp" style="padding: 8px 10px; font-size: 0.75rem; text-align: center; background: rgba(0,0,0,0.5);"></td>
+                                        <td style="padding: 4px 6px;"><input type="text" id="new-batch-exp" placeholder="MM-YY" style="padding: 8px 10px; font-size: 0.75rem; text-align: center; background: rgba(0,0,0,0.5);" oninput="formatMMYY(this)" maxlength="5"></td>
                                         <td style="padding: 4px 6px;"><input type="number" id="new-batch-mrp" step="0.01" placeholder="MRP" style="padding: 8px 10px; font-size: 0.75rem; text-align: right; background: rgba(0,0,0,0.5);"></td>
                                         <td style="padding: 4px 6px;"><input type="number" id="new-batch-pts" step="0.01" placeholder="PTS" style="padding: 8px 10px; font-size: 0.75rem; text-align: right; background: rgba(0,0,0,0.5);"></td>
                                         <td style="padding: 4px 6px;"><input type="number" id="new-batch-ptr" step="0.01" placeholder="PTR" style="padding: 8px 10px; font-size: 0.75rem; text-align: right; background: rgba(0,0,0,0.5);"></td>
@@ -1920,11 +1920,11 @@
                         </div>
                         <div>
                             <label style="font-size: 0.65rem;">Mfg Date</label>
-                            <input type="month" id="pur-mfg">
+                            <input type="text" id="pur-mfg" placeholder="MM-YY" oninput="formatMMYY(this)" maxlength="5">
                         </div>
                         <div>
                             <label style="font-size: 0.65rem;">Exp Date</label>
-                            <input type="month" id="pur-exp">
+                            <input type="text" id="pur-exp" placeholder="MM-YY" oninput="formatMMYY(this)" maxlength="5">
                         </div>
                         <div>
                             <label style="font-size: 0.65rem;">Qty</label>
