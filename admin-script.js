@@ -1151,89 +1151,99 @@ async function deleteFromMedia(id) {
 
 async function saveSettings(e) {
     if (e) e.preventDefault();
-    const btn = e.target.closest('button') || e.target;
-    const originalHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = "⏳ SAVING...";
     
-    let mUrl = document.getElementById('set-music-url') ? document.getElementById('set-music-url').value.trim() : '';
-    let vUrl = document.getElementById('set-video-url') ? document.getElementById('set-video-url').value.trim() : '';
-
-    // Auto-fix Google Drive Links (Convert View to Download)
-    const fixDrive = (url) => {
-        if (url.includes('drive.google.com') && url.includes('/d/')) {
-            const parts = url.split('/d/');
-            if (parts.length > 1) {
-                const id = parts[1].split('/')[0];
-                return `https://drive.google.com/uc?export=download&id=${id}`;
-            }
-        }
-        return url;
-    };
-
-    mUrl = fixDrive(mUrl);
-    vUrl = fixDrive(vUrl);
-
-    // Visual feedback for the auto-fix
-    if (document.getElementById('set-music-url')) document.getElementById('set-music-url').value = mUrl;
-    if (document.getElementById('set-video-url')) document.getElementById('set-video-url').value = vUrl;
-
-    const data = {
-        name: document.getElementById('set-name').value,
-        tollFree: document.getElementById('set-tollfree').value,
-        websites: [
-            document.getElementById('set-web1').value,
-            document.getElementById('set-web2').value
-        ].filter(v => v),
-        emails: [
-            document.getElementById('set-email1').value,
-            document.getElementById('set-email2').value,
-            document.getElementById('set-email3').value
-        ].filter(v => v),
-        phones: [document.getElementById('set-phone').value].filter(v => v),
-        adminEmail: document.getElementById('set-admin-email').value,
-        address: document.getElementById('set-address').value,
-        gstNo: document.getElementById('set-gst-no').value,
-        panNo: document.getElementById('set-pan-no').value,
-        dlNo: document.getElementById('set-dl-no').value,
-        fssaiNo: document.getElementById('set-fssai-no').value,
-        bankDetails: document.getElementById('set-bank-details').value,
-        invoiceTerms: document.getElementById('set-invoice-terms').value,
-        cnTerms: document.getElementById('set-cn-terms').value,
-        dnTerms: document.getElementById('set-dn-terms').value,
-        invoiceBankVisible: document.getElementById('set-invoice-bank-visible').checked,
-        cnBankVisible: document.getElementById('set-cn-bank-visible').checked,
-        dnBankVisible: document.getElementById('set-dn-bank-visible').checked,
-        upiId: document.getElementById('set-upi-id') ? document.getElementById('set-upi-id').value : '',
-        bankAccountNo: document.getElementById('set-bank-acc') ? document.getElementById('set-bank-acc').value : '',
-        bankIfsc: document.getElementById('set-bank-ifsc') ? document.getElementById('set-bank-ifsc').value : '',
-        signatureImage: document.getElementById('set-signature-b64').value || (companyProfile && companyProfile.signatureImage) || '',
-        logoImage: (document.getElementById('set-logo-b64') && document.getElementById('set-logo-b64').value) ? document.getElementById('set-logo-b64').value : ((companyProfile && companyProfile.logoImage) || ''),
-        scrollingMessage: {
-            text: document.getElementById('set-msg-text').value,
-            color: document.getElementById('set-msg-color').value,
-            speed: Number(document.getElementById('set-msg-speed').value || 30)
-        },
-        invoiceStyle: document.getElementById('set-inv-style').value,
-        musicVolume: Number(document.getElementById('globalVolume') ? document.getElementById('globalVolume').value : 0.5),
-        musicUrl: mUrl,
-        videoUrl: vUrl
-    };
-
+    // 1. Identify Button & State
+    const btn = (e && e.target) ? (e.target.closest('button') || e.target) : null;
+    const originalHtml = btn ? btn.innerHTML : "SAVE SETTINGS";
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = "⏳ SAVING TO CLOUD...";
+    }
+    
     try {
+        // 2. Collect Data
+        let mUrl = document.getElementById('set-music-url') ? document.getElementById('set-music-url').value.trim() : '';
+        let vUrl = document.getElementById('set-video-url') ? document.getElementById('set-video-url').value.trim() : '';
+
+        const fixDrive = (url) => {
+            if (url && url.includes('drive.google.com') && url.includes('/d/')) {
+                const parts = url.split('/d/');
+                if (parts.length > 1) {
+                    const id = parts[1].split('/')[0];
+                    return `https://drive.google.com/uc?export=download&id=${id}`;
+                }
+            }
+            return url;
+        };
+
+        mUrl = fixDrive(mUrl);
+        vUrl = fixDrive(vUrl);
+
+        const data = {
+            name: document.getElementById('set-name').value,
+            tollFree: document.getElementById('set-tollfree').value,
+            websites: [
+                document.getElementById('set-web1').value,
+                document.getElementById('set-web2').value
+            ].filter(v => v),
+            emails: [
+                document.getElementById('set-email1').value,
+                document.getElementById('set-email2').value,
+                document.getElementById('set-email3').value
+            ].filter(v => v),
+            phones: [document.getElementById('set-phone').value].filter(v => v),
+            adminEmail: document.getElementById('set-admin-email').value,
+            address: document.getElementById('set-address').value,
+            gstNo: document.getElementById('set-gst-no').value,
+            panNo: document.getElementById('set-pan-no').value,
+            dlNo: document.getElementById('set-dl-no').value,
+            fssaiNo: document.getElementById('set-fssai-no').value,
+            bankDetails: document.getElementById('set-bank-details').value,
+            invoiceTerms: document.getElementById('set-invoice-terms') ? document.getElementById('set-invoice-terms').value : '',
+            cnTerms: document.getElementById('set-cn-terms') ? document.getElementById('set-cn-terms').value : '',
+            dnTerms: document.getElementById('set-dn-terms') ? document.getElementById('set-dn-terms').value : '',
+            invoiceBankVisible: document.getElementById('set-invoice-bank-visible') ? document.getElementById('set-invoice-bank-visible').checked : true,
+            cnBankVisible: document.getElementById('set-cn-bank-visible') ? document.getElementById('set-cn-bank-visible').checked : true,
+            dnBankVisible: document.getElementById('set-dn-bank-visible') ? document.getElementById('set-dn-bank-visible').checked : true,
+            upiId: document.getElementById('set-upi-id') ? document.getElementById('set-upi-id').value : '',
+            bankAccountNo: document.getElementById('set-bank-acc') ? document.getElementById('set-bank-acc').value : '',
+            bankIfsc: document.getElementById('set-bank-ifsc') ? document.getElementById('set-bank-ifsc').value : '',
+            signatureImage: document.getElementById('set-signature-b64').value || (companyProfile && companyProfile.signatureImage) || '',
+            logoImage: (document.getElementById('set-logo-b64') && document.getElementById('set-logo-b64').value) ? document.getElementById('set-logo-b64').value : ((companyProfile && companyProfile.logoImage) || ''),
+            scrollingMessage: {
+                text: document.getElementById('set-msg-text').value,
+                color: document.getElementById('set-msg-color').value,
+                speed: Number(document.getElementById('set-msg-speed') ? document.getElementById('set-msg-speed').value : 30)
+            },
+            invoiceStyle: document.getElementById('set-inv-style').value,
+            musicVolume: Number(document.getElementById('globalVolume') ? document.getElementById('globalVolume').value : 0.5),
+            musicUrl: mUrl,
+            videoUrl: vUrl
+        };
+
+        // 3. Send to Server
         const res = await fetch(`${API_BASE}/admin/settings`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
+
         if (res.ok) {
-            alert("✅ Settings updated successfully!");
-            loadSettings(); 
+            alert("✅ SETTINGS SAVED SUCCESSFULY!\n\nYour changes are now live across all portals.");
+            await loadSettings(); 
+        } else {
+            const err = await res.json();
+            alert("❌ SAVE FAILED: " + (err.error || "Server Error"));
         }
-    } catch (e) { alert("Save settings failed"); }
-    finally {
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
+    } catch (e) { 
+        console.error("Save Error:", e);
+        alert("❌ CRITICAL ERROR: Could not connect to server. Please check your internet."); 
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
     }
 }
 
