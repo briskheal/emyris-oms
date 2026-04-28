@@ -1149,13 +1149,12 @@ async function deleteFromMedia(id) {
 }
 
 
-
-
-
-
-
 async function saveSettings(e) {
     if (e) e.preventDefault();
+    const btn = e.target.closest('button') || e.target;
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = "⏳ SAVING...";
     
     let mUrl = document.getElementById('set-music-url') ? document.getElementById('set-music-url').value.trim() : '';
     let vUrl = document.getElementById('set-video-url') ? document.getElementById('set-video-url').value.trim() : '';
@@ -1180,7 +1179,6 @@ async function saveSettings(e) {
     if (document.getElementById('set-video-url')) document.getElementById('set-video-url').value = vUrl;
 
     const data = {
-
         name: document.getElementById('set-name').value,
         tollFree: document.getElementById('set-tollfree').value,
         websites: [
@@ -1222,9 +1220,6 @@ async function saveSettings(e) {
         videoUrl: vUrl
     };
 
-
-
-
     try {
         const res = await fetch(`${API_BASE}/admin/settings`, {
             method: 'POST',
@@ -1233,7 +1228,7 @@ async function saveSettings(e) {
         });
         if (res.ok) {
             alert("✅ Settings updated successfully!");
-            loadSettings(); // Refresh UI and global object
+            loadSettings(); 
         }
     } catch (e) { alert("Save settings failed"); }
     finally {
@@ -1241,6 +1236,7 @@ async function saveSettings(e) {
         btn.innerHTML = originalHtml;
     }
 }
+
 // --- PARTY MASTER LOGIC ---
 
 function convertSignatureToBase64(input) {
