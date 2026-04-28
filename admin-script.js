@@ -4,6 +4,22 @@ let allProducts = [];
 let currentProductBatches = [];
 let companyProfile = {};
 
+function toggleSidebar() {
+    if (window.innerWidth > 1024) return; // Desktop: sidebar always visible
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) sidebar.classList.toggle('show');
+}
+
+// Close sidebar on item click for mobile
+document.addEventListener('click', (e) => {
+    if (window.innerWidth <= 1024) {
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar && sidebar.classList.contains('show') && !sidebar.contains(e.target) && !e.target.closest('.menu-toggle')) {
+            sidebar.classList.remove('show');
+        }
+    }
+});
+
 function formatMMYY(el) {
     let v = el.value.replace(/\D/g, '');
     if (v.length > 2) {
@@ -127,6 +143,10 @@ window.onload = async () => {
         document.getElementById('adminLoginOverlay').classList.remove('hidden');
         return;
     }
+
+    // Show system active indicator
+    const statusEl = document.getElementById('adminStatus');
+    if (statusEl) statusEl.style.display = '';
     
     // Load all data sequentially to ensure dependencies are met
     try {
@@ -1360,17 +1380,6 @@ function convertLogoToBase64(input) {
     }
 }
 
-function convertLogoToBase64(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('set-logo-b64').value = e.target.result;
-            document.getElementById('logo-preview').src = e.target.result;
-            document.getElementById('logo-preview').style.display = 'block';
-        };
-        reader.readAsDataURL(input.files[0]);
-    }
-}
 
 function renderStockists(list = null) {
     const tbody = document.getElementById('stockistTableBody');
@@ -4317,51 +4326,65 @@ async function saveExpense(e) {
 async function generateSampleMatchedPDF({ 
     doc, title, subTitle, docNo, docTypeLabel, date, party, items, grandTotal, terms, showBank, extraFields, filename 
 }) {
-    // 1. Blueprint Configuration (Matched from Sample)
-    const m = {
-        primary: [0, 0, 0], 
-        accent: [30, 41, 59],
-        line: 0.2
-    };
+    // --- 1. SETTINGS & BORDER ---
+    const pageH = 297; const pageW = 210;
+    doc.setDrawColor(0); doc.setLineWidth(0.3);
+    doc.rect(10, 10, 190, 277); // Outer Main Border
 
-    doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(0);
-    doc.text((companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES", 105, 15, { align: 'center' });
+    // --- 2. HEADER SECTION ---
+    doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.setTextColor(0);
+    doc.text((companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES", 105, 18, { align: 'center' });
     
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-    const coAddr = (companyProfile && companyProfile.address) || "Office Address Here";
-    doc.text(coAddr, 105, 20, { align: 'center' });
-    doc.text(`GSTIN: ${(companyProfile && companyProfile.gstNo) || 'N/A'} | DL No: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, 105, 25, { align: 'center' });
-    doc.text(`Contact: ${(companyProfile && companyProfile.phones?.[0]) || 'N/A'} | Email: ${(companyProfile && companyProfile.emails?.[0]) || 'N/A'}`, 105, 30, { align: 'center' });
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
+    const coAddr = (companyProfile && companyProfile.address) || "Office Address Loading...";
+    const addrLines = doc.splitTextToSize(coAddr, 160);
+    doc.text(addrLines, 105, 23, { align: 'center' });
+    
+    let nextY = 23 + (addrLines.length * 3.5);
+    doc.setFont("helvetica", "bold");
+    doc.text(`GSTIN: ${(companyProfile && companyProfile.gstNo) || 'N/A'} | DL No: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, 105, nextY, { align: 'center' });
+    doc.setFont("helvetica", "normal");
+    doc.text(`Contact: ${(companyProfile && companyProfile.phones?.[0]) || 'N/A'} | Email: ${(companyProfile && companyProfile.emails?.[0]) || 'N/A'}`, 105, nextY + 4, { align: 'center' });
 
-    doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(10, 35, 200, 35);
+    doc.line(10, nextY + 8, 200, nextY + 8); // Header Separator
     
-    doc.setFontSize(12); doc.setFont("helvetica", "bold");
-    doc.text(title.toUpperCase(), 105, 42, { align: 'center' });
+    // --- 3. INVOICE INFO & PARTY ---
+    let partyY = nextY + 14;
+    doc.setFontSize(11); doc.setFont("helvetica", "bold");
+    doc.text(title.toUpperCase(), 105, nextY + 13, { align: 'center' });
     
-    doc.setFontSize(9); doc.setFont("helvetica", "normal");
-    doc.text(`${docTypeLabel}:`, 145, 50); doc.setFont("helvetica", "bold"); doc.text(docNo, 170, 50);
-    doc.setFont("helvetica", "normal"); doc.text(`Date:`, 145, 55); doc.setFont("helvetica", "bold"); doc.text(date, 170, 55);
+    doc.line(10, nextY + 16, 200, nextY + 16); // Title Separator
+    doc.line(135, nextY + 16, 135, partyY + 30); // Vertical middle separator for header info
+
+    doc.setFontSize(8.5); doc.setFont("helvetica", "normal");
+    doc.text("M/s:", 12, partyY); 
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9.5);
+    doc.text(party.name || 'N/A', 20, partyY);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
+    const pAddrLines = doc.splitTextToSize(party.address || 'N/A', 110);
+    doc.text(pAddrLines, 20, partyY + 4);
+    
+    let partyInfoY = partyY + 4 + (pAddrLines.length * 3.5);
+    doc.setFont("helvetica", "bold");
+    doc.text(`GSTIN: ${party.gst || 'N/A'}`, 20, partyInfoY + 2);
+    doc.text(`DL No: ${party.dl || 'N/A'}`, 20, partyInfoY + 6);
+
+    // Right Side Info (Invoice No, Date etc)
+    doc.setFontSize(8); doc.setFont("helvetica", "normal");
+    doc.text(`${docTypeLabel}:`, 138, partyY); doc.setFont("helvetica", "bold"); doc.text(docNo, 165, partyY);
+    doc.setFont("helvetica", "normal"); doc.text(`Date:`, 138, partyY + 5); doc.setFont("helvetica", "bold"); doc.text(date, 165, partyY + 5);
     
     extraFields.forEach((f, i) => {
-        doc.setFont("helvetica", "normal"); doc.text(`${f.label}:`, 145, 60 + (i * 5));
-        doc.setFont("helvetica", "bold"); doc.text(f.value, 170, 60 + (i * 5));
+        doc.setFont("helvetica", "normal"); doc.text(`${f.label}:`, 138, partyY + 10 + (i * 5));
+        doc.setFont("helvetica", "bold"); doc.text(f.value, 165, partyY + 10 + (i * 5));
     });
 
-    doc.setFontSize(9); doc.setFont("helvetica", "normal");
-    doc.text("M/s:", 15, 50); 
-    doc.setFont("helvetica", "bold"); doc.setFontSize(10);
-    doc.text(party.name || 'N/A', 25, 50);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-    const pAddrLines = doc.splitTextToSize(party.address || 'N/A', 80);
-    doc.text(pAddrLines, 25, 55);
-    
-    let partyBottomY = 55 + (pAddrLines.length * 4);
-    doc.text(`GSTIN: ${party.gst || 'N/A'}`, 25, partyBottomY + 2);
-    doc.text(`DL No: ${party.dl || 'N/A'}`, 25, partyBottomY + 6);
+    doc.line(10, partyY + 30, 200, partyY + 30); // Party Separator
 
+    // --- 4. ITEMS TABLE (Custom Grid) ---
     doc.autoTable({
-        startY: 85,
-        head: [['Sn', 'HSN', 'Description', 'Batch', 'Exp', 'MRP', 'Qty', 'Free', 'Rate', 'GST%', 'Amount']],
+        startY: partyY + 30,
+        head: [['Sn', 'HSN', 'Product Description', 'Batch', 'Exp', 'MRP', 'Qty', 'Free', 'Rate', 'GST%', 'Amount']],
         body: items.map((it, idx) => [
             idx + 1, it.hsn || '-', it.name, it.batch || '-', it.exp || '-', 
             (it.mrp || 0).toFixed(2), it.qty, it.bonusQty || 0, 
@@ -4369,8 +4392,8 @@ async function generateSampleMatchedPDF({
             (it.qty * it.price).toFixed(2)
         ]),
         theme: 'grid',
-        headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold', fontSize: 7, halign: 'center', lineWidth: 0.1 },
-        styles: { fontSize: 7, cellPadding: 1.5, textColor: 0, lineWidth: 0.1 },
+        headStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: 'bold', fontSize: 7, halign: 'center', lineWidth: 0.1 },
+        styles: { fontSize: 7, cellPadding: 2, textColor: 0, lineWidth: 0.1 },
         columnStyles: {
             0: { cellWidth: 8, halign: 'center' },
             1: { cellWidth: 15, halign: 'center' },
@@ -4382,11 +4405,17 @@ async function generateSampleMatchedPDF({
             9: { halign: 'center' },
             10: { halign: 'right', fontStyle: 'bold' }
         },
-        margin: { left: 10, right: 10, bottom: 60 }
+        margin: { left: 10, right: 10 },
+        tableLineColor: [0, 0, 0],
+        tableLineWidth: 0.1
     });
 
-    let tableFinalY = doc.lastAutoTable.finalY + 5;
+    let tableFinalY = doc.lastAutoTable.finalY;
 
+    // --- 5. TAX SUMMARY & TOTALS ---
+    const summaryY = tableFinalY + 5;
+    if (summaryY > 240) doc.addPage(); // Prevent overlap with footer
+    
     const taxMap = {};
     let totalTaxable = 0; let totalGST = 0;
     items.forEach(it => {
@@ -4410,45 +4439,55 @@ async function generateSampleMatchedPDF({
         }
     });
 
-    doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.text("TAX SUMMARY", 10, tableFinalY);
+    // Tax Table
+    doc.setFontSize(7.5); doc.setFont("helvetica", "bold"); doc.text("GST TAX SUMMARY", 12, summaryY);
     doc.autoTable({
-        startY: tableFinalY + 2,
+        startY: summaryY + 2,
         head: [['GST%', 'Taxable', 'CGST', 'SGST', 'Total Tax']],
         body: taxBody,
         theme: 'grid',
-        headStyles: { fillColor: [250, 250, 250], textColor: 0, fontSize: 6, halign: 'center' },
-        styles: { fontSize: 6, halign: 'right', cellPadding: 1 },
+        headStyles: { fillColor: [250, 250, 250], textColor: 0, fontSize: 6.5, halign: 'center' },
+        styles: { fontSize: 6.5, halign: 'right', cellPadding: 1.5 },
         margin: { left: 10 },
-        tableWidth: 80
+        tableWidth: 85
     });
 
-    const summaryY = tableFinalY + 2;
-    doc.setFontSize(8); doc.setFont("helvetica", "normal");
-    doc.text("Sub Total:", 150, summaryY); doc.text(`Rs. ${totalTaxable.toFixed(2)}`, 195, summaryY, { align: 'right' });
-    doc.text("Total GST:", 150, summaryY + 5); doc.text(`Rs. ${totalGST.toFixed(2)}`, 195, summaryY + 5, { align: 'right' });
+    // Totals Block
+    const tX = 145;
+    doc.setFontSize(8.5); doc.setFont("helvetica", "normal");
+    doc.text("Total Taxable Amt:", tX, summaryY + 5); doc.text(`Rs. ${totalTaxable.toFixed(2)}`, 198, summaryY + 5, { align: 'right' });
+    doc.text("Total GST Amt:", tX, summaryY + 10); doc.text(`Rs. ${totalGST.toFixed(2)}`, 198, summaryY + 10, { align: 'right' });
     
     const unrounded = totalTaxable + totalGST;
     const roundOff = (grandTotal - unrounded).toFixed(2);
-    doc.text("Round Off:", 150, summaryY + 10); doc.text(`Rs. ${roundOff}`, 195, summaryY + 10, { align: 'right' });
+    doc.text("Round Off Adj:", tX, summaryY + 15); doc.text(`Rs. ${roundOff}`, 198, summaryY + 15, { align: 'right' });
     
-    doc.setFont("helvetica", "bold"); doc.setFontSize(10);
-    doc.text("GRAND TOTAL:", 150, summaryY + 16); doc.text(`Rs. ${grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, summaryY + 16, { align: 'right' });
+    doc.setDrawColor(0); doc.line(tX - 2, summaryY + 18, 200, summaryY + 18);
+    doc.setFont("helvetica", "black"); doc.setFontSize(11);
+    doc.text("GRAND TOTAL:", tX, summaryY + 24); doc.text(`Rs. ${grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 198, summaryY + 24, { align: 'right' });
+    doc.line(tX - 2, summaryY + 27, 200, summaryY + 27);
 
-    doc.setFontSize(8); doc.setFont("helvetica", "italic");
-    doc.text(`(Amount in Words: ${numberToWords(grandTotal)})`, 10, summaryY + 30);
+    // Words
+    doc.setFontSize(8); doc.setFont("helvetica", "italic"); doc.setTextColor(50);
+    doc.text(`Amount in Words: ${numberToWords(grandTotal)}`, 12, summaryY + 45);
 
-    const footerY = 270;
-    doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(80);
+    // --- 6. FOOTER (BANK & SIGN) ---
+    const footerY = 255;
+    doc.setDrawColor(0); doc.line(10, footerY - 5, 200, footerY - 5);
+    
+    doc.setFontSize(7.5); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+    doc.text("BANK DETAILS:", 12, footerY);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7);
     const bankLines = (companyProfile && companyProfile.bankDetails) ? companyProfile.bankDetails.split('\n') : [];
-    doc.text("BANK DETAILS:", 10, footerY);
-    bankLines.forEach((l, i) => doc.text(l, 10, footerY + 4 + (i * 3)));
+    bankLines.forEach((l, i) => doc.text(l.trim(), 12, footerY + 5 + (i * 3.5)));
 
-    doc.setFont("helvetica", "bold"); doc.setTextColor(0);
-    doc.text(`For ${(companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES"}`, 195, footerY, { align: 'right' });
+    doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
+    doc.text(`For ${(companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES"}`, 198, footerY + 5, { align: 'right' });
+    
     if (companyProfile && companyProfile.signatureImage) {
-        try { doc.addImage(companyProfile.signatureImage, 'JPEG', 165, footerY + 2, 30, 10); } catch(e){}
+        try { doc.addImage(companyProfile.signatureImage, 'JPEG', 160, footerY + 8, 35, 12); } catch(e){}
     }
-    doc.text("Authorised Signatory", 195, footerY + 15, { align: 'right' });
+    doc.text("Authorised Signatory", 198, footerY + 25, { align: 'right' });
 
     doc.save(filename);
 }
