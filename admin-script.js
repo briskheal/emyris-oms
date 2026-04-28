@@ -1639,7 +1639,7 @@ async function deleteAllStockists() {
 
 function logout() {
     sessionStorage.removeItem('admin_logged');
-    window.location.href = '/auth';
+    window.location.reload();
 }
 
 // --- ORDER HISTORY LOGIC ---

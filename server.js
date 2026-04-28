@@ -1042,15 +1042,21 @@ app.post('/api/admin/settings/upload-design', docUpload.single('design'), async 
     try {
         if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
         
-        let settings = await Company.findOne();
-        if (!settings) settings = new Company();
+        // Upload to Cloudinary (Persistent)
+        const result = await cloudinary.uploader.upload(req.file.path, {
+            folder: 'emyris_blueprints'
+        });
 
-        // Local storage path or Cloudinary (using local for PDF stability)
-        const fileUrl = `/uploads/media/${req.file.filename}`;
-        settings.referenceInvoiceUrl = fileUrl;
-        await settings.save();
+        const settings = await Company.findOneAndUpdate(
+            {}, 
+            { referenceInvoiceUrl: result.secure_url }, 
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
 
-        res.json({ success: true, url: fileUrl });
+        // Cleanup local temp file
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+
+        res.json({ success: true, settings });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
