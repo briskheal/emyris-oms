@@ -309,8 +309,7 @@ async function handleForgotPassword(e) {
 }
 
 function logout() {
-    localStorage.removeItem('emyris_user');
-    window.location.reload();
+    handleLogout();
 }
 
 // --- ORDERING SYSTEM ---
@@ -536,7 +535,7 @@ function renderExcelProducts() {
     const tbody = document.getElementById('excelProductBody');
     if (!tbody) return;
 
-    let filtered = allProducts;
+    let filtered = allProducts || [];
     
     // 1. Apply Category Filter
     if (currentCat !== 'ALL') {
@@ -556,8 +555,8 @@ function renderExcelProducts() {
         const qty = cart[p._id] || '';
         const locked = currentUser?.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
         
-        const masterRate = p.pts || 0;
-        const currentRate = askingRates[p._id] !== undefined ? askingRates[p._id] : (locked ? locked.lockedRate : masterRate);
+        const masterRate = parseFloat(p.pts) || 0;
+        const currentRate = askingRates[p._id] !== undefined ? parseFloat(askingRates[p._id]) : (locked ? parseFloat(locked.lockedRate) : masterRate);
         const note = negotiationNotes[p._id] || (locked ? locked.note : '');
         
         const totalVal = qty ? (qty * currentRate) : 0;
@@ -707,8 +706,8 @@ function updateFooter() {
         itemCount++;
     });
 
-    const netAmount = taxableValue + gstTotal;
-    const grandTotal = Math.round(netAmount);
+    const netAmount = (taxableValue || 0) + (gstTotal || 0);
+    const grandTotal = Math.round(netAmount) || 0;
     const roundOff = (grandTotal - netAmount).toFixed(2);
 
     // Update UI elements
@@ -718,11 +717,11 @@ function updateFooter() {
     const netEl = document.getElementById('footer-net');
     const totalEl = document.getElementById('footer-total');
 
-    if (taxableEl) taxableEl.innerText = `₹${taxableValue.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    if (gstEl) gstEl.innerText = `₹${gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (taxableEl) taxableEl.innerText = `₹${(taxableValue || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (gstEl) gstEl.innerText = `₹${(gstTotal || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     if (roundEl) roundEl.innerText = `₹${roundOff}`;
-    if (netEl) netEl.innerText = `₹${netAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    if (totalEl) totalEl.innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (netEl) netEl.innerText = `₹${(netAmount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (totalEl) totalEl.innerText = `₹${(grandTotal || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
     const footer = document.getElementById('orderFooter');
     if (footer) {
@@ -760,7 +759,7 @@ async function placeOrder() {
         const p = allProducts.find(x => x._id === pid);
         const qty = cart[pid];
         const locked = currentUser?.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
-        const rate = askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : p.pts);
+        const rate = askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : (p.pts || 0));
         
         return {
             product: pid, // Corrected from productId to match schema
@@ -920,10 +919,12 @@ function handleLogout() {
     // Reset UI
     renderExcelProducts();
     updateFooter();
-    switchView('login');
     
     // Clear persistent storage
     localStorage.removeItem('emyris_user');
+    
+    // Redirect to home/auth
+    window.location.href = '/auth';
     
     console.log('🚪 [LOGOUT] Session ended successfully');
 }
