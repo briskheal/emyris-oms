@@ -29,6 +29,13 @@ const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 });
+const upload = multer({ 
+    storage,
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['audio/mpeg', 'video/mp4', 'audio/mp3'];
+        if (allowedTypes.includes(file.mimetype)) cb(null, true);
+        else cb(new Error('Invalid file type. Only MP3 and MP4 allowed.'));
+    }
 });
 const docUpload = multer({ 
     storage,
