@@ -2,6 +2,28 @@
 const API_BASE = '/api';
 let allProducts = [];
 let currentProductBatches = [];
+let companyProfile = {};
+
+function checkBatchStatus(expDate) {
+    if (!expDate || expDate === 'N/A' || expDate === '-') return { status: 'ok', label: '' };
+    // Handle YYYY-MM or MM/YY
+    let year, month;
+    if (expDate.includes('-')) {
+        [year, month] = expDate.split('-').map(Number);
+    } else if (expDate.includes('/')) {
+        [month, year] = expDate.split('/').map(Number);
+        year += 2000;
+    } else return { status: 'ok', label: '' };
+
+    const exp = new Date(year, month - 1, 1);
+    const today = new Date();
+    const threeMonthsOut = new Date();
+    threeMonthsOut.setMonth(today.getMonth() + 3);
+
+    if (exp < today) return { status: 'expired', label: ' [EXPIRED]' };
+    if (exp < threeMonthsOut) return { status: 'near', label: ' [⚠️ NEAR EXPIRY]' };
+    return { status: 'ok', label: '' };
+}
 
 function renderProductBatches() {
     const tbody = document.getElementById('prod-batch-tbody');
@@ -545,26 +567,24 @@ async function loadMasters() {
 }
 
 function updateDatalists() {
-    const cats = new Set(["TABLETS", "SYRUPS", "INJECTIONS", "CAPSULES", "SACHETS"]);
-    const groups = new Set(["GENERAL"]);
-    const hsns = new Set();
-    const gsts = new Set([12, 18, 5, 28]);
+    // Official Master Lists take priority
+    const masterCats = (window.masters && window.masters.categories) ? window.masters.categories.map(c => c.name.toUpperCase()) : [];
+    const masterGroups = (window.masters && window.masters.groups) ? window.masters.groups.map(g => g.name.toUpperCase()) : [];
+    const masterHsns = (window.masters && window.masters.hsns) ? window.masters.hsns.map(h => h.code) : [];
+    const masterGsts = (window.masters && window.masters.gst) ? window.masters.gst.map(g => Number(g.rate)) : [];
 
-    // Add from existing products
+    const cats = new Set([...masterCats, "TABLETS", "SYRUPS", "INJECTIONS", "CAPSULES", "SACHETS"]);
+    const groups = new Set([...masterGroups, "GENERAL"]);
+    const hsns = new Set(masterHsns);
+    const gsts = new Set([...masterGsts, 5, 12, 18, 28]);
+
+    // Add legacy entries from existing products if not already in masters
     allProducts.forEach(p => {
         if (p.category) cats.add(p.category.toUpperCase());
         if (p.group) groups.add(p.group.toUpperCase());
         if (p.hsn) hsns.add(p.hsn);
-        if (p.gstPercent) gsts.add(p.gstPercent);
+        if (p.gstPercent) gsts.add(Number(p.gstPercent));
     });
-
-    // Add from masters (if loaded)
-    if (window.masters) {
-        if (window.masters.categories) window.masters.categories.forEach(c => cats.add(c.name.toUpperCase()));
-        if (window.masters.groups) window.masters.groups.forEach(g => groups.add(g.name.toUpperCase()));
-        if (window.masters.hsns) window.masters.hsns.forEach(h => hsns.add(h.code));
-        if (window.masters.gst) window.masters.gst.forEach(g => gsts.add(g.rate));
-    }
 
     const catList = document.getElementById('category-list');
     const groupList = document.getElementById('group-list');
@@ -760,12 +780,15 @@ function renderMasterLists() {
     const render = (id, list, key, type) => {
         const el = document.getElementById(id);
         if (!el) return;
-        el.innerHTML = list.map(item => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:5px; font-size:0.85rem;">
-                <span>${item[key]}</span>
-                <button style="background:none; border:none; color:#ef4444; cursor:pointer;" onclick="deleteMaster('${type}', '${item._id}')">✖</button>
-            </div>
-        `).join('');
+        el.innerHTML = list.map(item => {
+            const displayValue = key === 'code' ? `${item.code} ${item.description ? `(${item.description})` : ''}` : item[key];
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:5px; font-size:0.85rem;">
+                    <span>${displayValue}</span>
+                    <button style="background:none; border:none; color:#ef4444; cursor:pointer;" onclick="deleteMaster('${type}', '${item._id}')">✖</button>
+                </div>
+            `;
+        }).join('');
     };
     render('master-cat-list', window.masters.categories, 'name', 'categories');
     render('master-group-list', window.masters.groups, 'name', 'groups');
@@ -779,29 +802,47 @@ function renderMasterLists() {
 async function addMaster(type) {
     let val = "";
     let body = {};
+    let inputIds = [];
+
     if (type === 'categories') {
-        val = document.getElementById('new-cat-name').value;
+        val = document.getElementById('new-cat-name').value.trim().toUpperCase();
         body = { name: val };
+        inputIds = ['new-cat-name'];
     } else if (type === 'groups') {
-        val = document.getElementById('new-group-name').value;
+        val = document.getElementById('new-group-name').value.trim().toUpperCase();
         body = { name: val };
+        inputIds = ['new-group-name'];
     } else if (type === 'hsns') {
-        val = document.getElementById('new-hsn-code').value;
-        body = { code: val };
+        val = document.getElementById('new-hsn-code').value.trim();
+        const desc = document.getElementById('new-hsn-desc').value.trim();
+        body = { code: val, description: desc };
+        inputIds = ['new-hsn-code', 'new-hsn-desc'];
     } else if (type === 'gst') {
         val = document.getElementById('new-gst-rate').value;
         body = { rate: Number(val) };
+        inputIds = ['new-gst-rate'];
     } else if (type === 'hq') {
-        val = document.getElementById('new-hq-name').value;
+        val = document.getElementById('new-hq-name').value.trim().toUpperCase();
         body = { name: val };
+        inputIds = ['new-hq-name'];
     } else if (type === 'expenseCategories') {
-        val = document.getElementById('new-exp-cat-name').value;
+        val = document.getElementById('new-exp-cat-name').value.trim();
         const eType = document.getElementById('new-exp-cat-type').value;
         body = { name: val, type: eType };
+        inputIds = ['new-exp-cat-name'];
     }
 
-
     if (!val) return alert("Please enter a value");
+    
+    // Quick frontend duplicate check
+    if (window.masters && window.masters[type]) {
+        const exists = window.masters[type].some(item => {
+            const key = type === 'hsns' ? 'code' : (type === 'gst' ? 'rate' : 'name');
+            return String(item[key]).toUpperCase() === String(val).toUpperCase();
+        });
+        if (exists) return alert("This entry already exists in Masters.");
+    }
+
     try {
         const endpoint = type === 'hq' ? `${API_BASE}/admin/masters/hq` : `${API_BASE}/admin/${type}`;
         const res = await fetch(endpoint, {
@@ -877,6 +918,7 @@ async function loadSettings() {
         safeSetVal('set-invoice-terms', s.invoiceTerms);
         safeSetVal('set-cn-terms', s.cnTerms);
         safeSetVal('set-dn-terms', s.dnTerms);
+        safeSetVal('set-gst-rate', s.gstRate);
         
         safeSetCheck('set-invoice-bank-visible', s.invoiceBankVisible);
         safeSetCheck('set-cn-bank-visible', s.cnBankVisible);
@@ -914,6 +956,13 @@ async function loadSettings() {
         if (s.scrollingMessage) {
             safeSetVal('set-msg-text', s.scrollingMessage.text);
             safeSetVal('set-msg-color', s.scrollingMessage.color);
+            safeSetVal('set-msg-speed', s.scrollingMessage.speed);
+        }
+        
+        safeSetVal('set-video-url', s.videoUrl);
+        if (s.videoUrl) {
+            const vidName = s.videoUrl.split('/').pop();
+            if (document.getElementById('current-video-name')) document.getElementById('current-video-name').innerText = `Current: ${vidName}`;
         }
 
         setInvoiceStyle(s.invoiceStyle || 'classic');
@@ -1410,6 +1459,15 @@ function openPartyModal(id = null) {
         document.getElementById('party-pass').value = randomPass;
     }
     modal.classList.remove('hidden');
+}
+
+function regeneratePartyCreds(type) {
+    if (type === 'id' || !type) {
+        document.getElementById('party-login').value = 'EMY' + Math.floor(100000 + Math.random() * 900000);
+    }
+    if (type === 'pass' || !type) {
+        document.getElementById('party-pass').value = Math.random().toString(36).slice(-8).toUpperCase();
+    }
 }
 
 function closePartyModal() {
@@ -2179,7 +2237,12 @@ function updateSaleProductMeta(prodId) {
     const batchSelect = document.getElementById('sale-batch-select');
     if (batchSelect) {
         batchSelect.innerHTML = '<option value="">-- Select Batch --</option>' +
-            (prod.batches || []).filter(b => b.qtyAvailable > 0).map(b => `<option value="${b.batchNo}">${b.batchNo} (Qty: ${b.qtyAvailable})</option>`).join('');
+            (prod.batches || []).filter(b => b.qtyAvailable > 0).map(b => {
+                const info = checkBatchStatus(b.expDate);
+                const disabled = info.status === 'expired' ? 'disabled' : '';
+                const color = info.status === 'expired' ? '#ef4444' : (info.status === 'near' ? '#f59e0b' : '');
+                return `<option value="${b.batchNo}" ${disabled} style="color:${color}">${b.batchNo} (Qty: ${b.qtyAvailable}${info.label})</option>`;
+            }).join('');
     }
 
     document.getElementById('sale-gst-pct').value = prod.gstPercent || 12;
@@ -3559,8 +3622,12 @@ function getReportDataByType(type, data, fromDate, toDate) {
         case 'gstr-1':
         case 'gstr1':
             fileName = "GSTR_1_Sales_Outward";
+            const myState = (companyProfile.state || "GUJARAT").toUpperCase();
             reportData = filteredInvoices.map(inv => {
                 const party = (stockists || []).find(s => s._id.toString() === (inv.stockistId || inv.stockist?._id || '').toString());
+                const partyState = (party ? (party.state || "GUJARAT") : "GUJARAT").toUpperCase();
+                const isInterstate = partyState !== myState;
+                
                 return {
                     "GSTIN": party ? (party.gstin || party.gstNo || "URD") : "URD",
                     "Receiver Name": inv.stockistName,
@@ -3568,9 +3635,9 @@ function getReportDataByType(type, data, fromDate, toDate) {
                     "Date": new Date(inv.createdAt).toLocaleDateString('en-GB'),
                     "Total Value": inv.grandTotal,
                     "Taxable Value": inv.subTotal,
-                    "IGST": party && party.state !== "GUJARAT" ? inv.gstAmount : 0,
-                    "CGST": party && party.state === "GUJARAT" ? inv.gstAmount / 2 : 0,
-                    "SGST": party && party.state === "GUJARAT" ? inv.gstAmount / 2 : 0
+                    "IGST": isInterstate ? inv.gstAmount : 0,
+                    "CGST": !isInterstate ? inv.gstAmount / 2 : 0,
+                    "SGST": !isInterstate ? inv.gstAmount / 2 : 0
                 };
             });
             break;

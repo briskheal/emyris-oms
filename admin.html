@@ -518,9 +518,10 @@
                     <!-- HSN Master -->
                     <div class="glass-card">
                         <h3 class="section-title" style="font-size: 1rem;">🔢 HSN Codes</h3>
-                        <div class="form-group" style="display: flex; gap: 5px;">
+                        <div class="form-group" style="display: flex; gap: 5px; flex-direction: column;">
                             <input type="text" id="new-hsn-code" placeholder="HSN Code">
-                            <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('hsns')">ADD</button>
+                            <input type="text" id="new-hsn-desc" placeholder="Description (Optional)" style="font-size: 0.7rem;">
+                            <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('hsns')">ADD HSN</button>
                         </div>
                         <div id="master-hsn-list" style="max-height: 200px; overflow-y: auto;"></div>
                     </div>
@@ -1422,7 +1423,7 @@
                                 <table style="width: 100%; border-collapse: collapse;">
                                     <tr>
                                         <td style="padding: 4px 6px;"><input type="text" id="new-batch-no" placeholder="B.No" style="padding: 8px 10px; font-size: 0.75rem; background: rgba(0,0,0,0.5);"></td>
-                                        <td style="padding: 4px 6px;"><input type="text" id="new-batch-exp" placeholder="MM/YY" style="padding: 8px 10px; font-size: 0.75rem; text-align: center; background: rgba(0,0,0,0.5);"></td>
+                                        <td style="padding: 4px 6px;"><input type="month" id="new-batch-exp" style="padding: 8px 10px; font-size: 0.75rem; text-align: center; background: rgba(0,0,0,0.5);"></td>
                                         <td style="padding: 4px 6px;"><input type="number" id="new-batch-mrp" step="0.01" placeholder="MRP" style="padding: 8px 10px; font-size: 0.75rem; text-align: right; background: rgba(0,0,0,0.5);"></td>
                                         <td style="padding: 4px 6px;"><input type="number" id="new-batch-pts" step="0.01" placeholder="PTS" style="padding: 8px 10px; font-size: 0.75rem; text-align: right; background: rgba(0,0,0,0.5);"></td>
                                         <td style="padding: 4px 6px;"><input type="number" id="new-batch-ptr" step="0.01" placeholder="PTR" style="padding: 8px 10px; font-size: 0.75rem; text-align: right; background: rgba(0,0,0,0.5);"></td>
@@ -1481,11 +1482,15 @@
                 <!-- MIDDLE GRID: AUTH & CONTACT -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 1rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
                     <div class="form-group">
-                        <label>Login ID (Email/UID)</label>
+                        <label style="display:flex; justify-content:space-between;">Login ID 
+                            <span style="color:var(--accent); cursor:pointer; font-size:0.6rem;" onclick="regeneratePartyCreds('id')">🔄 REGEN</span>
+                        </label>
                         <input type="text" id="party-login" required readonly style="background: rgba(255,255,255,0.02); opacity: 0.7; font-family: monospace;">
                     </div>
                     <div class="form-group">
-                        <label>Security Password</label>
+                        <label style="display:flex; justify-content:space-between;">Security Password 
+                            <span style="color:var(--accent); cursor:pointer; font-size:0.6rem;" onclick="regeneratePartyCreds('pass')">🔄 REGEN</span>
+                        </label>
                         <input type="text" id="party-pass" required readonly style="background: rgba(255,255,255,0.02); opacity: 0.7; font-family: monospace;">
                     </div>
                     <div class="form-group">

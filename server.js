@@ -206,6 +206,7 @@ const companySchema = new mongoose.Schema({
     superDistributorEmail: String,
     adminEmail: String,
     gstRate: { type: Number, default: 12 },
+    state: { type: String, default: "GUJARAT" },
     // Legal Compliance Details
     gstNo:   { type: String, default: "" },
     panNo:   { type: String, default: "" },
@@ -822,7 +823,12 @@ app.post('/api/admin/products', async (req, res) => {
 // Admin: Update Product
 app.put('/api/admin/products/:id', async (req, res) => {
     try {
-        const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        const updateData = { ...req.body };
+        // Auto-sync qtyAvailable from batches
+        if (updateData.batches && Array.isArray(updateData.batches)) {
+            updateData.qtyAvailable = updateData.batches.reduce((sum, b) => sum + Number(b.qtyAvailable || 0), 0);
+        }
+        const product = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true });
         if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
         res.json({ success: true, product });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1007,23 +1013,29 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.post('/api/admin/settings', async (req, res) => {
     try {
-        let settings = await Company.findOne();
-        if (!settings) {
-            settings = new Company(req.body);
-        } else {
-            const updateData = { ...req.body };
-            // Protection: Don't overwrite existing multimedia assets with empty/missing values
-            if (!updateData.logoImage && settings.logoImage) delete updateData.logoImage;
-            if (!updateData.signatureImage && settings.signatureImage) delete updateData.signatureImage;
-            if (!updateData.musicUrl && settings.musicUrl) delete updateData.musicUrl;
-            if (!updateData.videoUrl && settings.videoUrl) delete updateData.videoUrl;
-            
-            Object.assign(settings, updateData);
-
+        const updateData = { ...req.body };
+        
+        // Protection: Don't overwrite existing multimedia assets with empty/missing values if they exist
+        let currentSettings = await Company.findOne();
+        if (currentSettings) {
+            if (!updateData.logoImage && currentSettings.logoImage) delete updateData.logoImage;
+            if (!updateData.signatureImage && currentSettings.signatureImage) delete updateData.signatureImage;
+            if (!updateData.musicUrl && currentSettings.musicUrl) delete updateData.musicUrl;
+            if (!updateData.videoUrl && currentSettings.videoUrl) delete updateData.videoUrl;
         }
-        await settings.save();
+
+        // Use findOneAndUpdate with upsert to ensure we update the existing record or create if missing
+        const settings = await Company.findOneAndUpdate(
+            {}, 
+            { $set: updateData }, 
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
+
         res.json({ success: true, settings });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        console.error("❌ Settings Update Error:", e.message);
+        res.status(500).json({ error: e.message }); 
+    }
 });
 
 app.post('/api/admin/settings/upload-design', docUpload.single('design'), async (req, res) => {
@@ -2247,14 +2259,20 @@ app.get('/api/admin/parties/:id/ledger', async (req, res) => {
             credit: n.noteType === 'CN' ? n.amount : 0
         }));
 
-        payments.forEach(p => ledger.push({
+            credit: p.amount,
+            debit: 0
+        } : {
+            credit: 0,
+            debit: p.amount
+        };
+        ledger.push({
             date: p.date,
             refNo: p.paymentNo,
             type: p.type,
             description: `${p.method} - Ref: ${p.refNo || 'N/A'}`,
-            debit: 0,
-            credit: p.amount // Payment/Receipt always credits the account (reduces debt)
-        }));
+            ...entry
+        });
+    });
 
         // Sort by date
         ledger.sort((a, b) => new Date(a.date) - new Date(b.date));
