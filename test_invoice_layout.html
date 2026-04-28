@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Design Verification Bench</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 2rem; }
+        .controls { background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 2rem; width: 100%; max-width: 800px; text-align: center; }
+        iframe { width: 100%; max-width: 900px; height: 1200px; border: 5px solid #1e293b; border-radius: 8px; background: white; }
+        .btn { background: #6366f1; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .btn:hover { background: #4f46e5; }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <h2>🎨 Invoice Design Verification Bench</h2>
+        <p>Testing: <b>Design-by-Sample (Matched Coordinates)</b></p>
+        <button class="btn" onclick="renderTestInvoice()">REFRESH PREVIEW</button>
+    </div>
+
+    <iframe id="pdf-preview"></iframe>
+
+    <script>
+        // Mock data
+        const companyProfile = {
+            name: "EMYRIS BIOLIFESCIENCES",
+            address: "Sumadhura Pragati Chambers, Park Ln, Secunderabad, Telangana - 500003",
+            gstNo: "36ABCDE1234F1Z5",
+            dlNo: "TS/SEC/2023-12345",
+            phones: ["+91-7993163300"],
+            emails: ["contact@emyrisbio.com"],
+            bankDetails: "Bank Name: HDFC Bank\nA/C No: 50200012345678\nIFSC Code: HDFC0001234\nBranch: Secunderabad",
+            signatureImage: null 
+        };
+
+        const testParty = {
+            name: "VARDHAMAN PHARMA DISTRIBUTORS",
+            address: "12-3-456, Gandhi Nagar, Hyderabad, Telangana - 500080",
+            gst: "36XXXXX1234X1Z1",
+            dl: "HYD/123/2024"
+        };
+
+        const testItems = [
+            { name: "EMY-CEF 200 TABLETS", hsn: "3004", batch: "EC2401", exp: "12/25", mrp: 145.00, qty: 100, bonusQty: 10, price: 42.50, gstPercent: 12 },
+            { name: "EMY-PAN 40 INJECTION", hsn: "3004", batch: "EP2405", exp: "10/25", mrp: 55.00, qty: 50, bonusQty: 0, price: 18.20, gstPercent: 12 },
+            { name: "EMY-VIT MULTIVITAMIN", hsn: "2106", batch: "EV2409", exp: "08/25", mrp: 210.00, qty: 20, bonusQty: 2, price: 85.00, gstPercent: 18 }
+        ];
+
+        function numberToWords(amount) {
+            // Simplified for test
+            return "THOUSAND AND EIGHTY FIVE RUPEES ONLY";
+        }
+
+        async function renderTestInvoice() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+
+            // --- REPLICATING THE ENGINE LOGIC ---
+            
+            // 2. Background / Header Rendering
+            doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(0);
+            doc.text(companyProfile.name, 105, 15, { align: 'center' });
+            
+            doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+            doc.text(companyProfile.address, 105, 20, { align: 'center' });
+            doc.text(`GSTIN: ${companyProfile.gstNo} | DL No: ${companyProfile.dlNo}`, 105, 25, { align: 'center' });
+            doc.text(`Contact: ${companyProfile.phones[0]} | Email: ${companyProfile.emails[0]}`, 105, 30, { align: 'center' });
+
+            doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(10, 35, 200, 35);
+            
+            doc.setFontSize(12); doc.setFont("helvetica", "bold");
+            doc.text("TAX INVOICE", 105, 42, { align: 'center' });
+            
+            doc.setFontSize(9); doc.setFont("helvetica", "normal");
+            doc.text(`Invoice No:`, 145, 50); doc.setFont("helvetica", "bold"); doc.text("EMY-INV-TEST-001", 170, 50);
+            doc.setFont("helvetica", "normal"); doc.text(`Date:`, 145, 55); doc.setFont("helvetica", "bold"); doc.text(new Date().toLocaleDateString('en-GB'), 170, 55);
+            
+            doc.text(`Order No:`, 145, 60); doc.setFont("helvetica", "bold"); doc.text("ORD-1001", 170, 60);
+
+            doc.setFontSize(9); doc.setFont("helvetica", "normal");
+            doc.text("M/s:", 15, 50); 
+            doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+            doc.text(testParty.name, 25, 50);
+            doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+            const pAddrLines = doc.splitTextToSize(testParty.address, 80);
+            doc.text(pAddrLines, 25, 55);
+            
+            let partyBottomY = 55 + (pAddrLines.length * 4);
+            doc.text(`GSTIN: ${testParty.gst}`, 25, partyBottomY + 2);
+            doc.text(`DL No: ${testParty.dl}`, 25, partyBottomY + 6);
+
+            doc.autoTable({
+                startY: 85,
+                head: [['Sn', 'HSN', 'Description', 'Batch', 'Exp', 'MRP', 'Qty', 'Free', 'Rate', 'GST%', 'Amount']],
+                body: testItems.map((it, idx) => [
+                    idx + 1, it.hsn, it.name, it.batch, it.exp, 
+                    it.mrp.toFixed(2), it.qty, it.bonusQty, 
+                    it.price.toFixed(2), it.gstPercent + '%', 
+                    (it.qty * it.price).toFixed(2)
+                ]),
+                theme: 'grid',
+                headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold', fontSize: 7, halign: 'center', lineWidth: 0.1 },
+                styles: { fontSize: 7, cellPadding: 1.5, textColor: 0, lineWidth: 0.1 },
+                columnStyles: {
+                    0: { cellWidth: 8, halign: 'center' },
+                    1: { cellWidth: 15, halign: 'center' },
+                    2: { cellWidth: 'auto' },
+                    5: { halign: 'right' },
+                    6: { halign: 'center' },
+                    7: { halign: 'center' },
+                    8: { halign: 'right' },
+                    9: { halign: 'center' },
+                    10: { halign: 'right', fontStyle: 'bold' }
+                },
+                margin: { left: 10, right: 10 }
+            });
+
+            let tableFinalY = doc.lastAutoTable.finalY + 5;
+
+            const taxMap = { 12: { taxable: 5000, tax: 600 }, 18: { taxable: 1700, tax: 306 } };
+            let taxBody = [[ "12%", "5000.00", "300.00", "300.00", "600.00" ], [ "18%", "1700.00", "153.00", "153.00", "306.00" ]];
+
+            doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.text("TAX SUMMARY", 10, tableFinalY);
+            doc.autoTable({
+                startY: tableFinalY + 2,
+                head: [['GST%', 'Taxable', 'CGST', 'SGST', 'Total Tax']],
+                body: taxBody,
+                theme: 'grid',
+                headStyles: { fillColor: [250, 250, 250], textColor: 0, fontSize: 6, halign: 'center' },
+                styles: { fontSize: 6, halign: 'right', cellPadding: 1 },
+                margin: { left: 10 },
+                tableWidth: 80
+            });
+
+            const summaryY = tableFinalY + 2;
+            doc.setFontSize(8); doc.setFont("helvetica", "normal");
+            doc.text("Sub Total:", 150, summaryY); doc.text(`Rs. 6700.00`, 195, summaryY, { align: 'right' });
+            doc.text("Total GST:", 150, summaryY + 5); doc.text(`Rs. 906.00`, 195, summaryY + 5, { align: 'right' });
+            doc.text("Round Off:", 150, summaryY + 10); doc.text(`Rs. 0.00`, 195, summaryY + 10, { align: 'right' });
+            
+            doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+            doc.text("GRAND TOTAL:", 150, summaryY + 16); doc.text(`Rs. 7,606.00`, 195, summaryY + 16, { align: 'right' });
+
+            doc.setFontSize(8); doc.setFont("helvetica", "italic");
+            doc.text(`(Amount in Words: SEVEN THOUSAND SIX HUNDRED AND SIX RUPEES ONLY)`, 10, summaryY + 30);
+
+            const footerY = 270;
+            doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(80);
+            doc.text("BANK DETAILS:", 10, footerY);
+            doc.text("HDFC BANK | A/C: 50200012345678", 10, footerY + 4);
+            doc.text("IFSC: HDFC0001234", 10, footerY + 7);
+
+            doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+            doc.text(`For EMYRIS BIOLIFESCIENCES`, 195, footerY, { align: 'right' });
+            doc.text("Authorised Signatory", 195, footerY + 15, { align: 'right' });
+
+            const pdfDataUri = doc.output('datauristring');
+            document.getElementById('pdf-preview').src = pdfDataUri;
+        }
+
+        window.onload = renderTestInvoice;
+    </script>
+</body>
+</html>

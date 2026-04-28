@@ -2777,6 +2777,12 @@ async function generateStandardPDF({
     const doc = new jsPDF('p', 'mm', 'a4');
     const style = (companyProfile && companyProfile.invoiceStyle) || 'classic';
 
+    if (style === 'sample') {
+        return await generateSampleMatchedPDF({ 
+            doc, title, subTitle, docNo, docTypeLabel, date, party, items, grandTotal, terms, showBank, extraFields, filename 
+        });
+    }
+
     const themes = {
         classic: { primary: [99, 102, 241], secondary: [40, 44, 52] },
         modern:  { primary: [16, 185, 129], secondary: [30, 41, 59] },
@@ -3102,7 +3108,7 @@ function editPurchaseEntry(id) {
 
 function setInvoiceStyle(style) {
     document.getElementById('set-inv-style').value = style;
-    const styles = ['classic', 'modern', 'compact'];
+    const styles = ['classic', 'modern', 'compact', 'sample'];
     const colors = {
         classic: { border: '2px solid var(--primary)', shadow: '0 0 20px rgba(99,102,241,0.3)', bg: 'rgba(99,102,241,0.05)' },
         modern:  { border: '2px solid #10b981', shadow: '0 0 20px rgba(16,185,129,0.3)', bg: 'rgba(16,185,129,0.05)' },
@@ -4094,4 +4100,147 @@ async function saveExpense(e) {
         btn.disabled = false;
         btn.innerHTML = originalText;
     }
+}
+
+/**
+ * AI-DRIVEN COORDINATE ENGINE
+ * This function replicates the layout from the uploaded Sample Blueprint.
+ */
+async function generateSampleMatchedPDF({ 
+    doc, title, subTitle, docNo, docTypeLabel, date, party, items, grandTotal, terms, showBank, extraFields, filename 
+}) {
+    // 1. Blueprint Configuration (Matched from Sample)
+    const m = {
+        primary: [0, 0, 0], 
+        accent: [30, 41, 59],
+        line: 0.2
+    };
+
+    doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(0);
+    doc.text((companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES", 105, 15, { align: 'center' });
+    
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+    const coAddr = (companyProfile && companyProfile.address) || "Office Address Here";
+    doc.text(coAddr, 105, 20, { align: 'center' });
+    doc.text(`GSTIN: ${(companyProfile && companyProfile.gstNo) || 'N/A'} | DL No: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, 105, 25, { align: 'center' });
+    doc.text(`Contact: ${(companyProfile && companyProfile.phones?.[0]) || 'N/A'} | Email: ${(companyProfile && companyProfile.emails?.[0]) || 'N/A'}`, 105, 30, { align: 'center' });
+
+    doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(10, 35, 200, 35);
+    
+    doc.setFontSize(12); doc.setFont("helvetica", "bold");
+    doc.text(title.toUpperCase(), 105, 42, { align: 'center' });
+    
+    doc.setFontSize(9); doc.setFont("helvetica", "normal");
+    doc.text(`${docTypeLabel}:`, 145, 50); doc.setFont("helvetica", "bold"); doc.text(docNo, 170, 50);
+    doc.setFont("helvetica", "normal"); doc.text(`Date:`, 145, 55); doc.setFont("helvetica", "bold"); doc.text(date, 170, 55);
+    
+    extraFields.forEach((f, i) => {
+        doc.setFont("helvetica", "normal"); doc.text(`${f.label}:`, 145, 60 + (i * 5));
+        doc.setFont("helvetica", "bold"); doc.text(f.value, 170, 60 + (i * 5));
+    });
+
+    doc.setFontSize(9); doc.setFont("helvetica", "normal");
+    doc.text("M/s:", 15, 50); 
+    doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+    doc.text(party.name || 'N/A', 25, 50);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+    const pAddrLines = doc.splitTextToSize(party.address || 'N/A', 80);
+    doc.text(pAddrLines, 25, 55);
+    
+    let partyBottomY = 55 + (pAddrLines.length * 4);
+    doc.text(`GSTIN: ${party.gst || 'N/A'}`, 25, partyBottomY + 2);
+    doc.text(`DL No: ${party.dl || 'N/A'}`, 25, partyBottomY + 6);
+
+    doc.autoTable({
+        startY: 85,
+        head: [['Sn', 'HSN', 'Description', 'Batch', 'Exp', 'MRP', 'Qty', 'Free', 'Rate', 'GST%', 'Amount']],
+        body: items.map((it, idx) => [
+            idx + 1, it.hsn || '-', it.name, it.batch || '-', it.exp || '-', 
+            (it.mrp || 0).toFixed(2), it.qty, it.bonusQty || 0, 
+            it.price.toFixed(2), (it.gstPercent || 0) + '%', 
+            (it.qty * it.price).toFixed(2)
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold', fontSize: 7, halign: 'center', lineWidth: 0.1 },
+        styles: { fontSize: 7, cellPadding: 1.5, textColor: 0, lineWidth: 0.1 },
+        columnStyles: {
+            0: { cellWidth: 8, halign: 'center' },
+            1: { cellWidth: 15, halign: 'center' },
+            2: { cellWidth: 'auto' },
+            5: { halign: 'right' },
+            6: { halign: 'center' },
+            7: { halign: 'center' },
+            8: { halign: 'right' },
+            9: { halign: 'center' },
+            10: { halign: 'right', fontStyle: 'bold' }
+        },
+        margin: { left: 10, right: 10, bottom: 60 }
+    });
+
+    let tableFinalY = doc.lastAutoTable.finalY + 5;
+
+    const taxMap = {};
+    let totalTaxable = 0; let totalGST = 0;
+    items.forEach(it => {
+        const rate = parseFloat(it.gstPercent) || 0;
+        const taxable = it.qty * it.price;
+        const gst = (taxable * rate) / 100;
+        if (!taxMap[rate]) taxMap[rate] = { taxable: 0, tax: 0 };
+        taxMap[rate].taxable += taxable;
+        taxMap[rate].tax += gst;
+        totalTaxable += taxable; totalGST += gst;
+    });
+
+    const isInter = party.gst && companyProfile.gstNo && companyProfile.gstNo.substring(0,2) !== party.gst.substring(0,2);
+    let taxBody = [];
+    Object.keys(taxMap).sort((a,b)=>a-b).forEach(r => {
+        const rate = parseFloat(r); const d = taxMap[r];
+        if (isInter) { taxBody.push([`${rate}%`, d.taxable.toFixed(2), '0.00', '0.00', d.tax.toFixed(2)]); }
+        else {
+            const hT = (d.tax / 2).toFixed(2);
+            taxBody.push([`${rate}%`, d.taxable.toFixed(2), hT, hT, d.tax.toFixed(2)]);
+        }
+    });
+
+    doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.text("TAX SUMMARY", 10, tableFinalY);
+    doc.autoTable({
+        startY: tableFinalY + 2,
+        head: [['GST%', 'Taxable', 'CGST', 'SGST', 'Total Tax']],
+        body: taxBody,
+        theme: 'grid',
+        headStyles: { fillColor: [250, 250, 250], textColor: 0, fontSize: 6, halign: 'center' },
+        styles: { fontSize: 6, halign: 'right', cellPadding: 1 },
+        margin: { left: 10 },
+        tableWidth: 80
+    });
+
+    const summaryY = tableFinalY + 2;
+    doc.setFontSize(8); doc.setFont("helvetica", "normal");
+    doc.text("Sub Total:", 150, summaryY); doc.text(`Rs. ${totalTaxable.toFixed(2)}`, 195, summaryY, { align: 'right' });
+    doc.text("Total GST:", 150, summaryY + 5); doc.text(`Rs. ${totalGST.toFixed(2)}`, 195, summaryY + 5, { align: 'right' });
+    
+    const unrounded = totalTaxable + totalGST;
+    const roundOff = (grandTotal - unrounded).toFixed(2);
+    doc.text("Round Off:", 150, summaryY + 10); doc.text(`Rs. ${roundOff}`, 195, summaryY + 10, { align: 'right' });
+    
+    doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+    doc.text("GRAND TOTAL:", 150, summaryY + 16); doc.text(`Rs. ${grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, summaryY + 16, { align: 'right' });
+
+    doc.setFontSize(8); doc.setFont("helvetica", "italic");
+    doc.text(`(Amount in Words: ${numberToWords(grandTotal)})`, 10, summaryY + 30);
+
+    const footerY = 270;
+    doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(80);
+    const bankLines = (companyProfile && companyProfile.bankDetails) ? companyProfile.bankDetails.split('\n') : [];
+    doc.text("BANK DETAILS:", 10, footerY);
+    bankLines.forEach((l, i) => doc.text(l, 10, footerY + 4 + (i * 3)));
+
+    doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+    doc.text(`For ${(companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES"}`, 195, footerY, { align: 'right' });
+    if (companyProfile && companyProfile.signatureImage) {
+        try { doc.addImage(companyProfile.signatureImage, 'JPEG', 165, footerY + 2, 30, 10); } catch(e){}
+    }
+    doc.text("Authorised Signatory", 195, footerY + 15, { align: 'right' });
+
+    doc.save(filename);
 }

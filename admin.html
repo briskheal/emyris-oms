@@ -1025,403 +1025,157 @@
                 <form id="companyForm" onsubmit="saveSettings(event)">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
                         
-                        <!-- Card 1: Identity & Address -->
-                        <div class="glass-card" style="padding: 1.5rem; height: 100%;">
-                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: var(--primary);">🏢 Corporate Identity</h3>
+                        <!-- ZONE 1: CORPORATE IDENTITY -->
+                        <div class="glass-card" style="padding: 1.5rem; border-left: 4px solid var(--primary);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
+                                <div style="width: 35px; height: 35px; background: rgba(99, 102, 241, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: var(--primary);">🏢</div>
+                                <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Corporate Identity</h3>
+                            </div>
                             <div class="form-group">
-                                <label>Company Full Name</label>
+                                <label>Company Name (Legal)</label>
                                 <input type="text" id="set-name" placeholder="Emyris Biolifesciences Pvt. Ltd.">
                             </div>
                             <div class="form-group" style="margin-top: 1rem;">
                                 <label>Registered Office Address</label>
-                                <textarea id="set-address" style="width: 100%; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; color: #fff; min-height: 100px;"></textarea>
+                                <textarea id="set-address" style="width: 100%; min-height: 80px;"></textarea>
                             </div>
-                            <div class="form-group" style="margin-top: 1rem;">
-                                <label>Company Logo (Optional)</label>
-                                <input type="file" id="set-logo" accept="image/png, image/jpeg" onchange="convertLogoToBase64(this)">
-                                <input type="hidden" id="set-logo-b64">
-                                <img id="logo-preview" src="" style="max-height: 40px; margin-top: 10px; display: none; border: 1px dashed var(--glass-border); padding: 2px;">
-                            </div>
-                            <div class="form-group" style="margin-top: 1rem;">
-                                <label>Company Logo (Optional)</label>
-                                <input type="file" id="set-logo" accept="image/png, image/jpeg" onchange="convertLogoToBase64(this)">
-                                <input type="hidden" id="set-logo-b64">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div class="form-group">
+                                    <label>Company Logo</label>
+                                    <input type="file" id="set-logo" accept="image/*" onchange="convertLogoToBase64(this)">
+                                    <input type="hidden" id="set-logo-b64">
+                                    <img id="logo-preview" src="" style="max-height: 40px; margin-top: 5px; display: none; border: 1px dashed var(--glass-border);">
+                                </div>
+                                <div class="form-group">
+                                    <label>Authorized Signature</label>
+                                    <input type="file" id="set-signature" accept="image/*" onchange="convertSignatureToBase64(this)">
+                                    <input type="hidden" id="set-signature-b64">
+                                    <img id="sig-preview" src="" style="max-height: 40px; margin-top: 5px; display: none; border: 1px dashed var(--glass-border);">
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Card 2: Hotlines & Communication -->
-                        <div class="glass-card" style="padding: 1.5rem; height: 100%;">
-                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: var(--accent);">📞 Official Hotlines</h3>
+                        <!-- ZONE 2: STATUTORY & COMPLIANCE -->
+                        <div class="glass-card" style="padding: 1.5rem; border-left: 4px solid #ef4444;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
+                                <div style="width: 35px; height: 35px; background: rgba(239, 68, 68, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #ef4444;">⚖️</div>
+                                <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Statutory & Legal</h3>
+                            </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div class="form-group">
-                                    <label>Toll Free Number</label>
-                                    <input type="text" id="set-tollfree" placeholder="7993163300">
-                                </div>
-                                <div class="form-group">
-                                    <label>WhatsApp / Mobile</label>
-                                    <input type="text" id="set-phone" placeholder="+91-XXXXXXXXXX">
-                                </div>
-                            </div>
-                            <div class="form-group" style="margin-top: 1rem;">
-                                <label>Admin Notification Email (Private)</label>
-                                <input type="email" id="set-admin-email" placeholder="admin@emyrisbio.com">
-                            </div>
-                        </div>
-
-                        <!-- Card 3: Digital Channels -->
-                        <div class="glass-card" style="padding: 1.5rem; height: 100%;">
-                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: #10b981;">🌐 Digital Presence</h3>
-                            <div class="form-group">
-                                <label>Primary Website</label>
-                                <input type="text" id="set-web1" placeholder="www.emyrisbio.com">
-                            </div>
-                            <div class="form-group" style="margin-top: 1rem;">
-                                <label>Secondary Website</label>
-                                <input type="text" id="set-web2" placeholder="www.emyris.in">
-                            </div>
-                        </div>
-
-                        <!-- Card 4: Email Ecosystem -->
-                        <div class="glass-card" style="padding: 1.5rem; height: 100%;">
-                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: #f59e0b;">✉️ Contact Emails</h3>
-                            <div class="form-group">
-                                <label>General Inquiries</label>
-                                <input type="email" id="set-email1" placeholder="contact@emyrisbio.com">
-                            </div>
-                            <div class="form-group" style="margin-top: 1rem;">
-                                <label>Sales & Distribution</label>
-                                <input type="email" id="set-email2" placeholder="sales@emyrisbio.com">
-                            </div>
-                            <div class="form-group" style="margin-top: 1rem;">
-                                <label>Technical Support</label>
-                                <input type="email" id="set-email3" placeholder="support@emyrisbio.com">
-                            </div>
-                        </div>
-
-                        <!-- Card 5: Legal Details -->
-                        <div class="glass-card" style="grid-column: span 2; padding: 1.5rem; border-top: 4px solid #ef4444;">
-                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: #ef4444;">⚖️ Legal &amp; Compliance Details</h3>
-                            <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 1.5rem;">These details are mandatory on all tax invoices as per GST law, Drugs &amp; Cosmetics Act, and FSSAI regulations.</p>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem;">
-                                <div class="form-group">
-                                    <label>GSTIN (Company)</label>
-                                    <input type="text" id="set-gst-no" placeholder="36AABCE1234F1Z5" maxlength="15" style="text-transform:uppercase; font-family:monospace; letter-spacing:1px;">
-                                    <div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px;">15-digit GST Identification Number</div>
+                                    <label>GSTIN</label>
+                                    <input type="text" id="set-gst-no" placeholder="GST Number" style="text-transform: uppercase; font-family: monospace;">
                                 </div>
                                 <div class="form-group">
                                     <label>PAN Number</label>
-                                    <input type="text" id="set-pan-no" placeholder="AABCE1234F" maxlength="10" style="text-transform:uppercase; font-family:monospace; letter-spacing:1px;">
-                                    <div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px;">10-character Permanent Account Number</div>
+                                    <input type="text" id="set-pan-no" placeholder="PAN" style="text-transform: uppercase; font-family: monospace;">
                                 </div>
                                 <div class="form-group">
-                                    <label>Drug License Number(s)</label>
-                                    <input type="text" id="set-dl-no" placeholder="TG-HYD-12345, TG-HYD-12346">
-                                    <div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px;">Enter both DL-20 &amp; DL-21 if applicable</div>
+                                    <label>Drug License No.</label>
+                                    <input type="text" id="set-dl-no" placeholder="DL-20, DL-21">
                                 </div>
                                 <div class="form-group">
-                                    <label>FSSAI License No.</label>
-                                    <input type="text" id="set-fssai-no" placeholder="20724024000450" maxlength="14" style="font-family:monospace; letter-spacing:1px;">
-                                    <div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px;">Required if dealing in nutraceuticals</div>
+                                    <label>FSSAI License</label>
+                                    <input type="text" id="set-fssai-no" placeholder="FSSAI No">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Card 5.5: Bank & General Terms -->
-                        <div class="glass-card" style="grid-column: span 2; padding: 1.5rem; background: rgba(34, 197, 94, 0.05); border: 1px solid rgba(34, 197, 94, 0.2);">
-                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: #22c55e;">🏦 Master Bank Details</h3>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <!-- ZONE 3: BANKING & FINANCE -->
+                        <div class="glass-card" style="padding: 1.5rem; border-left: 4px solid #10b981;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
+                                <div style="width: 35px; height: 35px; background: rgba(16, 185, 129, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #10b981;">🏦</div>
+                                <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Banking & Finance</h3>
+                            </div>
+                            <div class="form-group">
+                                <label>Master Bank Details (Formatted Text)</label>
+                                <textarea id="set-bank-details" rows="3" placeholder="Bank Name, A/C No, IFSC..."></textarea>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 1rem; margin-top: 1rem;">
                                 <div class="form-group">
-                                    <label>Bank Details Block (Full Text)</label>
-                                    <textarea id="set-bank-details" rows="3" placeholder="Bank Name: HDFC Bank&#10;A/C No: 123456789012&#10;IFSC Code: HDFC0001234" style="font-family: monospace;"></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label>UPI ID (Optional)</label>
+                                    <label>UPI ID (for Dynamic QR)</label>
                                     <input type="text" id="set-upi-id" placeholder="company@upi">
                                 </div>
                                 <div class="form-group">
-                                    <label>Bank Account Number (For QR)</label>
-                                    <input type="text" id="set-bank-acc" placeholder="1234567890">
-                                </div>
-                                <div class="form-group">
-                                    <label>Bank IFSC Code (For QR)</label>
-                                    <input type="text" id="set-bank-ifsc" placeholder="HDFC0001234">
-                                </div>
-                                <div class="form-group" style="grid-column: span 2;">
-                                    <label>Digital Signature (Optional)</label>
-                                    <input type="file" id="set-signature" accept="image/png, image/jpeg" onchange="convertSignatureToBase64(this)">
-                                    <input type="hidden" id="set-signature-b64">
-                                    <div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px;">Upload a clear PNG/JPG of authorized signature.</div>
-                                    <img id="sig-preview" src="" style="max-height: 40px; margin-top: 10px; display: none; border: 1px dashed var(--glass-border); padding: 2px;">
+                                    <label>GST Rate (%)</label>
+                                    <input type="number" id="set-gst-rate" value="12">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Card 5.6: Master Document Formats -->
-                        <div class="glass-card" style="grid-column: span 2; padding: 1.5rem; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2);">
-                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: var(--primary);">📄 Master Document Formats (T&C and Visibility)</h3>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
-                                <!-- Sales Invoice Config -->
-                                <div style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
-                                    <h4 style="font-size: 0.75rem; margin-bottom: 10px; color: var(--accent);">SALES INVOICE</h4>
-                                    <div class="form-group">
-                                        <label>Terms & Conditions</label>
-                                        <textarea id="set-invoice-terms" rows="3" style="font-size: 0.75rem;"></textarea>
-                                    </div>
-                                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-                                        <input type="checkbox" id="set-invoice-bank-visible" style="width: 15px; height: 15px;">
-                                        <label style="margin: 0; font-size: 0.75rem;">Show Bank Details</label>
-                                    </div>
-                                </div>
-                                <!-- Credit Note Config -->
-                                <div style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
-                                    <h4 style="font-size: 0.75rem; margin-bottom: 10px; color: #ef4444;">CREDIT NOTE (CN)</h4>
-                                    <div class="form-group">
-                                        <label>Terms & Conditions</label>
-                                        <textarea id="set-cn-terms" rows="3" style="font-size: 0.75rem;"></textarea>
-                                    </div>
-                                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-                                        <input type="checkbox" id="set-cn-bank-visible" style="width: 15px; height: 15px;">
-                                        <label style="margin: 0; font-size: 0.75rem;">Show Bank Details</label>
-                                    </div>
-                                </div>
-                                <!-- Debit Note Config -->
-                                <div style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
-                                    <h4 style="font-size: 0.75rem; margin-bottom: 10px; color: #f59e0b;">DEBIT NOTE (DN)</h4>
-                                    <div class="form-group">
-                                        <label>Terms & Conditions</label>
-                                        <textarea id="set-dn-terms" rows="3" style="font-size: 0.75rem;"></textarea>
-                                    </div>
-                                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-                                        <input type="checkbox" id="set-dn-bank-visible" style="width: 15px; height: 15px;">
-                                        <label style="margin: 0; font-size: 0.75rem;">Show Bank Details</label>
-                                    </div>
-                                </div>
+                        <!-- ZONE 4: PORTAL EXPERIENCE -->
+                        <div class="glass-card" style="padding: 1.5rem; border-left: 4px solid #f59e0b;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
+                                <div style="width: 35px; height: 35px; background: rgba(245, 158, 11, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #f59e0b;">📢</div>
+                                <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Portal Experience</h3>
                             </div>
-                        </div>
-
-                        <!-- Card 6: Portal Experience -->
-                        <div class="glass-card" style="grid-column: span 2; padding: 1.5rem;">
-                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: #ec4899;">📢 Portal Announcement Bar</h3>
-                            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1.5rem; align-items: end;">
+                            <div class="form-group">
+                                <label>Announcement Bar Message</label>
+                                <input type="text" id="set-msg-text" placeholder="Welcome to Emyris...">
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                                 <div class="form-group">
-                                    <label>Message Content</label>
-                                    <input type="text" id="set-msg-text" placeholder="Type your announcement here...">
+                                    <label>Message Color</label>
+                                    <input type="color" id="set-msg-color" style="height: 40px; padding: 2px;">
                                 </div>
                                 <div class="form-group">
-                                    <label>Text Color</label>
-                                    <div style="display: flex; gap: 10px; align-items: center;">
-                                        <input type="color" id="set-msg-color" oninput="document.getElementById('color-hex').innerText = this.value.toUpperCase()" value="#6366f1" style="height: 45px; width: 60px; padding: 5px; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 8px;">
-                                        <span id="color-hex" style="font-family: monospace; font-size: 0.8rem; opacity: 0.7;">#6366F1</span>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label>Animation Speed (s)</label>
+                                    <label>Scroll Speed (s)</label>
                                     <input type="number" id="set-msg-speed" value="30">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Card 7: Invoice Template Selection -->
-                        <div class="glass-card" style="grid-column: span 2; padding: 1.5rem;">
-                            <h3 class="section-title" style="font-size: 0.9rem; margin-bottom: 1.5rem; color: #10b981;">📄 Invoice Print Format</h3>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
-                                <!-- CLASSIC SPECIMEN -->
-                                <div id="specimen-classic" onclick="setInvoiceStyle('classic')" style="cursor:pointer; border: 1px solid var(--primary); border-radius: 16px; overflow: hidden; transition: all 0.3s;">
-                                    <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 8px 12px; display:flex; justify-content:space-between; align-items:center;">
-                                        <span style="font-weight:800; font-size:0.75rem; color:#fff;">CLASSIC STANDARD</span>
-                                        <span id="check-classic" style="font-size:0.65rem; background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:20px; color:#fff;">SELECTED</span>
-                                    </div>
-                                    <div style="padding: 10px; font-size: 0.55rem; color: #94a3b8; line-height: 1.6; background: rgba(15,23,42,0.6); font-family: monospace;">
-                                        <div style="text-align:center; border-bottom: 1px dashed #334155; padding-bottom: 5px; margin-bottom:5px;">
-                                            <div style="color:#fff; font-weight:800; font-size:0.7rem;">EMYRIS BIOLIFESCIENCES</div>
-                                            <div>GST: 36AABCE1234F1Z5 | DL: TG-HYD-12345</div>
-                                            <div>Ph: 7993163300 | www.emyrisbio.com</div>
-                                            <button type="button" onclick="event.stopPropagation(); previewInvoiceStyle('classic')" style="margin-top: 8px; font-size: 0.6rem; padding: 4px 10px; background: rgba(99, 102, 241, 0.2); border: 1px solid #6366f1; color: #fff; border-radius: 4px; cursor: pointer;">📥 Download Preview</button>
-                                        </div>
-                                        <div style="text-align:center; color:#6366f1; font-weight:800; margin-bottom:4px; font-size:0.65rem; letter-spacing:1px;">TAX INVOICE</div>
-                                        <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
-                                            <span>Invoice No: <b style="color:#fff;">EMY-INV-20260426-0001</b></span>
-                                        </div>
-                                        <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
-                                            <span>Date: 26-04-2026</span><span>Due: 10-05-2026</span>
-                                        </div>
-                                        <div style="border: 1px solid #1e293b; margin: 4px 0; padding: 4px; border-radius:4px;">
-                                            <div style="color:#fff; font-weight:700;">Bill To: ZIVA PHARMA</div>
-                                            <div>GSTIN: 24LYGPS5699E1ZM | DL: DL-GJ-VAD-229377</div>
-                                            <div>VADODARA, GUJARAT - 390019</div>
-                                        </div>
-                                        <table style="width:100%; font-size:0.48rem; border-collapse:collapse; margin-top:4px;">
-                                            <tr style="background:#1e293b; color:#fff; text-align:center;">
-                                                <th style="padding:2px; border:1px solid #334155;">Sl</th>
-                                                <th style="padding:2px; border:1px solid #334155;">Product</th>
-                                                <th style="padding:2px; border:1px solid #334155;">Qty</th>
-                                                <th style="padding:2px; border:1px solid #334155;">Bonus</th>
-                                                <th style="padding:2px; border:1px solid #334155;">Rate</th>
-                                                <th style="padding:2px; border:1px solid #334155;">GST%</th>
-                                                <th style="padding:2px; border:1px solid #334155;">Amt</th>
-                                            </tr>
-                                            <tr style="text-align:center;">
-                                                <td style="border:1px solid #1e293b; padding:2px;">1</td>
-                                                <td style="border:1px solid #1e293b; padding:2px; text-align:left;">EMYCAL-D3 10x10</td>
-                                                <td style="border:1px solid #1e293b; padding:2px;">10</td>
-                                                <td style="border:1px solid #1e293b; padding:2px; color:#10b981;">0</td>
-                                                <td style="border:1px solid #1e293b; padding:2px;">₹2100</td>
-                                                <td style="border:1px solid #1e293b; padding:2px;">12%</td>
-                                                <td style="border:1px solid #1e293b; padding:2px;">₹23,520</td>
-                                            </tr>
-                                            <tr style="text-align:center;">
-                                                <td style="border:1px solid #1e293b; padding:2px;">2</td>
-                                                <td style="border:1px solid #1e293b; padding:2px; text-align:left;">EMYRIC B12 1x10</td>
-                                                <td style="border:1px solid #1e293b; padding:2px;">5</td>
-                                                <td style="border:1px solid #1e293b; padding:2px; color:#10b981;">1</td>
-                                                <td style="border:1px solid #1e293b; padding:2px;">₹455</td>
-                                                <td style="border:1px solid #1e293b; padding:2px;">12%</td>
-                                                <td style="border:1px solid #1e293b; padding:2px;">₹2,548</td>
-                                            </tr>
-                                        </table>
-                                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px; padding-top:3px; border-top:1px dashed #334155;">
-                                            <span>Taxable: ₹23,272</span> | <span>GST: ₹2,796</span> | <span style="color:#6366f1; font-weight:800;">Total: ₹26,068</span>
-                                        </div>
-                                        <div style="text-align:center; font-size:0.45rem; margin-top:3px; color:#475569; border-top:1px dashed #1e293b; padding-top:2px;">E.&O.E. — Subject to VADODARA Jurisdiction — Computer Generated Invoice</div>
-                                    </div>
+                        <!-- ZONE 5: BRANDING HUB (INVOICE DESIGN) -->
+                        <div class="glass-card" style="grid-column: span 2; padding: 2rem; border-top: 2px solid var(--accent); background: rgba(99, 102, 241, 0.05);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                                <div>
+                                    <h3 class="section-title" style="font-size: 1.1rem; margin: 0; color: var(--accent);">🎨 Branding & Invoice Blueprint</h3>
+                                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">Your invoice design is the face of your company. Match it to your legacy format here.</p>
                                 </div>
-
-                                <!-- MODERN SPECIMEN -->
-                                <div id="specimen-modern" onclick="setInvoiceStyle('modern')" style="cursor:pointer; border: 1px solid var(--glass-border); border-radius: 16px; overflow: hidden; transition: all 0.3s;">
-                                    <div style="background: linear-gradient(135deg, #10b981, #0891b2); padding: 8px 12px; display:flex; justify-content:space-between; align-items:center;">
-                                        <span style="font-weight:800; font-size:0.75rem; color:#fff;">MODERN GLASS</span>
-                                        <span id="check-modern" style="font-size:0.65rem; background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:20px; color:#fff; display:none;">SELECTED</span>
-                                    </div>
-                                    <div style="padding: 10px; font-size: 0.55rem; color: #94a3b8; line-height: 1.6; background: rgba(15,23,42,0.6);">
-                                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #10b981; padding-bottom:5px; margin-bottom:5px;">
-                                            <div>
-                                                <div style="color:#10b981; font-weight:900; font-size:0.8rem; letter-spacing:-0.5px;">EMYRIS</div>
-                                                <div style="font-size:0.5rem; color:#94a3b8;">BIOLIFESCIENCES PVT. LTD.</div>
-                                                <div style="font-size:0.45rem;">GST: 36AABCE1234F | www.emyrisbio.com</div>
-                                                <button type="button" onclick="event.stopPropagation(); previewInvoiceStyle('modern')" style="margin-top: 5px; font-size: 0.55rem; padding: 3px 8px; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #fff; border-radius: 4px; cursor: pointer;">📥 Download Preview</button>
-                                            </div>
-                                            <div style="text-align:right;">
-                                                <div style="color:#fff; font-weight:800; font-size:0.65rem;">TAX INVOICE</div>
-                                                <div style="color:#10b981; font-weight:700;">EMY-INV-20260426-0001</div>
-                                                <div>Date: 26-04-2026</div>
-                                            </div>
-                                        </div>
-                                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px;">
-                                            <div style="background:rgba(16,185,129,0.08); padding:5px; border-radius:6px; border:1px solid rgba(16,185,129,0.2);">
-                                                <div style="color:#10b981; font-size:0.45rem; font-weight:800; text-transform:uppercase; margin-bottom:2px;">Bill To</div>
-                                                <div style="color:#fff; font-weight:700;">ZIVA PHARMA</div>
-                                                <div>GSTIN: 24LYGPS5699E1ZM</div>
-                                                <div>VADODARA, GUJARAT</div>
-                                            </div>
-                                            <div style="background:rgba(255,255,255,0.03); padding:5px; border-radius:6px; border:1px solid rgba(255,255,255,0.05); text-align:right;">
-                                                <div style="color:#10b981; font-size:0.45rem; font-weight:800; text-transform:uppercase; margin-bottom:2px;">Summary</div>
-                                                <div>Taxable: ₹23,272</div>
-                                                <div>GST (12%): ₹2,796</div>
-                                                <div style="color:#10b981; font-weight:800; font-size:0.65rem;">Total: ₹26,068</div>
-                                            </div>
-                                        </div>
-                                        <div style="background:rgba(16,185,129,0.05); border-radius:6px; padding:5px; border:1px solid rgba(16,185,129,0.1);">
-                                            <div style="display:flex; justify-content:space-between; color:#fff; font-weight:700; font-size:0.48rem; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:2px; margin-bottom:3px;">
-                                                <span style="flex:2;">Product</span><span>Qty</span><span>Bonus</span><span>Rate</span><span>Total</span>
-                                            </div>
-                                            <div style="display:flex; justify-content:space-between; font-size:0.48rem;">
-                                                <span style="flex:2;">EMYCAL-D3</span><span>10</span><span style="color:#10b981;">+0</span><span>₹2,100</span><span>₹23,520</span>
-                                            </div>
-                                            <div style="display:flex; justify-content:space-between; font-size:0.48rem;">
-                                                <span style="flex:2;">EMYRIC B12</span><span>5</span><span style="color:#10b981;">+1</span><span>₹455</span><span>₹2,548</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- COMPACT SPECIMEN -->
-                                <div id="specimen-compact" onclick="setInvoiceStyle('compact')" style="cursor:pointer; border: 1px solid var(--glass-border); border-radius: 16px; overflow: hidden; transition: all 0.3s;">
-                                    <div style="background: linear-gradient(135deg, #f59e0b, #ef4444); padding: 8px 12px; display:flex; justify-content:space-between; align-items:center;">
-                                        <span style="font-weight:800; font-size:0.75rem; color:#fff;">COMPACT COMPLIANCE</span>
-                                        <span id="check-compact" style="font-size:0.65rem; background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:20px; color:#fff; display:none;">SELECTED</span>
-                                    </div>
-                                    <div style="padding: 10px; font-size: 0.52rem; color: #94a3b8; line-height: 1.5; background: rgba(15,23,42,0.6); font-family: monospace;">
-                                        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:2px;">
-                                            <b style="color:#fff; font-size:0.65rem;">EMYRIS BIOLIFESCIENCES</b>
-                                            <span style="color:#f59e0b; font-weight:800;">TAX INVOICE</span>
-                                        </div>
-                                        <div style="border-bottom:1px solid #334155; border-top:1px solid #334155; margin:2px 0; padding:2px 0; display:flex; gap:6px; flex-wrap:wrap;">
-                                            <span>GST:36AABCE1234F</span><span>DL:TG-HYD-12345</span><span>Ph:7993163300</span>
-                                            <button type="button" onclick="event.stopPropagation(); previewInvoiceStyle('compact')" style="margin-left: auto; font-size: 0.5rem; padding: 2px 6px; background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b; color: #fff; border-radius: 4px; cursor: pointer;">📥 Download Preview</button>
-                                        </div>
-                                        <div style="display:flex; gap:6px; margin:2px 0; flex-wrap:wrap;">
-                                            <span>Inv: <b style="color:#fff;">EMY-0001</b></span>
-                                            <span>Dt: 26-04-26</span>
-                                            <span>Party: <b style="color:#10b981;">ZIVA PHARMA</b></span>
-                                        </div>
-                                        <div style="font-size:0.45rem; margin-bottom:3px;">
-                                            GSTIN:24LYGPS5699E1ZM | DL:DL-GJ-VAD-229377 | VADODARA GJ
-                                        </div>
-                                        <table style="width:100%; font-size:0.45rem; border-collapse:collapse;">
-                                            <tr style="background:#1e293b; color:#fff; text-align:center;">
-                                                <th style="border:1px solid #334155; padding:1px 2px;">Sl</th>
-                                                <th style="border:1px solid #334155; padding:1px 2px;">Product</th>
-                                                <th style="border:1px solid #334155; padding:1px 2px;">HSN</th>
-                                                <th style="border:1px solid #334155; padding:1px 2px;">Qty</th>
-                                                <th style="border:1px solid #334155; padding:1px 2px;">Bn</th>
-                                                <th style="border:1px solid #334155; padding:1px 2px;">Rate</th>
-                                                <th style="border:1px solid #334155; padding:1px 2px;">Txbl</th>
-                                                <th style="border:1px solid #334155; padding:1px 2px;">GST</th>
-                                                <th style="border:1px solid #334155; padding:1px 2px;">Amt</th>
-                                            </tr>
-                                            <tr style="text-align:center;">
-                                                <td style="border:1px solid #1e293b; padding:1px 2px;">1</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px; text-align:left;">EMYCAL-D3</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px;">30049</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px;">10</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px;">0</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px;">2100</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px;">21000</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px;">2520</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px;">23520</td>
-                                            </tr>
-                                            <tr style="text-align:center;">
-                                                <td style="border:1px solid #1e293b; padding:1px 2px;">2</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px; text-align:left;">EMYRIC B12</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px;">30049</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px;">5</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px; color:#10b981;">1</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px;">455</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px;">2275</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px;">273</td>
-                                                <td style="border:1px solid #1e293b; padding:1px 2px;">2548</td>
-                                            </tr>
-                                        </table>
-                                        <div style="display:flex; justify-content:space-between; margin-top:3px; padding-top:2px; border-top:1px solid #334155;">
-                                            <span>Taxable: ₹23,275</span><span>CGST+SGST: ₹2,793</span><span style="color:#f59e0b; font-weight:800;">Grand: ₹26,068</span>
-                                        </div>
-
-                                <div class="glass-card" style="margin-top: 2rem; border-top: 2px solid var(--accent);">
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-                                        <div>
-                                            <h3 class="section-title" style="margin: 0; font-size: 0.9rem; color: var(--accent);">📥 Reference Invoice Design</h3>
-                                            <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Upload a PDF/Image of your existing invoice. We will use it to match the layout.</p>
-                                        </div>
-                                        <div id="design-status-badge"></div>
-                                    </div>
-                                    
-                                    <div style="display: flex; gap: 1rem; align-items: center; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 12px; border: 1px dashed var(--glass-border);">
-                                        <input type="file" id="invoice-design-file" accept=".pdf,.jpg,.jpeg,.png" style="font-size: 0.75rem; color: #fff;">
-                                        <button type="button" class="btn btn-primary" onclick="uploadInvoiceDesign()" style="padding: 6px 15px; font-size: 0.7rem;">UPLOAD SAMPLE</button>
-                                    </div>
-                                    <div id="design-preview-link" style="margin-top: 10px; font-size: 0.7rem;"></div>
-                                </div>
-                                        <div style="text-align:center; font-size:0.42rem; margin-top:3px; color:#475569; border-top:1px dashed #1e293b; padding-top:2px;">E.&O.E. | VADODARA Jurisdiction | Computer Generated</div>
-                                    </div>
-                                </div>
-
+                                <div id="design-status-badge"></div>
                             </div>
-                            <input type="hidden" id="set-inv-style" value="classic">
-                            <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 1.5rem; text-align: center;">💾 Save Settings to apply the selected template to all future invoice PDFs.</p>
+
+                            <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 2.5rem;">
+                                <div>
+                                    <h4 style="font-size: 0.85rem; color: #fff; margin-bottom: 1rem;">1. Reference Blueprint (Sample PDF)</h4>
+                                    <div style="display: flex; gap: 1rem; align-items: center; background: rgba(0,0,0,0.3); padding: 1.5rem; border-radius: 16px; border: 2px dashed var(--glass-border);">
+                                        <div style="flex: 1;">
+                                            <input type="file" id="invoice-design-file" accept=".pdf,.jpg,.jpeg,.png" style="font-size: 0.75rem;">
+                                            <div id="design-preview-link" style="margin-top: 10px; font-size: 0.7rem;"></div>
+                                        </div>
+                                        <button type="button" class="btn btn-primary" onclick="uploadInvoiceDesign()" style="white-space: nowrap;">UPLOAD BLUEPRINT</button>
+                                    </div>
+                                    <div style="margin-top: 1.5rem; background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2); font-size: 0.75rem; color: #10b981;">
+                                        ℹ️ <b>AI Engine Status:</b> Once uploaded, the AI will automatically attempt to match your coordinates and font hierarchy for the next download.
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 style="font-size: 0.85rem; color: #fff; margin-bottom: 1rem;">2. Select Base Template</h4>
+                                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                                        <div id="specimen-classic" onclick="setInvoiceStyle('classic')" style="padding: 12px; border: 1px solid var(--glass-border); border-radius: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="font-size: 0.8rem;">Standard Classic</span>
+                                            <span id="check-classic" class="badge badge-approved" style="display:none;">ACTIVE</span>
+                                        </div>
+                                        <div id="specimen-modern" onclick="setInvoiceStyle('modern')" style="padding: 12px; border: 1px solid var(--glass-border); border-radius: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="font-size: 0.8rem;">Modern Glass</span>
+                                            <span id="check-modern" class="badge badge-approved" style="display:none;">ACTIVE</span>
+                                        </div>
+                                        <div id="specimen-sample" onclick="setInvoiceStyle('sample')" style="padding: 12px; border: 1px solid var(--accent); border-radius: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(16, 185, 129, 0.05);">
+                                            <span style="font-size: 0.8rem; color: var(--accent); font-weight: 700;">Matched Sample (AI Engine)</span>
+                                            <span id="check-sample" class="badge badge-approved" style="display:none;">ACTIVE</span>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="set-inv-style" value="classic">
+                                </div>
+                            </div>
                         </div>
 
                     </div>
                 </form>
+                <div style="margin-top: 2rem; text-align: center;">
+                    <p style="color: var(--text-muted); font-size: 0.75rem;">💾 Save Settings to apply changes to all portal modules.</p>
+                </div>
             </div>
             
             <!-- SYSTEM HEALTH TAB -->
