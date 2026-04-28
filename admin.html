@@ -1025,11 +1025,11 @@
                 <form id="companyForm" onsubmit="saveSettings(event)">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
                         
-                        <!-- ZONE 1: CORPORATE IDENTITY -->
+                        <!-- ZONE 1: CORPORATE IDENTITY & CONTACT -->
                         <div class="glass-card" style="padding: 1.5rem; border-left: 4px solid var(--primary);">
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
                                 <div style="width: 35px; height: 35px; background: rgba(99, 102, 241, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: var(--primary);">🏢</div>
-                                <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Corporate Identity</h3>
+                                <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Corporate Identity & Contact</h3>
                             </div>
                             <div class="form-group">
                                 <label>Company Name (Legal)</label>
@@ -1037,8 +1037,39 @@
                             </div>
                             <div class="form-group" style="margin-top: 1rem;">
                                 <label>Registered Office Address</label>
-                                <textarea id="set-address" style="width: 100%; min-height: 80px;"></textarea>
+                                <textarea id="set-address" style="width: 100%; min-height: 60px;"></textarea>
                             </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div class="form-group">
+                                    <label>Toll Free / Primary Phone</label>
+                                    <input type="text" id="set-tollfree" placeholder="1800-XXX-XXXX">
+                                </div>
+                                <div class="form-group">
+                                    <label>Admin Contact Email</label>
+                                    <input type="email" id="set-admin-email" placeholder="admin@emyrisbio.com">
+                                </div>
+                                <div class="form-group">
+                                    <label>Primary Phone</label>
+                                    <input type="text" id="set-phone" placeholder="+91-XXXXXXXXXX">
+                                </div>
+                                <div class="form-group">
+                                    <label>Website 1</label>
+                                    <input type="text" id="set-web1" placeholder="www.emyrisbio.com">
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div class="form-group">
+                                    <label>Email 1 (Sales)</label>
+                                    <input type="email" id="set-email1" placeholder="sales@emyrisbio.com">
+                                </div>
+                                <div class="form-group">
+                                    <label>Email 2 (Support)</label>
+                                    <input type="email" id="set-email2" placeholder="support@emyrisbio.com">
+                                </div>
+                            </div>
+
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                                 <div class="form-group">
                                     <label>Company Logo</label>
@@ -1079,6 +1110,14 @@
                                     <input type="text" id="set-fssai-no" placeholder="FSSAI No">
                                 </div>
                             </div>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>Website 2 (Secondary)</label>
+                                <input type="text" id="set-web2" placeholder="www.emyris.in">
+                            </div>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>Email 3 (General)</label>
+                                <input type="email" id="set-email3" placeholder="contact@emyrisbio.com">
+                            </div>
                         </div>
 
                         <!-- ZONE 3: BANKING & FINANCE -->
@@ -1087,7 +1126,17 @@
                                 <div style="width: 35px; height: 35px; background: rgba(16, 185, 129, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #10b981;">🏦</div>
                                 <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Banking & Finance</h3>
                             </div>
-                            <div class="form-group">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label>Bank Account No.</label>
+                                    <input type="text" id="set-bank-acc" placeholder="Account Number">
+                                </div>
+                                <div class="form-group">
+                                    <label>IFSC Code</label>
+                                    <input type="text" id="set-bank-ifsc" placeholder="IFSC Code">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top: 1rem;">
                                 <label>Master Bank Details (Formatted Text)</label>
                                 <textarea id="set-bank-details" rows="3" placeholder="Bank Name, A/C No, IFSC..."></textarea>
                             </div>
@@ -1121,6 +1170,40 @@
                                 <div class="form-group">
                                     <label>Scroll Speed (s)</label>
                                     <input type="number" id="set-msg-speed" value="30">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ZONE 6: INVOICING & TERMS -->
+                        <div class="glass-card" style="grid-column: span 2; padding: 1.5rem; border-left: 4px solid #6366f1;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
+                                <div style="width: 35px; height: 35px; background: rgba(99, 102, 241, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #6366f1;">📄</div>
+                                <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Invoicing Terms & Visibility</h3>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
+                                <div class="form-group">
+                                    <label>Sales Invoice Terms</label>
+                                    <textarea id="set-invoice-terms" rows="3" style="font-size: 0.7rem;"></textarea>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                                        <input type="checkbox" id="set-invoice-bank-visible">
+                                        <label style="margin: 0; font-size: 0.65rem;">Show Bank in Invoice</label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Credit Note Terms</label>
+                                    <textarea id="set-cn-terms" rows="3" style="font-size: 0.7rem;"></textarea>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                                        <input type="checkbox" id="set-cn-bank-visible">
+                                        <label style="margin: 0; font-size: 0.65rem;">Show Bank in CN</label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Debit Note Terms</label>
+                                    <textarea id="set-dn-terms" rows="3" style="font-size: 0.7rem;"></textarea>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                                        <input type="checkbox" id="set-dn-bank-visible">
+                                        <label style="margin: 0; font-size: 0.65rem;">Show Bank in DN</label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2120,7 +2203,7 @@
         </div>
     </div>
 
-    <script src="admin-script.js"></script>
+    <script src="admin-script.js?v=2.2"></script>
 
     <audio id="bgMusic" loop preload="auto"></audio>
 </body>

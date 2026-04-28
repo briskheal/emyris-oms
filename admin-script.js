@@ -101,7 +101,18 @@ window.onload = async () => {
     }
 };
 
+function safeGetVal(id) {
+    const el = document.getElementById(id);
+    return el ? el.value : '';
+}
+
+function safeSetVal(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.value = val || '';
+}
+
 async function handleAdminLogin(e) {
+
     e.preventDefault();
     const adminId = document.getElementById('admin-id-input').value;
     const password = document.getElementById('admin-pass-input').value;
@@ -1177,52 +1188,50 @@ async function saveSettings(e) {
             return url;
         };
 
-        mUrl = fixDrive(mUrl);
-        vUrl = fixDrive(vUrl);
-
         const data = {
-            name: document.getElementById('set-name').value,
-            tollFree: document.getElementById('set-tollfree').value,
+            name: safeGetVal('set-name'),
+
+            tollFree: safeGetVal('set-tollfree'),
             websites: [
-                document.getElementById('set-web1').value,
-                document.getElementById('set-web2').value
+                safeGetVal('set-web1'),
+                safeGetVal('set-web2')
             ].filter(v => v),
             emails: [
-                document.getElementById('set-email1').value,
-                document.getElementById('set-email2').value,
-                document.getElementById('set-email3').value
+                safeGetVal('set-email1'),
+                safeGetVal('set-email2'),
+                safeGetVal('set-email3')
             ].filter(v => v),
-            phones: [document.getElementById('set-phone').value].filter(v => v),
-            adminEmail: document.getElementById('set-admin-email').value,
-            address: document.getElementById('set-address').value,
-            gstNo: document.getElementById('set-gst-no').value,
-            panNo: document.getElementById('set-pan-no').value,
-            dlNo: document.getElementById('set-dl-no').value,
-            fssaiNo: document.getElementById('set-fssai-no').value,
-            bankDetails: document.getElementById('set-bank-details').value,
-            invoiceTerms: document.getElementById('set-invoice-terms') ? document.getElementById('set-invoice-terms').value : '',
-            cnTerms: document.getElementById('set-cn-terms') ? document.getElementById('set-cn-terms').value : '',
-            dnTerms: document.getElementById('set-dn-terms') ? document.getElementById('set-dn-terms').value : '',
-            invoiceBankVisible: document.getElementById('set-invoice-bank-visible') ? document.getElementById('set-invoice-bank-visible').checked : true,
-            cnBankVisible: document.getElementById('set-cn-bank-visible') ? document.getElementById('set-cn-bank-visible').checked : true,
-            dnBankVisible: document.getElementById('set-dn-bank-visible') ? document.getElementById('set-dn-bank-visible').checked : true,
-            upiId: document.getElementById('set-upi-id') ? document.getElementById('set-upi-id').value : '',
-            bankAccountNo: document.getElementById('set-bank-acc') ? document.getElementById('set-bank-acc').value : '',
-            bankIfsc: document.getElementById('set-bank-ifsc') ? document.getElementById('set-bank-ifsc').value : '',
-            signatureImage: document.getElementById('set-signature-b64').value || (companyProfile && companyProfile.signatureImage) || '',
-            logoImage: (document.getElementById('set-logo-b64') && document.getElementById('set-logo-b64').value) ? document.getElementById('set-logo-b64').value : ((companyProfile && companyProfile.logoImage) || ''),
+            phones: [safeGetVal('set-phone')].filter(v => v),
+            adminEmail: safeGetVal('set-admin-email'),
+            address: safeGetVal('set-address'),
+            gstNo: safeGetVal('set-gst-no'),
+            panNo: safeGetVal('set-pan-no'),
+            dlNo: safeGetVal('set-dl-no'),
+            fssaiNo: safeGetVal('set-fssai-no'),
+            bankDetails: safeGetVal('set-bank-details'),
+            gstRate: Number(safeGetVal('set-gst-rate')),
+            invoiceTerms: safeGetVal('set-invoice-terms'),
+            cnTerms: safeGetVal('set-cn-terms'),
+            dnTerms: safeGetVal('set-dn-terms'),
+            invoiceBankVisible: document.getElementById('set-invoice-bank-visible')?.checked || false,
+            cnBankVisible: document.getElementById('set-cn-bank-visible')?.checked || false,
+            dnBankVisible: document.getElementById('set-dn-bank-visible')?.checked || false,
+            upiId: safeGetVal('set-upi-id'),
+            bankAccountNo: safeGetVal('set-bank-acc'),
+            bankIfsc: safeGetVal('set-bank-ifsc'),
+            signatureImage: safeGetVal('set-signature-b64'),
+            logoImage: safeGetVal('set-logo-b64'),
             scrollingMessage: {
-                text: document.getElementById('set-msg-text').value,
-                color: document.getElementById('set-msg-color').value,
-                speed: Number(document.getElementById('set-msg-speed') ? document.getElementById('set-msg-speed').value : 30)
+                text: safeGetVal('set-msg-text'),
+                color: safeGetVal('set-msg-color'),
+                speed: Number(safeGetVal('set-msg-speed'))
             },
-            invoiceStyle: document.getElementById('set-inv-style').value,
-            musicVolume: Number(document.getElementById('globalVolume') ? document.getElementById('globalVolume').value : 0.5),
-            musicUrl: mUrl,
-            videoUrl: vUrl
+            invoiceStyle: safeGetVal('set-inv-style'),
+            musicVolume: Number(safeGetVal('globalVolume')),
+            musicUrl: fixDrive(safeGetVal('set-music-url')),
+            videoUrl: fixDrive(safeGetVal('set-video-url'))
         };
 
-        // 3. Send to Server
         const res = await fetch(`${API_BASE}/admin/settings`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1233,12 +1242,19 @@ async function saveSettings(e) {
             alert("✅ SETTINGS SAVED SUCCESSFULY!\n\nYour changes are now live across all portals.");
             await loadSettings(); 
         } else {
-            const err = await res.json();
-            alert("❌ SAVE FAILED: " + (err.error || "Server Error"));
+            const errBody = await res.text();
+            let errorMessage = "Server Error";
+            try {
+                const errJson = JSON.parse(errBody);
+                errorMessage = errJson.error || errJson.message || "Server Error";
+            } catch (e) {
+                errorMessage = `HTTP ${res.status}: ${errBody.substring(0, 50)}`;
+            }
+            alert("❌ SAVE FAILED: " + errorMessage);
         }
     } catch (e) { 
         console.error("Save Error:", e);
-        alert("❌ CRITICAL ERROR: Could not connect to server. Please check your internet."); 
+        alert("❌ CRITICAL ERROR: " + (e.message || "Could not connect to server. Please check your internet.")); 
     } finally {
         if (btn) {
             btn.disabled = false;
