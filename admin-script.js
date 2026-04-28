@@ -825,80 +825,84 @@ async function deleteMaster(type, id) {
 async function loadSettings() {
     try {
         const res = await fetch(`${API_BASE}/admin/settings`);
-        const s = await res.json();
-        companyProfile = s || {};
+        const s = await res.json() || {};
+        companyProfile = s;
         
-        document.getElementById('set-name').value = s.name || '';
-        document.getElementById('set-tollfree').value = s.tollFree || '';
+        const safeSetVal = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val || '';
+        };
+
+        const safeSetCheck = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.checked = !!val;
+        };
+
+        safeSetVal('set-name', s.name);
+        safeSetVal('set-tollfree', s.tollFree);
         
-        // Websites
         if (s.websites) {
-            document.getElementById('set-web1').value = s.websites[0] || '';
-            document.getElementById('set-web2').value = s.websites[1] || '';
+            safeSetVal('set-web1', s.websites[0]);
+            safeSetVal('set-web2', s.websites[1]);
         }
         
-        // Emails
         if (s.emails) {
-            document.getElementById('set-email1').value = s.emails[0] || '';
-            document.getElementById('set-email2').value = s.emails[1] || '';
-            document.getElementById('set-email3').value = s.emails[2] || '';
+            safeSetVal('set-email1', s.emails[0]);
+            safeSetVal('set-email2', s.emails[1]);
+            safeSetVal('set-email3', s.emails[2]);
         }
 
-        document.getElementById('set-phone').value = s.phones ? s.phones[0] : '';
-        document.getElementById('set-address').value = s.address || '';
-        document.getElementById('set-admin-email').value = s.adminEmail || '';
+        safeSetVal('set-phone', s.phones ? s.phones[0] : '');
+        safeSetVal('set-address', s.address);
+        safeSetVal('set-admin-email', s.adminEmail);
 
-        // Legal Details
-        document.getElementById('set-gst-no').value = s.gstNo || '';
-        document.getElementById('set-pan-no').value = s.panNo || '';
-        document.getElementById('set-dl-no').value = s.dlNo || '';
-        document.getElementById('set-fssai-no').value = s.fssaiNo || '';
+        safeSetVal('set-gst-no', s.gstNo);
+        safeSetVal('set-pan-no', s.panNo);
+        safeSetVal('set-dl-no', s.dlNo);
+        safeSetVal('set-fssai-no', s.fssaiNo);
         
-        document.getElementById('set-bank-details').value = s.bankDetails || '';
-        if (document.getElementById('set-invoice-terms')) document.getElementById('set-invoice-terms').value = s.invoiceTerms || '';
-        if (document.getElementById('set-cn-terms')) document.getElementById('set-cn-terms').value = s.cnTerms || '';
-        if (document.getElementById('set-dn-terms')) document.getElementById('set-dn-terms').value = s.dnTerms || '';
+        safeSetVal('set-bank-details', s.bankDetails);
+        safeSetVal('set-invoice-terms', s.invoiceTerms);
+        safeSetVal('set-cn-terms', s.cnTerms);
+        safeSetVal('set-dn-terms', s.dnTerms);
         
-        if (document.getElementById('set-invoice-bank-visible')) document.getElementById('set-invoice-bank-visible').checked = !!s.invoiceBankVisible;
-        if (document.getElementById('set-cn-bank-visible')) document.getElementById('set-cn-bank-visible').checked = !!s.cnBankVisible;
-        if (document.getElementById('set-dn-bank-visible')) document.getElementById('set-dn-bank-visible').checked = !!s.dnBankVisible;
+        safeSetCheck('set-invoice-bank-visible', s.invoiceBankVisible);
+        safeSetCheck('set-cn-bank-visible', s.cnBankVisible);
+        safeSetCheck('set-dn-bank-visible', s.dnBankVisible);
 
-        if (document.getElementById('set-upi-id')) document.getElementById('set-upi-id').value = s.upiId || '';
-        if (document.getElementById('set-bank-acc')) document.getElementById('set-bank-acc').value = s.bankAccountNo || '';
-        if (document.getElementById('set-bank-ifsc')) document.getElementById('set-bank-ifsc').value = s.bankIfsc || '';
+        safeSetVal('set-upi-id', s.upiId);
+        safeSetVal('set-bank-acc', s.bankAccountNo);
+        safeSetVal('set-bank-ifsc', s.bankIfsc);
         
-        document.getElementById('set-signature-b64').value = s.signatureImage || '';
-        if (s.signatureImage) {
-            document.getElementById('sig-preview').src = s.signatureImage;
-            document.getElementById('sig-preview').style.display = 'block';
-        } else {
-            document.getElementById('sig-preview').style.display = 'none';
+        safeSetVal('set-signature-b64', s.signatureImage);
+        const sigPreview = document.getElementById('sig-preview');
+        if (sigPreview) {
+            if (s.signatureImage) {
+                sigPreview.src = s.signatureImage;
+                sigPreview.style.display = 'block';
+            } else {
+                sigPreview.style.display = 'none';
+            }
         }
 
-        if (document.getElementById('set-logo-b64')) document.getElementById('set-logo-b64').value = s.logoImage || '';
-        if (s.logoImage && document.getElementById('logo-preview')) {
-            document.getElementById('logo-preview').src = s.logoImage;
-            document.getElementById('logo-preview').style.display = 'block';
-        } else if (document.getElementById('logo-preview')) {
-            document.getElementById('logo-preview').style.display = 'none';
+        safeSetVal('set-logo-b64', s.logoImage);
+        const logoPreview = document.getElementById('logo-preview');
+        if (logoPreview) {
+            if (s.logoImage) {
+                logoPreview.src = s.logoImage;
+                logoPreview.style.display = 'block';
+            } else {
+                logoPreview.style.display = 'none';
+            }
         }
 
-        // Footer population (handled by script.js in stockist, but here for completeness)
         if (document.getElementById('footer-co-name')) document.getElementById('footer-co-name').innerText = s.name || 'EMYRIS OMS';
         if (document.getElementById('footer-co-address')) document.getElementById('footer-co-address').innerText = s.address || '';
         
         if (s.scrollingMessage) {
-            document.getElementById('set-msg-text').value = s.scrollingMessage.text || '';
-            document.getElementById('set-msg-color').value = s.scrollingMessage.color || '#6366f1';
+            safeSetVal('set-msg-text', s.scrollingMessage.text);
+            safeSetVal('set-msg-color', s.scrollingMessage.color);
         }
-
-        // Load Document Formats
-        if (document.getElementById('set-invoice-terms')) document.getElementById('set-invoice-terms').value = s.invoiceTerms || '';
-        if (document.getElementById('set-cn-terms')) document.getElementById('set-cn-terms').value = s.cnTerms || '';
-        if (document.getElementById('set-dn-terms')) document.getElementById('set-dn-terms').value = s.dnTerms || '';
-        if (document.getElementById('set-invoice-bank-visible')) document.getElementById('set-invoice-bank-visible').checked = !!s.invoiceBankVisible;
-        if (document.getElementById('set-cn-bank-visible')) document.getElementById('set-cn-bank-visible').checked = !!s.cnBankVisible;
-        if (document.getElementById('set-dn-bank-visible')) document.getElementById('set-dn-bank-visible').checked = !!s.dnBankVisible;
 
         setInvoiceStyle(s.invoiceStyle || 'classic');
 
@@ -913,42 +917,33 @@ async function loadSettings() {
             }
         }
 
-
-        // Multimedia Setup
         if (s.musicUrl) {
             const musicName = s.musicUrl.split('/').pop();
             if (document.getElementById('current-music-name')) document.getElementById('current-music-name').innerText = `Current: ${musicName}`;
-            if (document.getElementById('set-music-url')) document.getElementById('set-music-url').value = s.musicUrl;
+            safeSetVal('set-music-url', s.musicUrl);
             
             const audio = document.getElementById('bgMusic');
             if (audio) {
                 const targetSrc = s.musicUrl.startsWith('http') ? s.musicUrl : window.location.origin + s.musicUrl;
                 if (audio.src !== targetSrc) {
                     audio.src = targetSrc;
-                    audio.load(); // Force reload the new source
+                    audio.load();
                 }
-                
-                // Set crossorigin for external links (Drive, etc.)
                 if (s.musicUrl.includes('google.com') || s.musicUrl.includes('dropbox')) {
                     audio.crossOrigin = "anonymous";
                 }
-
-                // Persistence
                 if (localStorage.getItem('emyris_music_on') === 'true' && audio.paused) {
                     audio.play().catch(() => {});
                 }
             }
         }
 
-
         if (s.videoUrl) {
             const videoName = s.videoUrl.split('/').pop();
             if (document.getElementById('current-video-name')) document.getElementById('current-video-name').innerText = `Current: ${videoName}`;
-            if (document.getElementById('set-video-url')) document.getElementById('set-video-url').value = s.videoUrl;
+            safeSetVal('set-video-url', s.videoUrl);
         }
 
-
-        // Handle reference design display
         const designBadge = document.getElementById('design-status-badge');
         const designLink = document.getElementById('design-preview-link');
         if (s.referenceInvoiceUrl) {
@@ -959,6 +954,7 @@ async function loadSettings() {
         }
 
     } catch (e) { console.error("Load settings fail", e); }
+}
 }
 
 async function uploadInvoiceDesign() {
