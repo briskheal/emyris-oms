@@ -29,12 +29,13 @@ const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 });
-const upload = multer({ 
+});
+const docUpload = multer({ 
     storage,
     fileFilter: (req, file, cb) => {
-        const allowedTypes = ['audio/mpeg', 'video/mp4', 'audio/mp3'];
+        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
         if (allowedTypes.includes(file.mimetype)) cb(null, true);
-        else cb(new Error('Invalid file type. Only MP3 and MP4 allowed.'));
+        else cb(new Error('Invalid file type. Only PDF, JPG, PNG allowed.'));
     }
 });
 
@@ -225,7 +226,8 @@ const companySchema = new mongoose.Schema({
         color: { type: String, default: "#6366f1" },
         speed: { type: Number, default: 30 }
     },
-    invoiceStyle: { type: String, default: 'classic' }
+    invoiceStyle: { type: String, default: 'classic' },
+    referenceInvoiceUrl: { type: String, default: "" }
 });
 
 // 2. Global Masters
@@ -1011,6 +1013,22 @@ app.post('/api/admin/settings', async (req, res) => {
         }
         await settings.save();
         res.json({ success: true, settings });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/settings/upload-design', docUpload.single('design'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
+        
+        let settings = await Company.findOne();
+        if (!settings) settings = new Company();
+
+        // Local storage path or Cloudinary (using local for PDF stability)
+        const fileUrl = `/uploads/media/${req.file.filename}`;
+        settings.referenceInvoiceUrl = fileUrl;
+        await settings.save();
+
+        res.json({ success: true, url: fileUrl });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

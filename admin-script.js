@@ -948,7 +948,39 @@ async function loadSettings() {
         }
 
 
-    } catch (e) { console.error("Load settings fail"); }
+        // Handle reference design display
+        const designBadge = document.getElementById('design-status-badge');
+        const designLink = document.getElementById('design-preview-link');
+        if (s.referenceInvoiceUrl) {
+            if (designBadge) designBadge.innerHTML = '<span class="badge badge-approved" style="font-size:0.6rem;">READY TO MATCH</span>';
+            if (designLink) designLink.innerHTML = `<a href="${s.referenceInvoiceUrl}" target="_blank" style="color:var(--accent); text-decoration:none;">📄 View Uploaded Sample</a>`;
+        } else {
+            if (designBadge) designBadge.innerHTML = '<span class="badge badge-pending" style="font-size:0.6rem;">NO SAMPLE</span>';
+        }
+
+    } catch (e) { console.error("Load settings fail", e); }
+}
+
+async function uploadInvoiceDesign() {
+    const fileInput = document.getElementById('invoice-design-file');
+    if (!fileInput.files.length) return alert("Please select a file first.");
+
+    const formData = new FormData();
+    formData.append('design', fileInput.files[0]);
+
+    try {
+        const res = await fetch('/api/admin/settings/upload-design', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ Reference Invoice Uploaded! We will use this to match your design.");
+            loadSettings();
+        } else {
+            alert("Upload failed: " + result.error);
+        }
+    } catch (e) { alert("Upload error occurred."); }
 }
 
 function toggleMusic() {

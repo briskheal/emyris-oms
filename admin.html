@@ -1395,6 +1395,22 @@
                                         <div style="display:flex; justify-content:space-between; margin-top:3px; padding-top:2px; border-top:1px solid #334155;">
                                             <span>Taxable: ₹23,275</span><span>CGST+SGST: ₹2,793</span><span style="color:#f59e0b; font-weight:800;">Grand: ₹26,068</span>
                                         </div>
+
+                                <div class="glass-card" style="margin-top: 2rem; border-top: 2px solid var(--accent);">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                                        <div>
+                                            <h3 class="section-title" style="margin: 0; font-size: 0.9rem; color: var(--accent);">📥 Reference Invoice Design</h3>
+                                            <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Upload a PDF/Image of your existing invoice. We will use it to match the layout.</p>
+                                        </div>
+                                        <div id="design-status-badge"></div>
+                                    </div>
+                                    
+                                    <div style="display: flex; gap: 1rem; align-items: center; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 12px; border: 1px dashed var(--glass-border);">
+                                        <input type="file" id="invoice-design-file" accept=".pdf,.jpg,.jpeg,.png" style="font-size: 0.75rem; color: #fff;">
+                                        <button type="button" class="btn btn-primary" onclick="uploadInvoiceDesign()" style="padding: 6px 15px; font-size: 0.7rem;">UPLOAD SAMPLE</button>
+                                    </div>
+                                    <div id="design-preview-link" style="margin-top: 10px; font-size: 0.7rem;"></div>
+                                </div>
                                         <div style="text-align:center; font-size:0.42rem; margin-top:3px; color:#475569; border-top:1px dashed #1e293b; padding-top:2px;">E.&O.E. | VADODARA Jurisdiction | Computer Generated</div>
                                     </div>
                                 </div>
