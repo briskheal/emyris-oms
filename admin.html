@@ -455,7 +455,9 @@
             <div id="tab-products" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                     <h2 class="section-title" style="margin: 0;">💊 Product Master</h2>
-                    <div style="display: flex; gap: 0.75rem;">
+                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                        <input type="text" id="productSearch" placeholder="🔍 Search Products..." onkeyup="filterProducts(this.value)" 
+                               style="padding: 10px 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 12px; color: #fff; width: 280px; font-size: 0.85rem;">
                         <button class="btn btn-ghost" onclick="downloadProductTemplate()">📥 Template</button>
                         <button class="btn btn-ghost" onclick="document.getElementById('bulkProductInput').click()">📤 Bulk Upload</button>
                         <input type="file" id="bulkProductInput" hidden accept=".csv, .xlsx, .xls" onchange="handleProductBulkUpload(this)">
@@ -759,6 +761,7 @@
                                     <th style="text-align: right;">GST</th>
                                     <th style="text-align: right;">Total Amount</th>
                                     <th style="text-align: right;">Actions</th>
+                                    <th>View</th>
                                 </tr>
                             </thead>
                             <tbody id="invoiceTableBody"></tbody>

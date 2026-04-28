@@ -652,9 +652,10 @@ function updateDatalists() {
     }
 }
 
-function renderProducts() {
+function renderProducts(list = allProducts) {
     const tbody = document.getElementById('productTableBody');
-    tbody.innerHTML = allProducts.map(p => `
+    if (!tbody) return;
+    tbody.innerHTML = list.map(p => `
         <tr>
             <td style="font-weight: 700;">${p.name}</td>
             <td style="color:var(--text-muted); font-size:0.8rem;">${p.packing || '-'}</td>
@@ -671,6 +672,16 @@ function renderProducts() {
             </td>
         </tr>
     `).join('');
+}
+
+function filterProducts(query) {
+    const q = query.toLowerCase();
+    const filtered = allProducts.filter(p => 
+        p.name.toLowerCase().includes(q) || 
+        (p.hsn && p.hsn.toLowerCase().includes(q)) ||
+        (p.manufacturer && p.manufacturer.toLowerCase().includes(q))
+    );
+    renderProducts(filtered);
 }
 
 function openProductModal() {
