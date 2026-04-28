@@ -2363,14 +2363,18 @@ async function saveDirectSale(e) {
     const partyId = document.getElementById('sale-party').value;
     const party = allStockists.find(s => s._id === partyId);
 
-    const btn = e.submitter;
-    const originalText = btn.innerText;
-    btn.disabled = true;
-    btn.innerText = '⌛ SAVING SALE...';
+    // Robust button selection to prevent UI hang
+    const btn = e.submitter || e.target.querySelector('button[type="submit"]');
+    const originalText = btn ? btn.innerText : 'CONFIRM SALE';
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = '⌛ SAVING SALE...';
+    }
 
     const data = {
         party: partyId,
-        partyName: party ? party.name : 'Direct Customer',
+        partyName: party ? (party.companyName || party.name) : 'Direct Customer',
         refNo: document.getElementById('sale-ref-no').value,
         date: document.getElementById('sale-date').value,
         channel: document.getElementById('sale-channel').value,
@@ -2379,9 +2383,9 @@ async function saveDirectSale(e) {
         placeOfSupply: document.getElementById('sale-supply').value || companyProfile.defaultPlaceOfSupply,
         dueDate: document.getElementById('sale-due-date').value,
         items: directSaleItems,
-        subTotal: directSaleItems.reduce((s, i) => s + i.totalValue, 0),
-        gstAmount: directSaleItems.reduce((s, i) => s + (i.totalValue * i.gstPercent / 100), 0),
-        grandTotal: directSaleItems.reduce((s, i) => s + (i.totalValue * (1 + i.gstPercent / 100)), 0),
+        subTotal: Number(document.getElementById('sale-subtotal').innerText.replace(/[^\d.]/g, '')),
+        gstAmount: Number(document.getElementById('sale-gst').innerText.replace(/[^\d.]/g, '')),
+        grandTotal: Number(document.getElementById('sale-total').innerText.replace(/[^\d.]/g, '')),
         type: document.getElementById('sale-type-input').value
     };
 
@@ -2392,21 +2396,26 @@ async function saveDirectSale(e) {
             body: JSON.stringify(data)
         });
         const result = await res.json();
+        
         if (result.success) {
+            // Reset button BEFORE alert to keep UI alive
+            if (btn) { btn.disabled = false; btn.innerText = originalText; }
+            
             alert(`✅ Direct Sale Recorded!\nOrder No: ${result.order.orderNo}\nInvoice No: ${result.invoice.invoiceNo}`);
             closeSaleModal();
-            await loadOrders();
-            await loadInvoices();
+            
+            // Reload in background
+            loadOrders();
+            loadInvoices();
             refreshDashboard();
         } else {
+            if (btn) { btn.disabled = false; btn.innerText = originalText; }
             alert("❌ Save failed: " + (result.error || "Unknown error"));
         }
     } catch (e) { 
+        if (btn) { btn.disabled = false; btn.innerText = originalText; }
         console.error("Direct Sale Save Fail:", e);
         alert("❌ Network/Server Error while saving sale."); 
-    } finally {
-        btn.disabled = false;
-        btn.innerText = originalText;
     }
 }
 
@@ -2686,12 +2695,12 @@ let returnItems = [];
 
 // Config map for all 6 return/note module types
 const RETURN_MODULE_CONFIG = {
-    'Salable Return':   { badge:'CREDIT NOTE (CN)',  title:'Sale Return \u2014 Credit Note',              noteType:'CN', submitLabel:'\u2713 POST RETURN & GENERATE CN',  tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'],   tabLabels:['Sale Return','Exp/Brk/Damg CN','Price Diff CN'] },
-    'Exp/Brk/Damg CN':  { badge:'CREDIT NOTE (CN)',  title:'Exp / Broken / Damaged \u2014 Credit Note',   noteType:'CN', submitLabel:'\u2713 POST & GENERATE CN',          tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'],   tabLabels:['Sale Return','Exp/Brk/Damg CN','Price Diff CN'] },
-    'Price Diff CN':    { badge:'CREDIT NOTE (CN)',  title:'Price Difference \u2014 Credit Note',          noteType:'CN', submitLabel:'\u2713 POST & GENERATE CN',          tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'],   tabLabels:['Sale Return','Exp/Brk/Damg CN','Price Diff CN'] },
-    'Purchase Return':  { badge:'DEBIT NOTE (DN)',   title:'Purchase Return \u2014 Debit Note',            noteType:'DN', submitLabel:'\u2713 POST RETURN & GENERATE DN',  tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'],  tabLabels:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'] },
-    'Price Diff DN':    { badge:'DEBIT NOTE (DN)',   title:'Price Difference \u2014 Debit Note',           noteType:'DN', submitLabel:'\u2713 POST & GENERATE DN',          tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'],  tabLabels:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'] },
-    'Brk/Dmg/Loss DN': { badge:'DEBIT NOTE (DN)',   title:'Breakage / Damage / Loss \u2014 Debit Note',   noteType:'DN', submitLabel:'\u2713 POST & GENERATE DN',          tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'],  tabLabels:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'] }
+    'Salable Return':   { badge:'CREDIT NOTE', title:'Sale Return — Credit Note', noteType:'CN', submitLabel:'✓ POST & GENERATE CN', tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'], tabLabels:['Sale Return','Exp/Brk/Damg','Price Diff'] },
+    'Exp/Brk/Damg CN':  { badge:'CREDIT NOTE', title:'Exp / Broken / Damaged — Credit Note', noteType:'CN', submitLabel:'✓ POST & GENERATE CN', tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'], tabLabels:['Sale Return','Exp/Brk/Damg','Price Diff'] },
+    'Price Diff CN':    { badge:'CREDIT NOTE', title:'Price Difference — Credit Note', noteType:'CN', submitLabel:'✓ POST & GENERATE CN', tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'], tabLabels:['Sale Return','Exp/Brk/Damg','Price Diff'] },
+    'Purchase Return':  { badge:'DEBIT NOTE',  title:'Purchase Return — Debit Note', noteType:'DN', submitLabel:'✓ POST & GENERATE DN', tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'], tabLabels:['Purchase Return','Price Diff','Loss/Damage'] },
+    'Price Diff DN':    { badge:'DEBIT NOTE',  title:'Price Difference — Debit Note', noteType:'DN', submitLabel:'✓ POST & GENERATE DN', tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'], tabLabels:['Purchase Return','Price Diff','Loss/Damage'] },
+    'Brk/Dmg/Loss DN': { badge:'DEBIT NOTE',  title:'Breakage / Damage / Loss — Debit Note', noteType:'DN', submitLabel:'✓ POST & GENERATE DN', tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'], tabLabels:['Purchase Return','Price Diff','Loss/Damage'] }
 };
 
 function openReturnModal(reason, editData = null) {
