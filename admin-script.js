@@ -973,6 +973,8 @@ async function loadSettings() {
         safeSetVal('set-upi-id', s.upiId);
         safeSetVal('set-bank-acc', s.bankAccountNo);
         safeSetVal('set-bank-ifsc', s.bankIfsc);
+        safeSetVal('set-payment-due-days', s.paymentDueDays);
+        safeSetVal('set-default-supply', s.defaultPlaceOfSupply);
         
         safeSetVal('set-signature-b64', s.signatureImage);
         const sigPreview = document.getElementById('sig-preview');
@@ -1315,6 +1317,8 @@ async function saveSettings(e) {
             upiId: safeGetVal('set-upi-id'),
             bankAccountNo: safeGetVal('set-bank-acc'),
             bankIfsc: safeGetVal('set-bank-ifsc'),
+            paymentDueDays: Number(safeGetVal('set-payment-due-days')) || 21,
+            defaultPlaceOfSupply: safeGetVal('set-default-supply'),
             signatureImage: safeGetVal('set-signature-b64'),
             logoImage: safeGetVal('set-logo-b64'),
             scrollingMessage: {
@@ -2361,6 +2365,8 @@ async function saveDirectSale(e) {
         channel: document.getElementById('sale-channel').value,
         paymentMode: document.getElementById('sale-payment-mode').value,
         remarks: document.getElementById('sale-remarks').value,
+        placeOfSupply: document.getElementById('sale-supply').value || companyProfile.defaultPlaceOfSupply,
+        dueDate: document.getElementById('sale-due-date').value,
         items: directSaleItems,
         subTotal: directSaleItems.reduce((s, i) => s + i.totalValue, 0),
         gstAmount: directSaleItems.reduce((s, i) => s + (i.totalValue * i.gstPercent / 100), 0),
@@ -2524,6 +2530,7 @@ function renderFinancialNotes(data = allNotes) {
                         <button class="btn btn-primary" style="padding:4px 8px; font-size:0.65rem; background:#10b981;" onclick="reviewPDCNClaim('${n._id}', 'approve')">APPROVE</button>
                         <button class="btn btn-primary" style="padding:4px 8px; font-size:0.65rem; background:#ef4444;" onclick="reviewPDCNClaim('${n._id}', 'reject')">REJECT</button>
                     ` : ''}
+                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewNotePDF('${n._id}')" title="View PDF">👁️</button>
                     <button class="btn btn-ghost" style="padding:5px 10px;" onclick="editNote('${n._id}')" title="Edit Record">✏️</button>
                     <button class="btn btn-ghost" style="padding:5px 10px;" onclick="downloadNotePDF('${n._id}')" title="Download PDF">📥</button>
                     <button class="btn btn-ghost" style="padding:5px 10px; color:#ef4444;" onclick="deleteNote('${n._id}')" title="Delete Record">✕</button>
@@ -2879,9 +2886,11 @@ function calculateReturnTotals() {
 async function saveMultiItemReturn(e) {
     e.preventDefault();
     const reasonValue = document.getElementById('return-reason').value;
+    const pId = document.getElementById('return-party').value;
+    const pName = allStockists.find(s => s._id === pId)?.name || 'Direct Customer';
     
     // Strict Header Validation
-    if(!document.getElementById('return-party').value) return alert("❌ Please select a Party.");
+    if(!pId) return alert("❌ Please select a Party.");
     if(!document.getElementById('return-inv-no').value) return alert("❌ Ref. Invoice No is mandatory.");
     if(!document.getElementById('return-inv-date').value) return alert("❌ Invoice Date is mandatory.");
 
@@ -2894,7 +2903,6 @@ async function saveMultiItemReturn(e) {
             const gstPct = Number(document.getElementById(`return-gst-pct-${id}`).value);
             const batch  = document.getElementById(`return-batch-${id}`).value;
             const hsn    = document.getElementById(`return-hsn-${id}`).value;
-            // Read MM-YY from input
             const exp = document.getElementById(`return-exp-${id}`).value || 'N/A';
 
             if (!prodId || !qty || !price || !batch || !exp) {
@@ -2924,12 +2932,6 @@ async function saveMultiItemReturn(e) {
                         const pid = String(item.productId);
                         const data = eligibility[pid];
                         const billed = data ? data.totalBilledQty : 0;
-                        const claimed = data ? data.totalClaimedQty : 0;
-                        const eligible = data ? data.eligibleQty : 0;
-
-                        // If we are EDITING an existing note, we must exclude its own previous quantity from "claimed"
-                        // But for simplicity in this admin tool, we'll just check against absolute billed limit
-                        // if we want to be precise: eligibleForThisAction = billed - (claimed - (isEditing ? oldQty : 0))
                         
                         if (item.qty > billed) {
                             return alert(`❌ QUANTITY ERROR: Product "${item.name}" was only billed ${billed} units. You cannot raise a PDCN for ${item.qty} units.`);
@@ -2939,21 +2941,15 @@ async function saveMultiItemReturn(e) {
             } catch (e) { console.error("Eligibility check failed:", e); }
         }
 
-        const totalStr = document.getElementById('return-total').innerText.replace(/[₹\u20b9\u00a0,]/g, '').trim();
-        const subTotalStr = document.getElementById('return-subtotal').innerText.replace(/[₹\u20b9\u00a0,]/g, '').trim();
-        const gstAmountStr = document.getElementById('return-gst').innerText.replace(/[₹\u20b9\u00a0,]/g, '').trim();
-        
         const data = {
-            noteType:      document.getElementById('return-note-type').value || (reasonValue === 'Salable Return' ? 'CN' : 'DN'),
-            party:         document.getElementById('return-party').value,
-            amount:        Number(totalStr),
-            subTotal:      Number(subTotalStr),
-            gstAmount:     Number(gstAmountStr),
-            reason:        reasonValue,
-            description:   `Multi-item return against Inv: ${document.getElementById('return-inv-no').value}`,
-            refInvoiceNo:  document.getElementById('return-inv-no').value,
-            refInvoiceDate:document.getElementById('return-inv-date').value,
-            items
+            party:        pId,
+            partyName:    pName,
+            reason:       reasonValue,
+            noteType:     document.getElementById('return-note-type').value,
+            refInvoiceNo: document.getElementById('return-inv-no').value,
+            refInvoiceDate: document.getElementById('return-inv-date').value,
+            items,
+            amount:       items.reduce((s, i) => s + i.totalValue, 0)
         };
 
         const url = currentEditingNoteId ? `/api/admin/financial-notes/${currentEditingNoteId}` : '/api/admin/financial-notes';
@@ -3049,296 +3045,141 @@ function numberToWords(num) {
 }
 
 async function generateStandardPDF({ 
-    title, 
-    subTitle = "Original For Recipient",
-    docNo, 
-    docTypeLabel = "Invoice No",
-    date, 
-    party, 
-    items, 
-    grandTotal, 
-    terms, 
-    showBank,
-    extraFields = [], // e.g., [{label: 'Ref Invoice', value: '...'}]
-    filename = "Document.pdf"
+    title, subTitle = "Original For Recipient", docNo, docTypeLabel = "Invoice No", date, party, items, grandTotal, terms, showBank, extraFields = [], filename = "Document.pdf"
 }) {
     const { jsPDF } = window.jspdf || window;
-    if (!jsPDF) {
-        console.error("jsPDF library not found! Please check your internet connection or script includes.");
-        alert("CRITICAL ERROR: PDF library not loaded. Please refresh the page.");
-        return;
-    }
     const doc = new jsPDF('p', 'mm', 'a4');
     const style = (companyProfile && companyProfile.invoiceStyle) || 'classic';
 
     if (style === 'sample') {
-        return await generateSampleMatchedPDF({ 
+        await generateSampleMatchedPDF({ 
             doc, title, subTitle, docNo, docTypeLabel, date, party, items, grandTotal, terms, showBank, extraFields, filename 
         });
+        return;
     }
 
-    const themes = {
-        classic: { primary: [99, 102, 241], secondary: [40, 44, 52] },
-        modern:  { primary: [16, 185, 129], secondary: [30, 41, 59] },
-        compact: { primary: [245, 158, 11], secondary: [51, 65, 85] }
-    };
-    const t = themes[style] || themes.classic;
+    // Header
+    doc.setFont("helvetica", "bold"); doc.setFontSize(16);
+    doc.text(companyProfile.name || "EMYRIS", 105, 15, { align: 'center' });
+    doc.setFontSize(8); doc.setFont("helvetica", "normal");
+    doc.text(companyProfile.address || "", 105, 20, { align: 'center' });
+    doc.text(`GSTIN: ${companyProfile.gstNo} | DL: ${companyProfile.dlNo}`, 105, 25, { align: 'center' });
+    doc.line(10, 30, 200, 30);
 
-    // 1. Header Logic
-    if (style === 'modern') {
-        doc.setFillColor(t.primary[0], t.primary[1], t.primary[2]);
-        doc.rect(0, 0, 210, 45, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFont("helvetica", "bold"); doc.setFontSize(22);
-        doc.text(title, 15, 18);
-        doc.setFontSize(10); doc.text((companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES", 15, 28);
-        doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-        doc.text(`GSTIN: ${(companyProfile && companyProfile.gstNo) || 'N/A'} | DL: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, 15, 34);
-        doc.text(`Contact: ${(companyProfile && companyProfile.phones?.[0]) || 'N/A'}`, 15, 38);
-        doc.setFont("helvetica", "bold");
-        doc.text(`${docTypeLabel}: ${docNo}`, 195, 18, { align: 'right' });
-        doc.setFont("helvetica", "normal");
-        doc.text(`DATE: ${date}`, 195, 28, { align: 'right' });
-        doc.setTextColor(40, 44, 52);
-    } else if (style === 'compact') {
-        doc.setDrawColor(t.primary[0], t.primary[1], t.primary[2]); doc.setLineWidth(1); doc.line(15, 8, 195, 8);
-        doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
-        doc.text((companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES", 15, 15);
-        doc.setFontSize(8); doc.setTextColor(100, 100, 100);
-        doc.text(`GST: ${(companyProfile && companyProfile.gstNo) || 'N/A'} | DL: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, 15, 24);
-        doc.setTextColor(t.secondary[0], t.secondary[1], t.secondary[2]);
-        doc.setFontSize(10); doc.text(title, 195, 15, { align: 'right' });
-        doc.setFontSize(8); doc.text(`${docTypeLabel}: ${docNo} | DT: ${date}`, 195, 24, { align: 'right' });
-    } else {
-        doc.setFontSize(14); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
-        doc.setFont("helvetica", "bold"); doc.text(title, 105, 12, { align: 'center' });
-        doc.setFontSize(7); doc.setTextColor(150, 150, 150); doc.text(subTitle, 195, 7, { align: 'right' });
-        doc.setDrawColor(t.primary[0], t.primary[1], t.primary[2]); doc.setLineWidth(0.5); doc.line(105, 15, 105, 65); 
-        if (companyProfile && companyProfile.logoImage) { try { doc.addImage(companyProfile.logoImage, 'JPEG', 15, 8, 30, 15); } catch(e){} }
-        doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
-        doc.text((companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES", 15, 28);
-        doc.setFont("helvetica", "normal"); doc.setTextColor(40, 44, 52); doc.setFontSize(8);
-        const addressLines = doc.splitTextToSize((companyProfile && companyProfile.address) || "Sumadhura Pragati Chambers, Park Ln, Secunderabad, Telangana - 500003", 80);
-        doc.text(addressLines, 15, 33);
-        let cY = 33 + (addressLines.length * 4);
-        doc.text(`DL No: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, 15, cY);
-        doc.text(`GSTIN: ${(companyProfile && companyProfile.gstNo) || 'N/A'}`, 15, cY + 4);
-        doc.text(`FSSAI: ${(companyProfile && companyProfile.fssaiNo) || 'N/A'}`, 15, cY + 8);
-        doc.text(`Contact: ${(companyProfile && companyProfile.phones?.[0]) || 'N/A'}`, 15, cY + 12);
-        doc.text(`Email: ${(companyProfile && companyProfile.emails?.[0]) || 'N/A'}`, 15, cY + 16);
-    }
-
-    // 2. Party Info
-    let infoY = (style === 'modern') ? 52 : (style === 'compact' ? 32 : 15);
-    doc.setFontSize(style === 'compact' ? 8 : 9); doc.setFont("helvetica", "bold"); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
-    doc.text("BILL TO / SHIP TO:", style === 'classic' ? 115 : 15, infoY);
-    doc.setFont("helvetica", "normal"); doc.setTextColor(40, 44, 52);
-    doc.text(party.name || 'N/A', style === 'classic' ? 115 : 15, infoY + 5);
-    const pAddr = doc.splitTextToSize(party.address || 'N/A', 80);
-    doc.text(pAddr, style === 'classic' ? 115 : 15, infoY + 10);
+    // Party & Doc Info
+    doc.setFontSize(9); doc.text(`Party: ${party.name}`, 15, 38);
+    doc.text(`Address: ${party.address || 'N/A'}`, 15, 43);
+    doc.text(`GSTIN: ${party.gst || 'N/A'}`, 15, 48);
     
-    if (style === 'classic') {
-        let sY = infoY + 10 + (pAddr.length * 4);
-        doc.setFontSize(8); 
-        doc.text(`DL No: ${party.dl || 'N/A'}`, 115, sY); 
-        doc.text(`GSTIN: ${party.gst || 'N/A'}`, 115, sY + 4);
-        doc.text(`FSSAI: ${party.fssai || 'N/A'}`, 115, sY + 8);
-        doc.text(`Contact: ${party.phone || 'N/A'}`, 115, sY + 12);
-        doc.text(`Email: ${party.email || 'N/A'}`, 115, sY + 16);
-        doc.setFont("helvetica", "bold"); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
-        doc.text(`${docTypeLabel}: ${docNo}`, 115, sY + 20);
-        doc.setTextColor(40, 44, 52); doc.text(`Date: ${date}`, 115, sY + 24);
-        extraFields.forEach((f, i) => doc.text(`${f.label}: ${f.value}`, 115, sY + 28 + (i * 4)));
-    }
+    doc.text(`${docTypeLabel}: ${docNo}`, 140, 38);
+    doc.text(`Date: ${date}`, 140, 43);
+    extraFields.forEach((f, i) => doc.text(`${f.label}: ${f.value}`, 140, 48 + (i * 5)));
 
-    // 3. Items Table
+    // Table
     doc.autoTable({
-        startY: style === 'classic' ? 70 : (style === 'compact' ? 55 : 85),
-        head: [['S.No', 'Description', 'HSN', 'Batch', 'Exp', 'MRP', 'Qty', 'Unit', 'Price', 'Taxable', 'GST%', 'Amount']],
-        body: items.map((it, idx) => {
-            const taxable = it.qty * it.price;
-            const gross = taxable * (1 + (it.gstPercent || 0) / 100);
-            return [
-                idx + 1, { content: `${it.name}\n(Mfg: ${it.manufacturer || 'EMYRIS'})`, styles: { fontSize: style === 'compact' ? 6 : 7 } },
-                it.hsn || '-', it.batch || 'B2401', it.exp || '12/25', (it.mrp || 0).toFixed(2), it.qty, 'NOS', it.price.toFixed(2), taxable.toFixed(2), (it.gstPercent || 0) + '%', gross.toFixed(2)
-            ];
-        }),
-        theme: style === 'modern' ? 'striped' : 'grid',
-        headStyles: { fillColor: t.primary, fontSize: style === 'compact' ? 6 : 7, halign: 'center' },
-        styles: { fontSize: style === 'compact' ? 6 : 7, cellPadding: style === 'compact' ? 1 : 2 },
-        columnStyles: {
-            0: { cellWidth: 10 },
-            1: { cellWidth: 40 },
-            9: { halign: 'right' },
-            11: { halign: 'right', fontStyle: 'bold' }
-        },
-        margin: { left: 15, right: 15, bottom: 60 }
+        startY: 65,
+        head: [['S.No', 'Description', 'HSN', 'Batch', 'Exp', 'MRP', 'Qty', 'Price', 'GST%', 'Total']],
+        body: items.map((it, idx) => [
+            idx + 1, it.name, it.hsn || '-', it.batch || '-', it.exp || '-', (it.mrp || 0).toFixed(2), it.qty, it.price.toFixed(2), (it.gstPercent || 0) + '%', (it.qty * it.price * (1 + it.gstPercent/100)).toFixed(2)
+        ]),
+        theme: 'grid', headStyles: { fillColor: [99, 102, 241] }, styles: { fontSize: 7 }
     });
 
-    let tableFinalY = doc.lastAutoTable.finalY + 5;
-
-    // 4. Tax Summary
-    const taxMap = {};
-    let totalTaxable = 0;
-    let totalGST = 0;
-
-    items.forEach(it => {
-        const rate = parseFloat(it.gstPercent) || 0;
-        const taxable = it.qty * it.price;
-        const gst = (taxable * rate) / 100;
-        
-        if (!taxMap[rate]) taxMap[rate] = { taxable: 0, tax: 0 };
-        taxMap[rate].taxable += taxable;
-        taxMap[rate].tax += gst;
-        
-        totalTaxable += taxable;
-        totalGST += gst;
-    });
-
-    const isInter = party.gst && companyProfile.gstNo && companyProfile.gstNo.substring(0,2) !== party.gst.substring(0,2);
-    let taxBody = [];
-    Object.keys(taxMap).sort((a,b)=>a-b).forEach(r => {
-        const rate = parseFloat(r); const d = taxMap[r];
-        if (isInter) { taxBody.push([`IGST @ ${rate}%`, d.taxable.toFixed(2), `${rate}%`, d.tax.toFixed(2)]); }
-        else {
-            const hR = (rate / 2).toFixed(1); const hT = (d.tax / 2).toFixed(2);
-            taxBody.push([`CGST @ ${hR}%`, d.taxable.toFixed(2), `${hR}%`, hT]);
-            taxBody.push([`SGST @ ${hR}%`, d.taxable.toFixed(2), `${hR}%`, hT]);
-        }
-    });
-
-    doc.autoTable({
-        startY: tableFinalY, head: [['Tax Summary', 'Taxable', 'Rate', 'Tax Amount']], body: taxBody,
-        theme: 'plain', headStyles: { fillColor: false, textColor: t.primary, fontStyle: 'bold', fontSize: 7, halign: 'right' },
-        styles: { fontSize: 7, halign: 'right', cellPadding: 1 }, margin: { left: 110, right: 15 }, tableWidth: 85
-    });
-
-    // 5. Footer
-    const finalY = 240;
-    doc.setDrawColor(t.primary[0], t.primary[1], t.primary[2]); doc.setLineWidth(0.5); doc.line(15, finalY - 15, 195, finalY - 15);
-    doc.setFont("helvetica", "bold"); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]); doc.setFontSize(9);
-    doc.text("Amount in Words:", 15, finalY - 10);
-    doc.setTextColor(40, 44, 52); doc.setFont("helvetica", "normal");
-    doc.text("(" + numberToWords(grandTotal) + ")", 15, finalY + 5);
-
-    // 5. Total Block (Right Side)
-    const unroundedNet = Number((totalTaxable + totalGST).toFixed(2));
-    const roundOffValue = (grandTotal - unroundedNet).toFixed(2);
+    const finalY = doc.lastAutoTable.finalY + 10;
+    doc.text(`Grand Total: Rs. ${grandTotal.toFixed(2)}`, 195, finalY, { align: 'right' });
+    doc.text(`Words: ${numberToWords(grandTotal)}`, 15, finalY + 10);
     
-    doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(40, 44, 52);
-    doc.text(`Sub Total (Taxable): Rs. ${totalTaxable.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 10, { align: 'right' });
-    doc.text(`GST Amount: Rs. ${totalGST.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 5, { align: 'right' });
-    doc.text(`Round Off: Rs. ${roundOffValue}`, 195, finalY, { align: 'right' });
-    
-    doc.setFont("helvetica", "bold"); doc.setTextColor(t.primary[0], t.primary[1], t.primary[2]);
-    doc.text(`NET PAYABLE: Rs. ${grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY + 5, { align: 'right' });
-
-    // 6. Bank & QR Code
-    if (showBank && companyProfile && companyProfile.bankDetails) {
-        doc.setTextColor(0, 0, 0); // BLACK COLOR FOR BANK DETAILS
-        doc.setFont("courier", "bold"); doc.setFontSize(style === 'compact' ? 7 : 8);
-        doc.text("Bank Details:", 15, finalY + 15);
-        doc.setFont("courier", "normal");
-        const bD = companyProfile.bankDetails.split('\n');
-        bD.forEach((line, i) => doc.text(line, 15, finalY + 19 + (i * 4)));
-
-        // QR Code Logic
-        let upiTarget = companyProfile.upiId;
-        if (!upiTarget && companyProfile.bankAccountNo && companyProfile.bankIfsc) {
-            upiTarget = `${companyProfile.bankAccountNo}@${companyProfile.bankIfsc.toUpperCase().trim()}.ifsc.npci`;
-        }
-        if (upiTarget && window.QRCode) {
-            try {
-                const upiUrl = `upi://pay?pa=${upiTarget}&pn=${encodeURIComponent(companyProfile.name || 'EMYRIS')}&am=${Math.round(grandTotal)}&cu=INR`;
-                const qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 150, margin: 1 });
-                doc.addImage(qrDataUrl, 'PNG', 100, finalY + 10, 30, 30);
-                doc.setFontSize(6); doc.text("Scan to Pay", 115, finalY + 42, { align: 'center' });
-            } catch(err) { console.error("QR Error", err); }
-        }
-    }
-
-    doc.setFontSize(style === 'compact' ? 7 : 8); doc.setFont("helvetica", "italic"); doc.setTextColor(0, 0, 0); // BLACK COLOR FOR TERMS
-    const tC = terms ? terms.split('\n') : []; tC.forEach((line, i) => doc.text(line, 15, 280 + (i * 4)));
-
-    doc.setFont("helvetica", "bold");
-    doc.text(`For ${(companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 30, { align: 'right' });
-    if (companyProfile && companyProfile.signatureImage) { try { doc.addImage(companyProfile.signatureImage, 'JPEG', 165, finalY + 32, 30, 10); } catch(e){} }
-    doc.text("Authorised Signatory", 195, finalY + 45, { align: 'right' });
-
-    doc.save(filename);
+    if (filename) doc.save(filename);
 }
 
-async function downloadNotePDF(id) {
-    try {
-        const note = allNotes.find(x => x._id === id);
-        if (!note) return alert("Note not found");
-        const party = allStockists.find(s => s._id === (note.party?._id || note.party)) || {};
-        const isCN = note.noteType === 'CN';
-                const reasonTitles = {
-            'Salable Return':   'CREDIT NOTE (SALES RETURN)',
-            'Exp/Brk/Damg CN':  'CREDIT NOTE (EXP/BRK/DAMG)',
-            'Price Diff CN':    'CREDIT NOTE (PRICE DIFFERENCE)',
-            'Purchase Return':  'DEBIT NOTE (PURCHASE RETURN)',
-            'Price Diff DN':    'DEBIT NOTE (PRICE DIFFERENCE)',
-            'Brk/Dmg/Loss DN':  'DEBIT NOTE (BRK/DMG/LOSS)'
-        };
-        const pdfTitle = reasonTitles[note.reason] || (isCN ? "CREDIT NOTE" : "DEBIT NOTE");
+async function generateSampleMatchedPDF({ 
+    doc, title, subTitle, docNo, docTypeLabel, date, party, items, grandTotal, terms, showBank, extraFields = [], filename = null 
+}) {
+    // --- 1. SETTINGS & BORDER ---
+    const pageH = 297; const pageW = 210;
+    doc.setDrawColor(0); doc.setLineWidth(0.3);
+    doc.rect(10, 10, 190, 277); 
 
+    // Header
+    doc.setFont("helvetica", "bold"); doc.setFontSize(16);
+    doc.text(companyProfile.name || "EMYRIS", 105, 18, { align: 'center' });
+    doc.setFontSize(7.5); doc.setFont("helvetica", "normal");
+    doc.text(companyProfile.address || "", 105, 23, { align: 'center' });
+    doc.text(`GSTIN: ${companyProfile.gstNo} | DL No: ${companyProfile.dlNo}`, 105, 28, { align: 'center' });
+    doc.line(10, 35, 200, 35);
+
+    // Title
+    doc.setFontSize(11); doc.setFont("helvetica", "bold");
+    doc.text(title.toUpperCase(), 105, 42, { align: 'center' });
+    doc.line(10, 45, 200, 45);
+
+    // Party Info
+    doc.setFontSize(9); doc.text(`M/s: ${party.name}`, 15, 52);
+    doc.setFontSize(7.5); doc.text(party.address || 'N/A', 15, 56);
+    doc.text(`GSTIN: ${party.gst || 'N/A'} | DL: ${party.dl || 'N/A'}`, 15, 62);
+
+    // Doc Info
+    doc.text(`${docTypeLabel}: ${docNo}`, 140, 52);
+    doc.text(`Date: ${date}`, 140, 56);
+    extraFields.forEach((f, i) => doc.text(`${f.label}: ${f.value}`, 140, 62 + (i * 5)));
+
+    doc.line(10, 80, 200, 80);
+
+    // Table
+    doc.autoTable({
+        startY: 82,
+        head: [['Sn', 'HSN', 'Product Description', 'Batch', 'Exp', 'MRP', 'Qty', 'Rate', 'GST%', 'Total']],
+        body: items.map((it, idx) => [
+            idx + 1, it.hsn || '-', it.name, it.batch || '-', it.exp || '-', (it.mrp || 0).toFixed(2), it.qty, it.price.toFixed(2), (it.gstPercent || 0) + '%', (it.qty * it.price * (1 + it.gstPercent/100)).toFixed(2)
+        ]),
+        theme: 'grid', headStyles: { fillColor: [245, 245, 245], textColor: 0 }, styles: { fontSize: 7 }
+    });
+
+    const finalY = doc.lastAutoTable.finalY + 10;
+    doc.setFont("helvetica", "bold");
+    doc.text(`GRAND TOTAL: Rs. ${grandTotal.toFixed(2)}`, 198, finalY, { align: 'right' });
+    doc.setFont("helvetica", "italic"); doc.setFontSize(8);
+    doc.text(`Amount in Words: ${numberToWords(grandTotal)}`, 12, finalY + 10);
+
+    if (filename) doc.save(filename);
+}
+
+async function viewInvoicePDF(id) {
+    try {
+        const inv = allInvoices.find(x => x._id === id);
+        if (!inv) return alert("Invoice not found");
+        const party = allStockists.find(s => s._id === (inv.stockist?._id || inv.stockist)) || {};
+        const extraFields = [
+            { label: 'Place of Supply', value: inv.placeOfSupply || companyProfile.defaultPlaceOfSupply },
+            { label: 'Due Date', value: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : 'N/A' }
+        ];
+        const doc = new jspdf.jsPDF();
         await generateStandardPDF({
-            title: pdfTitle, subtitle: "Original For Recipient", docNo: note.noteNo, docTypeLabel: isCN ? "CN No" : "DN No",
-            date: new Date(note.createdAt).toLocaleDateString('en-GB'),
-            party: { 
-                name: note.partyName, 
-                address: party.address, 
-                dl: party.dlNo || party.dl || 'N/A', 
-                gst: party.gstNo || party.gst || 'N/A',
-                fssai: party.fssaiNo || party.fssai || 'N/A',
-                phone: party.phoneNo || party.phone || 'N/A',
-                email: party.email || 'N/A'
-            },
-            items: note.items && note.items.length > 0 ? note.items.map(it => ({
-                name: it.name, manufacturer: it.manufacturer, hsn: it.hsn, batch: it.batchNo, exp: it.expDate,
-                mrp: it.mrp || it.price, qty: it.qty, price: it.price, gstPercent: it.gstPercent, totalValue: it.totalValue
-            })) : [{ name: note.reason, qty: 1, price: note.amount, gstPercent: 0, totalValue: note.amount, exp: '-', hsn: '-', batch: '-', manufacturer: 'EMYRIS' }],
-            grandTotal: note.amount,
-            terms: isCN ? (companyProfile.cnTerms || "") : (companyProfile.dnTerms || ""),
-            showBank: isCN ? !!companyProfile.cnBankVisible : !!companyProfile.dnBankVisible,
-            extraFields: note.refInvoiceNo ? [{ label: 'Ref Invoice', value: note.refInvoiceNo }] : [],
-            filename: `${isCN ? 'CN' : 'DN'}_${note.noteNo}.pdf`
+            doc, title: "TAX INVOICE", docNo: inv.invoiceNo, date: new Date(inv.createdAt).toLocaleDateString('en-GB'),
+            party: { name: inv.stockistName, address: party.address, gst: party.gstNo || party.gst, dl: party.dlNo || party.dl },
+            items: inv.items.map(it => ({ ...it, price: it.priceUsed })),
+            grandTotal: inv.grandTotal, extraFields
         });
-    } catch (e) { console.error("PDF Fail", e); }
+        window.open(doc.output('bloburl'), '_blank');
+    } catch (e) { alert("View failed"); }
 }
 
 async function downloadInvoicePDF(id) {
     try {
         const inv = allInvoices.find(x => x._id === id);
-        if (!inv) return;
-        const party = allStockists.find(s => s.name === inv.stockistName) || {};
+        if (!inv) return alert("Invoice not found");
+        const party = allStockists.find(s => s._id === (inv.stockist?._id || inv.stockist)) || {};
+        const extraFields = [
+            { label: 'Place of Supply', value: inv.placeOfSupply || companyProfile.defaultPlaceOfSupply },
+            { label: 'Due Date', value: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : 'N/A' }
+        ];
         await generateStandardPDF({
-            title: "TAX INVOICE",
-            subTitle: "Original For Buyer",
-            docNo: inv.invoiceNo,
-            docTypeLabel: "Invoice No",
-            date: new Date(inv.createdAt).toLocaleDateString('en-GB'),
-            party: { 
-                name: inv.stockistName, 
-                address: party.address, 
-                dl: party.dl || party.dlNo || 'N/A', 
-                gst: party.gst || party.gstNo || 'N/A',
-                fssai: party.fssai || party.fssaiNo || 'N/A',
-                phone: party.phone || party.phoneNo || 'N/A',
-                email: party.email || 'N/A'
-            },
-            items: inv.items.map(it => ({
-                name: it.name, manufacturer: it.manufacturer, hsn: it.hsn, batch: it.batch, exp: it.expDate || it.exp || '-',
-                mrp: it.mrp || 0, qty: it.qty, price: it.priceUsed || it.price || 0, gstPercent: it.gstPercent || 12, totalValue: it.totalValue || 0
-            })),
-            grandTotal: inv.grandTotal,
-            terms: companyProfile.invoiceTerms || "",
-            showBank: !!companyProfile.invoiceBankVisible,
-            filename: `Invoice_${inv.invoiceNo}.pdf`
+            title: "TAX INVOICE", docNo: inv.invoiceNo, date: new Date(inv.createdAt).toLocaleDateString('en-GB'),
+            party: { name: inv.stockistName, address: party.address, gst: party.gstNo || party.gst, dl: party.dlNo || party.dl },
+            items: inv.items.map(it => ({ ...it, price: it.priceUsed })),
+            grandTotal: inv.grandTotal, extraFields, filename: `Invoice_${inv.invoiceNo}.pdf`
         });
-    } catch (e) { console.error("Invoice PDF Fail", e); }
+    } catch (e) { alert("Download failed"); }
 }
 
 function previewInvoiceStyle(style) {

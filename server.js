@@ -238,7 +238,9 @@ const companySchema = new mongoose.Schema({
         speed: { type: Number, default: 30 }
     },
     invoiceStyle: { type: String, default: 'classic' },
-    referenceInvoiceUrl: { type: String, default: "" }
+    referenceInvoiceUrl: { type: String, default: "" },
+    paymentDueDays: { type: Number, default: 21 },
+    defaultPlaceOfSupply: { type: String, default: "GUJARAT" }
 });
 
 // 2. Global Masters
@@ -372,6 +374,8 @@ const invoiceSchema = new mongoose.Schema({
     grandTotal: Number,
     amountInWords: String,
     hq: String,
+    placeOfSupply: String,
+    dueDate: Date,
     outstandingAmount: { type: Number, default: function() { return this.grandTotal; } },
     createdAt: { type: Date, default: Date.now }
 });
@@ -1339,7 +1343,8 @@ app.get('/api/admin/invoices', async (req, res) => {
 // Admin: Direct Sale (Online/Manual) -> Creates Order + Deducts Inventory + Generates Invoice
 app.post('/api/admin/direct-sale', async (req, res) => {
     try {
-        const { party, partyName, refNo, date, channel, paymentMode, remarks, items, subTotal, gstAmount, grandTotal, type } = req.body;
+        const { party, partyName, refNo, date, channel, paymentMode, remarks, items, subTotal, gstAmount, grandTotal, type, placeOfSupply, dueDate } = req.body;
+        const settings = await Company.findOne() || { paymentDueDays: 21, defaultPlaceOfSupply: "GUJARAT" };
 
         // 1. Generate Order No (EMY-DIR-YYYYMMDD-XXXX)
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -1347,10 +1352,7 @@ app.post('/api/admin/direct-sale', async (req, res) => {
         const orderNo = `EMY-DIR-${dateStr}-${(orderCount + 1).toString().padStart(4, '0')}`;
 
         const stockist = await Stockist.findById(party);
-        if (!stockist && party !== 'ONLINE') {
-             // Handle case where party might be a generic string or 'ONLINE'
-        }
-
+        
         // 2. Perform Inventory Deduction for each item
         const processedItems = [];
         for (const item of items) {
@@ -1430,6 +1432,8 @@ app.post('/api/admin/direct-sale', async (req, res) => {
             gstAmount,
             grandTotal,
             hq: newOrder.hq,
+            placeOfSupply: placeOfSupply || settings.defaultPlaceOfSupply,
+            dueDate: dueDate || new Date(new Date(date || Date.now()).getTime() + (settings.paymentDueDays * 24 * 60 * 60 * 1000)),
             createdAt: date || new Date()
         });
 
@@ -1469,6 +1473,7 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
         const count = await Invoice.countDocuments();
         const invoiceNo = `EMY-INV-${dateStr}-${(count + 1).toString().padStart(4, '0')}`;
+        const settings = await Company.findOne() || { paymentDueDays: 21, defaultPlaceOfSupply: "GUJARAT" };
 
         // Fetch products to get GST Snapshot
         const productIds = order.items.map(i => i.product);
@@ -1505,7 +1510,9 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
             subTotal: order.subTotal,
             gstAmount: order.gstAmount,
             grandTotal: order.grandTotal,
-            hq: order.hq
+            hq: order.hq,
+            placeOfSupply: order.stockist?.state || settings.defaultPlaceOfSupply,
+            dueDate: new Date(Date.now() + (settings.paymentDueDays * 24 * 60 * 60 * 1000))
         });
 
         await newInvoice.save();
@@ -1667,7 +1674,7 @@ app.get('/api/admin/financial-notes', async (req, res) => {
 
 app.post('/api/admin/financial-notes', async (req, res) => {
     try {
-        const { noteType, party, amount, reason, description, refInvoiceNo, refInvoiceDate, items, subTotal, gstAmount } = req.body;
+        const { noteType, party, amount, reason, description, refInvoiceNo, refInvoiceDate, items, subTotal, gstAmount, placeOfSupply } = req.body;
         
         // Generate Note No — unique series per module
         const reasonNoteMap = {
@@ -1689,7 +1696,8 @@ app.post('/api/admin/financial-notes', async (req, res) => {
             noteNo, noteType, party,
             partyName: partyObj ? partyObj.name : 'Unknown',
             amount, reason, description, refInvoiceNo, refInvoiceDate, items,
-            subTotal, gstAmount
+            subTotal, gstAmount,
+            placeOfSupply: placeOfSupply || (partyObj ? partyObj.state : '')
         });
 
         // ── PDCN QUANTITY VALIDATION (Admin Side) ──
