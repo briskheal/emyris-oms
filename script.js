@@ -1074,6 +1074,10 @@ async function downloadStockistInvoice() {
 }
 
 async function generateInvoicePDF(inv) {
+    if (companySettings?.invoiceStyle === 'sample') {
+        return await generateSampleMatchedPDF(inv);
+    }
+
     function numberToWords(num) {
         const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
         const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
@@ -1285,3 +1289,164 @@ function startMusic() {
 }
 
 
+
+/**
+ * AI-DRIVEN COORDINATE ENGINE (SYNCED FROM ADMIN)
+ */
+async function generateSampleMatchedPDF(inv) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const filename = `Invoice_${inv.invoiceNo}.pdf`;
+
+    // Helper: numberToWords (Copied from generateInvoicePDF)
+    const numberToWords = (num) => {
+        const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+        const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+        const g = ['', 'Thousand', 'Lakh', 'Crore'];
+        const makeGroup = (n) => {
+            let s = '';
+            if (n >= 100) { s += a[Math.floor(n / 100)] + 'Hundred '; n %= 100; }
+            if (n >= 20) { s += b[Math.floor(n / 10)] + ' '; n %= 10; }
+            if (n > 0) s += a[n];
+            return s;
+        };
+        if (num === 0) return 'Zero';
+        let ns = num.toString().split('.');
+        let integer = parseInt(ns[0]);
+        let fraction = ns[1] ? parseInt(ns[1]) : 0;
+        let out = '';
+        let i = 0;
+        while (integer > 0) {
+            let group = (i === 0) ? integer % 1000 : integer % 100;
+            integer = (i === 0) ? Math.floor(integer / 1000) : Math.floor(integer / 100);
+            if (group > 0) out = makeGroup(group) + (g[i] ? g[i] + ' ' : '') + out;
+            i++;
+        }
+        let final = 'Rupees ' + out.trim();
+        if (fraction > 0) final += ' and ' + fraction + '/100 Paise';
+        return final + ' Only';
+    };
+
+    doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(0);
+    doc.text(companySettings?.name || "EMYRIS BIOLIFESCIENCES", 105, 15, { align: 'center' });
+    
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+    const coAddr = companySettings?.address || "Office Address Here";
+    doc.text(coAddr, 105, 20, { align: 'center' });
+    doc.text(`GSTIN: ${companySettings?.gstNo || 'N/A'} | DL No: ${companySettings?.dlNo || 'N/A'}`, 105, 25, { align: 'center' });
+    doc.text(`Contact: ${companySettings?.phones?.[0] || 'N/A'} | Email: ${companySettings?.emails?.[0] || 'N/A'}`, 105, 30, { align: 'center' });
+
+    doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(10, 35, 200, 35);
+    
+    doc.setFontSize(12); doc.setFont("helvetica", "bold");
+    doc.text("TAX INVOICE", 105, 42, { align: 'center' });
+    
+    doc.setFontSize(9); doc.setFont("helvetica", "normal");
+    doc.text(`Invoice No:`, 145, 50); doc.setFont("helvetica", "bold"); doc.text(inv.invoiceNo, 170, 50);
+    doc.setFont("helvetica", "normal"); doc.text(`Date:`, 145, 55); doc.setFont("helvetica", "bold"); doc.text(new Date(inv.createdAt).toLocaleDateString('en-GB'), 170, 55);
+    
+    doc.setFontSize(9); doc.setFont("helvetica", "normal");
+    doc.text("M/s:", 15, 50); 
+    doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+    doc.text(inv.stockistName || 'N/A', 25, 50);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+    const pAddrLines = doc.splitTextToSize(currentUser?.address || 'N/A', 80);
+    doc.text(pAddrLines, 25, 55);
+    
+    let partyBottomY = 55 + (pAddrLines.length * 4);
+    doc.text(`GSTIN: ${currentUser?.gst || 'N/A'}`, 25, partyBottomY + 2);
+    doc.text(`DL No: ${currentUser?.dl || 'N/A'}`, 25, partyBottomY + 6);
+
+    doc.autoTable({
+        startY: 85,
+        head: [['Sn', 'HSN', 'Description', 'Batch', 'Exp', 'MRP', 'Qty', 'Free', 'Rate', 'GST%', 'Amount']],
+        body: inv.items.map((it, idx) => [
+            idx + 1, it.hsn || '-', it.name, it.batch || '-', it.exp || '-', 
+            (it.mrp || 0).toFixed(2), it.qty, it.bonusQty || 0, 
+            it.priceUsed.toFixed(2), (it.gstPercent || 0) + '%', 
+            (it.qty * it.priceUsed).toFixed(2)
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold', fontSize: 7, halign: 'center', lineWidth: 0.1 },
+        styles: { fontSize: 7, cellPadding: 1.5, textColor: 0, lineWidth: 0.1 },
+        columnStyles: {
+            0: { cellWidth: 8, halign: 'center' },
+            1: { cellWidth: 15, halign: 'center' },
+            2: { cellWidth: 'auto' },
+            5: { halign: 'right' },
+            6: { halign: 'center' },
+            7: { halign: 'center' },
+            8: { halign: 'right' },
+            9: { halign: 'center' },
+            10: { halign: 'right', fontStyle: 'bold' }
+        },
+        margin: { left: 10, right: 10, bottom: 60 }
+    });
+
+    let tableFinalY = doc.lastAutoTable.finalY + 5;
+
+    const taxMap = {};
+    let totalTaxable = 0; let totalGST = 0;
+    inv.items.forEach(it => {
+        const rate = parseFloat(it.gstPercent) || 0;
+        const taxable = it.qty * it.priceUsed;
+        const gst = (taxable * rate) / 100;
+        if (!taxMap[rate]) taxMap[rate] = { taxable: 0, tax: 0 };
+        taxMap[rate].taxable += taxable;
+        taxMap[rate].tax += gst;
+        totalTaxable += taxable; totalGST += gst;
+    });
+
+    const isInter = currentUser?.gst && companySettings?.gstNo && companySettings.gstNo.substring(0,2) !== currentUser.gst.substring(0,2);
+    let taxBody = [];
+    Object.keys(taxMap).sort((a,b)=>a-b).forEach(r => {
+        const rate = parseFloat(r); const d = taxMap[r];
+        if (isInter) { taxBody.push([`${rate}%`, d.taxable.toFixed(2), '0.00', '0.00', d.tax.toFixed(2)]); }
+        else {
+            const hT = (d.tax / 2).toFixed(2);
+            taxBody.push([`${rate}%`, d.taxable.toFixed(2), hT, hT, d.tax.toFixed(2)]);
+        }
+    });
+
+    doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.text("TAX SUMMARY", 10, tableFinalY);
+    doc.autoTable({
+        startY: tableFinalY + 2,
+        head: [['GST%', 'Taxable', 'CGST', 'SGST', 'Total Tax']],
+        body: taxBody,
+        theme: 'grid',
+        headStyles: { fillColor: [250, 250, 250], textColor: 0, fontSize: 6, halign: 'center' },
+        styles: { fontSize: 6, halign: 'right', cellPadding: 1 },
+        margin: { left: 10 },
+        tableWidth: 80
+    });
+
+    const summaryY = tableFinalY + 2;
+    doc.setFontSize(8); doc.setFont("helvetica", "normal");
+    doc.text("Sub Total:", 150, summaryY); doc.text(`Rs. ${totalTaxable.toFixed(2)}`, 195, summaryY, { align: 'right' });
+    doc.text("Total GST:", 150, summaryY + 5); doc.text(`Rs. ${totalGST.toFixed(2)}`, 195, summaryY + 5, { align: 'right' });
+    
+    const unrounded = totalTaxable + totalGST;
+    const roundOff = (inv.grandTotal - unrounded).toFixed(2);
+    doc.text("Round Off:", 150, summaryY + 10); doc.text(`Rs. ${roundOff}`, 195, summaryY + 10, { align: 'right' });
+    
+    doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+    doc.text("GRAND TOTAL:", 150, summaryY + 16); doc.text(`Rs. ${inv.grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, summaryY + 16, { align: 'right' });
+
+    doc.setFontSize(8); doc.setFont("helvetica", "italic");
+    doc.text(`(Amount in Words: ${numberToWords(inv.grandTotal)})`, 10, summaryY + 30);
+
+    const footerY = 270;
+    doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(80);
+    const bankLines = (companySettings?.bankDetails) ? companySettings.bankDetails.split('\n') : [];
+    doc.text("BANK DETAILS:", 10, footerY);
+    bankLines.forEach((l, i) => doc.text(l, 10, footerY + 4 + (i * 3)));
+
+    doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+    doc.text(`For ${companySettings?.name || "EMYRIS BIOLIFESCIENCES"}`, 195, footerY, { align: 'right' });
+    if (companySettings?.signatureImage) {
+        try { doc.addImage(companySettings.signatureImage, 'JPEG', 165, footerY + 2, 30, 10); } catch(e){}
+    }
+    doc.text("Authorised Signatory", 195, footerY + 15, { align: 'right' });
+
+    doc.save(filename);
+}
