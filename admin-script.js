@@ -250,9 +250,11 @@ function toggleSubmenu(id, el) {
     
     const isVisible = submenu.style.display !== 'none' && submenu.style.display !== '';
     
-    // Close all other sub-menus
+    // Close other sub-menus at the SAME level (avoid closing parents)
     document.querySelectorAll('[id^="sub-"]').forEach(sub => {
-        if (sub.id !== id) sub.style.display = 'none';
+        if (sub.id !== id && !sub.contains(submenu) && !submenu.contains(sub)) {
+            sub.style.display = 'none';
+        }
     });
 
     if (isVisible) {
@@ -349,6 +351,7 @@ async function loadOrders() {
     try {
         const res = await fetch(`${API_BASE}/admin/orders`);
         allOrders = await res.json();
+        renderOrderHistory();
     } catch (e) { console.error("Load orders fail"); }
 }
 
@@ -356,6 +359,7 @@ async function loadInvoices() {
     try {
         const res = await fetch(`${API_BASE}/admin/invoices`);
         allInvoices = await res.json();
+        renderInvoices();
     } catch (e) { console.error("Load invoices fail"); }
 }
 
@@ -363,7 +367,8 @@ async function loadPurchaseEntries() {
     try {
         const res = await fetch(`${API_BASE}/admin/purchase-entries`);
         allPurchaseEntries = await res.json();
-    } catch (e) { console.error("Load purchases fail"); }
+        renderPurchaseEntries();
+    } catch (e) { console.error("Load purchase entries fail"); }
 }
 
 function renderCharts(currentMonthOrders, totalOrders) {
@@ -918,7 +923,7 @@ async function deleteMaster(type, id) {
 
 async function loadSettings() {
     try {
-        const res = await fetch(`${API_BASE}/admin/settings`);
+        const res = await fetch(`${API_BASE}/admin/settings?t=${Date.now()}`, { cache: 'no-store' });
         const s = await res.json() || {};
         companyProfile = s;
         
@@ -1255,7 +1260,7 @@ async function saveSettings(e) {
     if (e) e.preventDefault();
     
     // 1. Identify Button & State
-    const btn = (e && e.target) ? (e.target.closest('button') || e.target) : null;
+    const btn = document.getElementById('save-settings-btn');
     const originalHtml = btn ? btn.innerHTML : "SAVE SETTINGS";
     
     if (btn) {
@@ -2373,8 +2378,8 @@ async function saveDirectSale(e) {
         if (result.success) {
             alert(`✅ Direct Sale Recorded!\nOrder No: ${result.order.orderNo}\nInvoice No: ${result.invoice.invoiceNo}`);
             closeSaleModal();
-            loadOrders();
-            loadInvoices();
+            await loadOrders();
+            await loadInvoices();
             refreshDashboard();
         } else {
             alert("❌ Save failed: " + (result.error || "Unknown error"));
@@ -2934,9 +2939,9 @@ async function saveMultiItemReturn(e) {
             } catch (e) { console.error("Eligibility check failed:", e); }
         }
 
-        const totalStr = document.getElementById('return-total').innerText.replace(/[₹,]/g, '');
-        const subTotalStr = document.getElementById('return-subtotal').innerText.replace(/[₹,]/g, '');
-        const gstAmountStr = document.getElementById('return-gst').innerText.replace(/[₹,]/g, '');
+        const totalStr = document.getElementById('return-total').innerText.replace(/[₹\u20b9\u00a0,]/g, '').trim();
+        const subTotalStr = document.getElementById('return-subtotal').innerText.replace(/[₹\u20b9\u00a0,]/g, '').trim();
+        const gstAmountStr = document.getElementById('return-gst').innerText.replace(/[₹\u20b9\u00a0,]/g, '').trim();
         
         const data = {
             noteType:      document.getElementById('return-note-type').value || (reasonValue === 'Salable Return' ? 'CN' : 'DN'),
@@ -3006,8 +3011,13 @@ async function saveFinancialNote(e) {
             await loadProducts();
             renderFinancialNotes();
             closeNoteModal();
+        } else {
+            alert("❌ SAVE FAILED: " + (result.error || result.message || "Unknown error"));
         }
-    } catch (e) { alert("Failed to save note"); }
+    } catch (e) { 
+        console.error("Save note error:", e);
+        alert("❌ CRITICAL ERROR: Could not save note. Check your connection."); 
+    }
 }
 
 // --- MASTER PDF ENGINE (EXTRACTED TEMPLATE) ---
@@ -4026,6 +4036,7 @@ async function savePayment(e) {
             alert(`✅ Voucher ${result.payment.paymentNo} posted successfully!\nBalance adjusted across ${result.payment.linkedBills.length} bills.`);
             closePaymentModal();
             await loadPayments();
+            renderPayments();
             await loadInvoices(); // Refresh bill balances
             await loadPurchaseEntries();
             await loadStockists(); // Refresh party balances
