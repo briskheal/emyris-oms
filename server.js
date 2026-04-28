@@ -1318,6 +1318,124 @@ app.get('/api/admin/invoices', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Admin: Direct Sale (Online/Manual) -> Creates Order + Deducts Inventory + Generates Invoice
+app.post('/api/admin/direct-sale', async (req, res) => {
+    try {
+        const { party, partyName, refNo, date, channel, paymentMode, remarks, items, subTotal, gstAmount, grandTotal, type } = req.body;
+
+        // 1. Generate Order No (EMY-DIR-YYYYMMDD-XXXX)
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const orderCount = await Order.countDocuments();
+        const orderNo = `EMY-DIR-${dateStr}-${(orderCount + 1).toString().padStart(4, '0')}`;
+
+        const stockist = await Stockist.findById(party);
+        if (!stockist && party !== 'ONLINE') {
+             // Handle case where party might be a generic string or 'ONLINE'
+        }
+
+        // 2. Perform Inventory Deduction for each item
+        const processedItems = [];
+        for (const item of items) {
+            const product = await Product.findById(item.product);
+            if (!product) continue;
+
+            const qtyToDeduct = Number(item.qty || 0);
+            if (qtyToDeduct > 0) {
+                // Update overall stock
+                product.qtyAvailable -= qtyToDeduct;
+
+                // Find the specific batch
+                const batch = product.batches.find(b => b.batchNo === item.batch);
+                if (batch) {
+                    batch.qtyAvailable -= qtyToDeduct;
+                } else {
+                    // Fallback to FIFO if batch not found (shouldn't happen with UI selection)
+                    let remaining = qtyToDeduct;
+                    for (let b of product.batches) {
+                        if (remaining <= 0) break;
+                        if (b.qtyAvailable > 0) {
+                            const deduct = Math.min(b.qtyAvailable, remaining);
+                            b.qtyAvailable -= deduct;
+                            remaining -= deduct;
+                        }
+                    }
+                }
+                await product.save();
+            }
+
+            processedItems.push({
+                product: item.product,
+                name: item.name,
+                batch: item.batch,
+                qty: item.qty,
+                priceUsed: item.rate,
+                totalValue: item.totalValue,
+                manufacturer: product.manufacturer,
+                hsn: product.hsn,
+                gstPercent: item.gstPercent,
+                mfgDate: batch ? batch.mfgDate : '',
+                expDate: batch ? batch.expDate : ''
+            });
+        }
+
+        // 3. Create and Save Order (Approved)
+        const newOrder = new Order({
+            orderNo,
+            stockist: party,
+            stockistCode: stockist ? stockist.stockistCode : (channel === 'ONLINE' ? 'ONLINE' : 'DIRECT'),
+            items: processedItems,
+            subTotal,
+            gstAmount,
+            grandTotal,
+            status: 'approved',
+            hq: stockist ? stockist.hq : "",
+            createdAt: date || new Date()
+        });
+        await newOrder.save();
+
+        // 4. Generate Invoice
+        const invCount = await Invoice.countDocuments();
+        const invoiceNo = `EMY-INV-${dateStr}-${(invCount + 1).toString().padStart(4, '0')}`;
+
+        const newInvoice = new Invoice({
+            invoiceNo,
+            order: newOrder._id,
+            stockist: party,
+            stockistName: partyName || (stockist ? stockist.name : 'Direct Customer'),
+            stockistCode: newOrder.stockistCode,
+            items: processedItems.map(i => ({
+                ...i,
+                mrp: i.mrp || 0 // Mrp should be tracked if available
+            })),
+            subTotal,
+            gstAmount,
+            grandTotal,
+            hq: newOrder.hq,
+            createdAt: date || new Date()
+        });
+
+        // Fetch MRP for invoice items
+        for (let invItem of newInvoice.items) {
+            const p = await Product.findById(invItem.product);
+            if (p) invItem.mrp = p.mrp;
+        }
+
+        await newInvoice.save();
+
+        // 5. Accounting Update (Outstanding Balance)
+        if (stockist) {
+            await Stockist.findByIdAndUpdate(party, { $inc: { outstandingBalance: grandTotal } });
+        }
+
+        res.json({ success: true, order: newOrder, invoice: newInvoice });
+
+    } catch (err) {
+        console.error("❌ Direct Sale Error:", err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+
 app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
     try {
         const order = await Order.findById(req.params.orderId).populate('stockist');

@@ -72,6 +72,7 @@ let allPurchaseEntries = [];
 let allNotes = [];
 let currentNoteReason = 'ALL';
 let purchaseItems = []; // Temporary storage for new purchase entry
+let directSaleItems = []; // Temporary storage for direct sales entry
 let companyProfile = {};
 let currentEditingNoteId = null; 
 let allPayments = [];
@@ -1401,6 +1402,12 @@ function openPartyModal(id = null) {
         document.getElementById('party-modal-title').innerText = "🤝 Create New Party";
         document.getElementById('btn-save-party').innerText = "SAVE PARTY";
         document.getElementById('btn-save-party').style.background = "var(--primary)";
+        
+        // Auto-generate credentials for new party
+        const randomId = 'EMY' + Math.floor(100000 + Math.random() * 900000);
+        const randomPass = Math.random().toString(36).slice(-8).toUpperCase();
+        document.getElementById('party-login').value = randomId;
+        document.getElementById('party-pass').value = randomPass;
     }
     modal.classList.remove('hidden');
 }
@@ -1453,7 +1460,13 @@ async function saveParty(e) {
         if (result.success) {
             alert("✅ Party record saved and activated!");
             closePartyModal();
-            loadStockists();
+            await loadStockists();
+            // If direct sale modal is open, refresh its dropdown and select the new party
+            if (!document.getElementById('directSaleModal').classList.contains('hidden')) {
+                // Try to find the new party ID from the list if result.data is not provided
+                let newId = result.data ? result.data._id : (allStockists[allStockists.length-1]?._id);
+                refreshSaleParties(newId);
+            }
         } else {
             alert("Save failed: " + (result.message || "Unknown error"));
         }
@@ -2084,6 +2097,213 @@ async function savePurchaseEntry(e) {
             closePurchaseModal();
         }
     } catch (e) { alert("Failed to save purchase"); }
+}
+
+
+// --- DIRECT SALES LOGIC ---
+function openOnlineOrderModal() {
+    openDirectSaleModal('ONLINE');
+}
+
+function openDirectOrderModal() {
+    openDirectSaleModal('DIRECT');
+}
+
+function refreshSaleParties(selectedId = null) {
+    const select = document.getElementById('sale-party');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">-- Select Party / Customer --</option>' +
+        '<option value="NEW" style="color:var(--accent); font-weight:bold; background:rgba(16, 185, 129, 0.1);">➕ [NEW] CREATE NEW CUSTOMER</option>' +
+        allStockists.map(s => `<option value="${s._id}">${s.name} (${s.city})</option>`).join('');
+    
+    if (selectedId) {
+        select.value = selectedId;
+    }
+}
+
+function openDirectSaleModal(type) {
+    document.getElementById('saleForm').reset();
+    document.getElementById('sale-type-input').value = type;
+    directSaleItems = [];
+    renderSaleItems();
+
+    // UI Adjustments based on type
+    const title = document.getElementById('sale-modal-title');
+    const subtitle = document.getElementById('sale-modal-subtitle');
+    const channelSelect = document.getElementById('sale-channel');
+
+    if (type === 'ONLINE') {
+        title.innerText = '🌐 New Online Platform Order';
+        subtitle.innerText = 'ONLINE SALES MODULE';
+        subtitle.style.color = 'var(--primary)';
+        channelSelect.value = 'ONLINE';
+    } else {
+        title.innerText = '🏢 New Direct Company Sale';
+        subtitle.innerText = 'DIRECT SALES MODULE';
+        subtitle.style.color = 'var(--accent)';
+        channelSelect.value = 'DIRECT';
+    }
+
+    // Populate Party Dropdown
+    refreshSaleParties();
+    const select = document.getElementById('sale-party');
+    if (select) {
+        select.onchange = (e) => {
+            if (e.target.value === 'NEW') {
+                openPartyModal();
+            }
+        };
+    }
+
+    // Populate Product Dropdown
+    const prodSelect = document.getElementById('sale-prod-select');
+    if (prodSelect) {
+        prodSelect.innerHTML = '<option value="">-- Select Product --</option>' +
+            allProducts.map(p => `<option value="${p._id}">${p.name}</option>`).join('');
+    }
+
+    document.getElementById('directSaleModal').classList.remove('hidden');
+}
+
+function closeSaleModal() {
+    document.getElementById('directSaleModal').classList.add('hidden');
+}
+
+function updateSaleProductMeta(prodId) {
+    if (!prodId) return;
+    const prod = allProducts.find(p => p._id === prodId);
+    if (!prod) return;
+
+    // Populate Batch Dropdown
+    const batchSelect = document.getElementById('sale-batch-select');
+    if (batchSelect) {
+        batchSelect.innerHTML = '<option value="">-- Select Batch --</option>' +
+            (prod.batches || []).filter(b => b.qtyAvailable > 0).map(b => `<option value="${b.batchNo}">${b.batchNo} (Qty: ${b.qtyAvailable})</option>`).join('');
+    }
+
+    document.getElementById('sale-gst-pct').value = prod.gstPercent || 12;
+    document.getElementById('sale-rate').value = prod.pts || 0;
+}
+
+function updateSaleBatchMeta(batchNo) {
+    // Optional: can fetch specific rate for batch if needed
+}
+
+function addSaleItem() {
+    const prodId = document.getElementById('sale-prod-select').value;
+    const batchNo = document.getElementById('sale-batch-select').value;
+    const qty = Number(document.getElementById('sale-qty').value);
+    const rate = Number(document.getElementById('sale-rate').value);
+    const gstPct = Number(document.getElementById('sale-gst-pct').value);
+
+    if (!prodId || !batchNo || qty <= 0 || rate <= 0) return alert("Please fill all item details correctly");
+
+    const prod = allProducts.find(p => p._id === prodId);
+    directSaleItems.push({
+        product: prodId,
+        name: prod.name,
+        batch: batchNo,
+        qty: qty,
+        rate: rate,
+        gstPercent: gstPct,
+        totalValue: qty * rate
+    });
+
+    renderSaleItems();
+    // Clear line inputs
+    document.getElementById('sale-qty').value = '';
+}
+
+function renderSaleItems() {
+    const tbody = document.getElementById('sale-items-body');
+    if (!tbody) return;
+
+    let subTotal = 0;
+    let gstTotal = 0;
+
+    tbody.innerHTML = directSaleItems.map((item, index) => {
+        const gst = (item.totalValue * item.gstPercent) / 100;
+        subTotal += item.totalValue;
+        gstTotal += gst;
+
+        return `<tr>
+            <td><strong>${item.name}</strong></td>
+            <td>${item.batch}</td>
+            <td style="text-align:center;">${item.qty}</td>
+            <td style="text-align:right;">₹${item.rate.toFixed(2)}</td>
+            <td style="text-align:center;">${item.gstPercent}%</td>
+            <td style="text-align:right; font-weight:700;">₹${(item.totalValue + gst).toFixed(2)}</td>
+            <td><button type="button" onclick="directSaleItems.splice(${index},1); renderSaleItems();" style="color:red; background:none; border:none; cursor:pointer;">✖</button></td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('sale-subtotal').innerText = '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
+    document.getElementById('sale-gst-total').innerText = '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
+    document.getElementById('sale-total').innerText = '₹' + (subTotal + gstTotal).toLocaleString('en-IN', {minimumFractionDigits: 2});
+}
+
+async function saveDirectSale(e) {
+    e.preventDefault();
+    if (!directSaleItems.length) return alert("Add at least one item");
+
+    const partyId = document.getElementById('sale-party').value;
+    const party = allStockists.find(s => s._id === partyId);
+
+    const btn = e.submitter;
+    const originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = '⌛ SAVING SALE...';
+
+    const data = {
+        party: partyId,
+        partyName: party ? party.name : 'Direct Customer',
+        refNo: document.getElementById('sale-ref-no').value,
+        date: document.getElementById('sale-date').value,
+        channel: document.getElementById('sale-channel').value,
+        paymentMode: document.getElementById('sale-payment-mode').value,
+        remarks: document.getElementById('sale-remarks').value,
+        items: directSaleItems,
+        subTotal: directSaleItems.reduce((s, i) => s + i.totalValue, 0),
+        gstAmount: directSaleItems.reduce((s, i) => s + (i.totalValue * i.gstPercent / 100), 0),
+        grandTotal: directSaleItems.reduce((s, i) => s + (i.totalValue * (1 + i.gstPercent / 100)), 0),
+        type: document.getElementById('sale-type-input').value
+    };
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/direct-sale`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert(`✅ Direct Sale Recorded!\nOrder No: ${result.order.orderNo}\nInvoice No: ${result.invoice.invoiceNo}`);
+            closeSaleModal();
+            loadOrders();
+            loadInvoices();
+            refreshDashboard();
+        } else {
+            alert("❌ Save failed: " + (result.error || "Unknown error"));
+        }
+    } catch (e) { 
+        console.error("Direct Sale Save Fail:", e);
+        alert("❌ Network/Server Error while saving sale."); 
+    } finally {
+        btn.disabled = false;
+        btn.innerText = originalText;
+    }
+}
+
+function updateSaleChannelContext(val) {
+    const subtitle = document.getElementById('sale-modal-subtitle');
+    if (val === 'ONLINE') {
+        subtitle.innerText = 'ONLINE SALES MODULE';
+        subtitle.style.color = 'var(--primary)';
+    } else {
+        subtitle.innerText = 'DIRECT SALES MODULE';
+        subtitle.style.color = 'var(--accent)';
+    }
 }
 
 // --- REPORTING & COMPLIANCE LOGIC ---
