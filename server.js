@@ -2259,20 +2259,22 @@ app.get('/api/admin/parties/:id/ledger', async (req, res) => {
             credit: n.noteType === 'CN' ? n.amount : 0
         }));
 
-            credit: p.amount,
-            debit: 0
-        } : {
-            credit: 0,
-            debit: p.amount
-        };
-        ledger.push({
-            date: p.date,
-            refNo: p.paymentNo,
-            type: p.type,
-            description: `${p.method} - Ref: ${p.refNo || 'N/A'}`,
-            ...entry
+        payments.forEach(p => {
+            const entry = p.type === 'RECEIPT' ? {
+                credit: p.amount,
+                debit: 0
+            } : {
+                credit: 0,
+                debit: p.amount
+            };
+            ledger.push({
+                date: p.date,
+                refNo: p.paymentNo,
+                type: p.type,
+                description: `${p.method} - Ref: ${p.refNo || 'N/A'}`,
+                ...entry
+            });
         });
-    });
 
         // Sort by date
         ledger.sort((a, b) => new Date(a.date) - new Date(b.date));
